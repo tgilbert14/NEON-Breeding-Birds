@@ -13,7 +13,11 @@
 suppressWarnings(suppressMessages({ library(dplyr) }))
 `%||%` <- function(a, b) if (is.null(a) || length(a) == 0 || (length(a) == 1 && is.na(a))) b else a
 mode_chr <- function(x) { x <- x[!is.na(x)]; if (!length(x)) return(NA_character_); names(sort(table(x), decreasing = TRUE))[1] }
-RAW <- "../bird-data-fetch"; SITES <- c("HARV", "SCBI", "WOOD"); DEMO <- "HARV"
+RAW <- "../bird-data-fetch"; DEMO <- "HARV"
+# bundle EVERY site we fetched (fetch_bird_all.R) — derive from the raw files present
+SITES <- sort(sub("_raw\\.rds$", "", list.files(RAW, pattern = "_raw\\.rds$")))
+if (!length(SITES)) stop("No <SITE>_raw.rds in ", RAW, " — run scripts/fetch_bird_all.R first.")
+cat(sprintf("Bundling %d sites: %s\n", length(SITES), paste(SITES, collapse = " ")))
 
 is_species_rank <- function(rank, sci) {
   ok <- is.na(rank) | rank %in% c("species", "subspecies", "speciesGroup")

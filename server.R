@@ -39,7 +39,12 @@ server <- function(input, output, session) {
 
   ingest <- function(b, label, is_demo = FALSE) {
     if (is.null(b) || is.null(b$obs) || !nrow(b$obs)) { session$sendCustomMessage("loadDone", list()); showNotification("No bird data for that site.", type="warning"); return(invisible()) }
-    rv$obs <- b$obs; rv$points <- b$points; rv$nvis <- b$meta$n_visits %||% length(unique(b$obs$eventID))
+    rv$obs <- b$obs; rv$points <- b$points
+    # effort denominator = total point-visits, from the STRUCTURAL effort table only.
+    # Never fall back to n_distinct(obs$eventID): in obs, eventID is at plot×year
+    # grain (~7), not point-visit grain (~646) — that fallback would inflate every
+    # index ~90×. If meta and points both lack it, fail loudly rather than lie.
+    rv$nvis <- b$meta$n_visits %||% (if (!is.null(b$points$n_visits)) sum(b$points$n_visits, na.rm = TRUE) else NA_integer_)
     rv$board <- species_board(b$obs, b$points, rv$nvis)
     rv$label <- label; rv$site <- b$meta$site; rv$is_demo <- is_demo; rv$sp <- NULL
     yrs <- range(b$obs$year, na.rm=TRUE); rv$ctx <- paste0(b$meta$site, " · ", if (yrs[1]==yrs[2]) yrs[1] else paste0(yrs[1],"–",yrs[2]))
@@ -95,7 +100,7 @@ server <- function(input, output, session) {
     brd <- rv$board; req(brd); ch <- chao2_points(rv$obs, rv$points)
     pts <- c(sprintf("Across <b>%d</b> point-counts at <b>%d</b> points, observers logged <b>%s</b> birds of <b>%d</b> species.",
       rv$nvis, nrow(rv$points), format(sum(brd$total_birds), big.mark=","), nrow(brd)))
-    if (!is.null(ch)) pts <- c(pts, sprintf("Chao2 estimates at least <b>%.0f</b> species use the site — point counts miss secretive, nocturnal, and rare birds, so the true total is higher than the <b>%d</b> observed.", ch$chao2, ch$S_obs))
+    if (!is.null(ch)) pts <- c(pts, sprintf("Across the <b>%d</b> points (incidence pooled over all monitored years), <b>Chao2</b> estimates at least <b>%.0f</b> species use the site — point counts miss secretive, nocturnal, and rare birds, so the true total is higher than the <b>%d</b> observed.", ch$m, ch$chao2, ch$S_obs))
     pts <- c(pts, "Counts are a <b>detection index</b>, not a census: a loud species and a quiet one at equal density give unequal counts. Open a species' profile to see its detection-decay with distance.")
     div(class="insight-list", lapply(pts, function(t) div(class="il-item", bs_icon("dot"), HTML(t))))
   })
@@ -115,7 +120,7 @@ server <- function(input, output, session) {
   })
   output$chaoBanner <- renderUI({
     ch <- chao2_points(rv$obs, rv$points); req(!is.null(ch))
-    insight_banner("calculator", tone="gold", HTML(sprintf("Observed <b>%d</b> species across %d points. <b>Chao2</b> estimates <span class='ci-hero'>%.0f</span> use the site%s — roughly <b>%.0f</b> remain undetected by point counts.",
+    insight_banner("calculator", tone="gold", HTML(sprintf("Observed <b>%d</b> species across %d points (incidence pooled over all monitored years). <b>Chao2</b> estimates <span class='ci-hero'>%.0f</span> use the site%s — roughly <b>%.0f</b> remain undetected by point counts.",
       ch$S_obs, ch$m, ch$chao2, if (ch$unstable) " (a rough floor)" else "", max(0, round(ch$chao2 - ch$S_obs)))))
   })
 
@@ -168,8 +173,9 @@ server <- function(input, output, session) {
   # ---- Species Profile (downloadable card) ----
   output$decayPlot <- renderPlotly({
     sci <- rv$sp; req(sci); dd <- distance_decay(rv$obs, sci); if (is.null(dd)) return(note_plot("Too few distance-measured detections"))
-    plot_ly(dd, x=~band, y=~n, type="bar", marker=list(color=DDL$sky), hovertemplate="%{x} m<br>%{y} detections<extra></extra>") %>%
-      plotly_theme(legend=FALSE) %>% plotly::layout(xaxis=list(title="Distance from observer (m)"), yaxis=list(title="Detections"), margin=list(l=45,r=10,t=10,b=40))
+    plot_ly(dd, x=~band, y=~density, type="bar", marker=list(color=DDL$sky),
+            customdata=~n, hovertemplate="%{x} m<br>%{y} detections/ha · %{customdata} raw<extra></extra>") %>%
+      plotly_theme(legend=FALSE) %>% plotly::layout(xaxis=list(title="Distance from observer (m)"), yaxis=list(title="Detections / hectare (area-corrected)"), margin=list(l=52,r=10,t=10,b=40))
   })
   output$speciesProfile <- renderUI({
     if (is.null(rv$sp)) return(div(class="qc-empty", div(class="qc-empty-icon","\U0001F426"), h4("Pick a species to open its profile"),
@@ -185,14 +191,14 @@ server <- function(input, output, session) {
         tile(r$index, "birds/count"), tile(paste0(r$ubiquity,"%"), "of points"),
         tile(r$n_points, "points"), tile(r$n_grids, "grids"),
         tile(r$mean_cluster, "mean cluster"), tile(r$method %||% "—", "mostly")),
-      div(class="qc-section-h", bs_icon("reception-4"), " Detection-decay — how far it's detected"),
+      div(class="qc-section-h", bs_icon("reception-4"), " Detectability by distance (area-corrected, detections/ha)"),
       plotlyOutput("decayPlot", height="150px"),
       div(class="qc-section-h", bs_icon("calendar3"), " Birds counted, by year"),
       if (!is.null(my) && nrow(my)) div(class="qc-cap-scroll", tags$table(class="inspect-tbl",
         tags$thead(tags$tr(tags$th("Year"), tags$th("Birds counted"))),
         tags$tbody(lapply(seq_len(nrow(my)), function(i) tags$tr(tags$td(my$year[i]), tags$td(my$birds[i])))))) else p(class="qc-cap-note","—"),
       p(class="qc-cap-note", style="margin-top:8px", bs_icon("info-circle"),
-        " Detections are a detection index, not a population: distance-decay shows how detectability falls off with distance, which is why raw counts aren't density."))
+        " Detections are a detection index, not a population. The bars are area-corrected (detections per hectare per distance ring) — far rings cover more ground, so a raw count would rise then fall on geometry alone; dividing by ring area recovers the true detectability decline."))
     div(div(class="plot-profile-wrap", body), div(class="qc-toolbar",
       tags$button(class="smt-snap-btn", type="button", onclick="smtSaveQcCard()", bsicons::bs_icon("download"), " Save species card (PNG)"),
       downloadButton("spCsv", "Download detections (CSV)", class="smt-clear-btn")))
@@ -227,7 +233,7 @@ server <- function(input, output, session) {
         p("An (unofficial) explorer for NEON's ", tags$b("Breeding landbird point counts"), " (", tags$code("DP1.10003.001"), "). At each point, an observer records every bird seen or heard in a ", tags$b("6-minute count"), ", with the distance to each — once or twice each breeding season.")),
       div(class="about-card", h4(bs_icon("soundwave"), " Detection index, not population"),
         p("Raw point-count totals are ", tags$b("detection-confounded"), ": a loud, conspicuous species and a quiet, skulking one at the same true density produce different counts. So the abundance axis here is a ", tags$b("detection index"), " (birds per point-count), never a population."),
-        p("The most honest abundance axis is ", tags$b("ubiquity"), " — the % of points where a species is ever detected (presence is far less detection-biased than count). Each species' ", tags$b("detection-decay"), " (detections by distance) is its detectability signature.")),
+        p("A ", tags$b("less count-biased"), " axis is ", tags$b("ubiquity"), " — the % of points where a species is ever detected. Presence is less count-biased than a raw total, but it is still effort- and detection-dependent: rarely-visited points detect fewer species, and naïve occupancy under-counts quiet, secretive birds (treat it as a ", tags$b("floor"), ", not detection-corrected occupancy). Each species' ", tags$b("area-corrected detectability-by-distance"), " is its detection signature.")),
       div(class="about-card", h4(bs_icon("calculator"), " How many species?"),
         p(tags$b("Chao2"), " (incidence-based) estimates how many species use the site beyond those observed — point counts systematically miss nocturnal, secretive, and rare birds."),
         p(bs_icon("envelope"), " ", tags$a(href="mailto:desertdatalabs@gmail.com","desertdatalabs@gmail.com"), " · ",

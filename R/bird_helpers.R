@@ -89,16 +89,24 @@ species_detail <- function(obs, sci) {
   d <- obs[obs$scientificName == sci & !is.na(obs$scientificName), , drop = FALSE]
   if (!nrow(d)) return(NULL); d
 }
-# detection-decay: detections binned by observerDistance (the detectability signature)
+# detection-decay: detections by observerDistance, AREA-CORRECTED. A raw count
+# histogram for a POINT count rises then falls — far annuli cover more ground
+# (area ∝ 2π·r·Δr), so raw counts are detection g(d) × annulus area, not g(d).
+# Dividing each band's count by its annulus area recovers apparent density per
+# ring, which IS the monotone-declining detectability signature. The unbounded
+# far tail is truncated at 200 m (Buckland et al. 2001 distance-sampling practice).
 distance_decay <- function(obs, sci) {
   d <- species_detail(obs, sci); if (is.null(d)) return(NULL)
-  v <- d$observerDistance[is.finite(d$observerDistance) & d$observerDistance >= 0 & d$observerDistance < 500]
+  v <- d$observerDistance[is.finite(d$observerDistance) & d$observerDistance >= 0 & d$observerDistance <= 200]
   if (length(v) < 3) return(NULL)
-  brks <- c(0, 25, 50, 75, 100, 150, 200, Inf); labs <- c("0–25","25–50","50–75","75–100","100–150","150–200","200+")
+  brks <- c(0, 25, 50, 75, 100, 150, 200); labs <- c("0–25","25–50","50–75","75–100","100–150","150–200")
   cl <- cut(v, breaks = brks, labels = labs, right = FALSE)
-  data.frame(band = factor(labs, levels = labs)) %>%
-    dplyr::left_join(as.data.frame(table(band = cl), responseName = "n"), by = "band") %>%
-    dplyr::mutate(n = ifelse(is.na(.data$n), 0L, .data$n))
+  tab <- as.data.frame(table(band = cl), responseName = "n")
+  area_ha <- (pi * (brks[-1]^2 - brks[-length(brks)]^2)) / 10000   # annulus area per ring, hectares
+  out <- dplyr::left_join(data.frame(band = factor(labs, levels = labs), area_ha = area_ha), tab, by = "band")
+  out$n <- ifelse(is.na(out$n), 0L, out$n)
+  out$density <- round(out$n / out$area_ha, 2)   # detections per hectare per ring = detectability signature
+  out
 }
 # detections by bout/year (the seasonal/effort texture)
 detection_by_year <- function(obs, sci) {
