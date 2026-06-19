@@ -1,0 +1,56 @@
+/* =========================================================================
+   plant.css — NEON Plant Diversity Explorer additions on top of the ported
+   styles.css (Desert Data Labs house style). Only the plant-specific bits live
+   here: the hero band, splash site cards, native/introduced bar, insight list.
+   ========================================================================= */
+
+/* greened brand mark */
+.brand-mark { font-size: 26px; }
+
+/* ---- hero stat band ---------------------------------------------------- */
+.hero-band { margin: 4px 0 14px; }
+.hero-title { font-weight: 700; color: var(--pine); font-size: 17px; display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.hero-stat { display: flex; gap: 12px; align-items: center; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; padding: 12px 16px; box-shadow: 0 4px 14px var(--shadow); border-top: 3px solid var(--pine); }
+.hero-stat.hero-pine  { border-top-color: var(--green); }
+.hero-stat.hero-terra { border-top-color: var(--terra); }
+.hero-stat.hero-gold  { border-top-color: var(--gold); }
+.hs-icon { font-size: 24px; color: var(--pine); opacity: .85; }
+.hero-pine  .hs-icon { color: var(--green); }
+.hero-terra .hs-icon { color: var(--terra); }
+.hero-gold  .hs-icon { color: var(--gold-ink); }
+.hs-v { font-size: 28px; font-weight: 800; color: var(--ink); line-height: 1; }
+.hs-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 3px; }
+
+/* ---- splash site cards ------------------------------------------------- */
+.site-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0; }
+.site-card { display: flex; gap: 14px; align-items: center; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; padding: 14px 16px; text-decoration: none; color: inherit; box-shadow: 0 4px 14px var(--shadow);
+  border-left: 4px solid var(--green); transition: transform .12s ease, box-shadow .12s ease; }
+.site-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px var(--shadow); }
+.sc-emoji { font-size: 30px; }
+.sc-name { font-weight: 600; color: var(--ink); }
+.sc-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+/* ---- overview insight list -------------------------------------------- */
+.insight-list { display: flex; flex-direction: column; gap: 6px; }
+.il-item { display: flex; gap: 8px; align-items: baseline; color: var(--ink); font-size: 14px; line-height: 1.5; }
+.il-item .ci-hero { color: var(--green); font-weight: 800; }
+
+/* ---- native vs introduced cover bar (plot card) ----------------------- */
+.piv-bar { display: flex; height: 24px; border-radius: 7px; overflow: hidden; border: 1px solid var(--line); font-size: 11px; font-weight: 600; }
+.piv-native { background: #1a7f37; color: #fff; display: flex; align-items: center; justify-content: center; }
+.piv-intro  { background: #c1502e; color: #fff; display: flex; align-items: center; justify-content: center; }
+
+/* ---- Diversity Lab selected-plot strip -------------------------------- */
+.lab-sel { display: flex; gap: 14px; align-items: center; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
+.ls-emoji { font-size: 26px; }
+.ls-id { font-weight: 600; color: var(--ink); }
+.ls-dom { font-size: 12.5px; color: var(--muted); }
+.lab-sel .btn { margin-left: auto; }
+
+/* hero count-up uses the shared .count-up engine from app.js */
+[data-bs-theme="dark"] .hero-stat,
+[data-bs-theme="dark"] .site-card { background: var(--paper); }

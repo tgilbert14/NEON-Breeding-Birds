@@ -1,0 +1,15 @@
+suppressWarnings(suppressMessages({ library(dplyr) }))
+source("R/bird_helpers.R")
+b <- readRDS("data/sites/HARV.rds"); obs <- b$obs; pts <- b$points; nv <- b$meta$n_visits
+cat("obs", nrow(obs), "points", nrow(pts), "visits", nv, "\n")
+cat("\nsite_birds:\n"); print(site_birds(obs, pts, nv))
+brd <- species_board(obs, pts, nv)
+cat("\nspecies_board rows", nrow(brd), "\n"); print(head(brd[,c("vernacular","ubiquity","index","n_points","mean_cluster","method")], 6))
+cat("\nchao2_points:\n"); print(chao2_points(obs, pts))
+cat("\nbird_accum tail:\n"); print(tail(bird_accum(obs, pts), 3))
+top <- brd$scientificName[1]
+cat("\ndistance_decay(", top, "):\n"); print(distance_decay(obs, top))
+cat("\ndetection_by_year:\n"); print(detection_by_year(obs, top))
+cat("\nmethod_mix:\n"); print(method_mix(obs, top))
+cat("\npoint_summary top 3:\n"); print(head(point_summary(obs, pts)[,c("pointkey","richness","per_visit","lat","lng")],3))
+cat("OK\n")
