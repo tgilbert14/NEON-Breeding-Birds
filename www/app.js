@@ -2,6 +2,13 @@
    app.js — count-up stat counters + celebratory confetti
    ========================================================================= */
 
+// When a tab becomes visible, nudge a resize so widgets that rendered while the
+// tab was hidden (Leaflet maps, plotly charts) re-fit to their real size — the
+// classic "0-sized widget in a hidden bootstrap tab" fix.
+document.addEventListener("shown.bs.tab", function () {
+  setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 60);
+});
+
 // ---- animated count-up for the hero stat band ----------------------------
 function animateCount(el) {
   if (el.dataset.animated === "1") return;

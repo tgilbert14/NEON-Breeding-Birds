@@ -83,6 +83,16 @@ card_head <- function(icon, title, ...)
   bslib::card_header(class = "with-info", bsicons::bs_icon(icon), tags$span(class = "ch-title", " ", title), ...)
 fmt_int <- function(x) format(round(as.numeric(x)), big.mark = ",", trim = TRUE)
 
+# temperature display — Fahrenheit (default, US audience) or Celsius. Stored data
+# is always °C; these convert for display only. (Spearman/rank stats are unit-free.)
+temp_val  <- function(c, unit = "F") if (identical(unit, "C")) c else c * 9 / 5 + 32
+temp_unit_lab <- function(unit = "F") if (identical(unit, "C")) "°C" else "°F"
+temp_disp <- function(c, unit = "F") {                       # vectorised; NA -> "—"
+  c <- suppressWarnings(as.numeric(c))
+  s <- if (identical(unit, "C")) sprintf("%.1f°C", c) else sprintf("%.0f°F", c * 9 / 5 + 32)
+  s[is.na(c)] <- "—"; s
+}
+
 # ---- biome classification (cross-site gradient color / legend) --------------
 # Manual per-site biome (domain alone mixes biomes); anything unlisted = forest.
 SITE_BIOME <- c(

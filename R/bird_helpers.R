@@ -158,6 +158,19 @@ method_mix <- function(obs, sci) {
   d %>% dplyr::count(.data$detectionMethod, name = "n") %>% dplyr::arrange(dplyr::desc(.data$n))
 }
 
+# every species detected at one grid (plotID) — powers the map click panel + CSV
+grid_species <- function(obs, plotid) {
+  sp <- species_level_only(obs); sp <- sp[!is.na(sp$plotID) & sp$plotID == plotid, , drop = FALSE]
+  if (!nrow(sp)) return(NULL)
+  sp %>% dplyr::group_by(.data$scientificName) %>%
+    dplyr::summarise(vernacular  = mode_chr(.data$vernacularName),
+                     detections  = dplyr::n(),
+                     birds       = sum(.data$clusterSize, na.rm = TRUE),
+                     method      = mode_chr(.data$detectionMethod),
+                     .groups = "drop") %>%
+    dplyr::arrange(dplyr::desc(.data$birds), dplyr::desc(.data$detections))
+}
+
 # per-POINT (grid) summary for the map: richness + birds/visit per point
 point_summary <- function(obs, points) {
   sp <- species_level_only(obs)

@@ -21,7 +21,7 @@ server <- function(input, output, session) {
       annotations=list(list(text=paste0(icon,"<br>",msg), showarrow=FALSE, font=list(color=if(is_dark())"#b3a692" else "#7a6f5d", size=15), align="center"))) %>%
     plotly::config(displayModeBar = FALSE)
 
-  rv <- reactiveValues(obs=NULL, points=NULL, board=NULL, nvis=0, label=NULL, site=NULL, sp=NULL, ctx=NULL, is_demo=FALSE)
+  rv <- reactiveValues(obs=NULL, points=NULL, board=NULL, nvis=0, label=NULL, site=NULL, sp=NULL, ctx=NULL, is_demo=FALSE, grid=NULL)
 
   observe({ ch <- bird_state_choices(); updateSelectInput(session, "stateSel", choices = ch, selected = if ("MA" %in% ch) "MA" else NULL) })
   observeEvent(input$stateSel, updateSelectInput(session, "site", choices = bird_sites_in_state(input$stateSel)), ignoreInit = FALSE)
@@ -46,7 +46,7 @@ server <- function(input, output, session) {
     # index ~90×. If meta and points both lack it, fail loudly rather than lie.
     rv$nvis <- b$meta$n_visits %||% (if (!is.null(b$points$n_visits)) sum(b$points$n_visits, na.rm = TRUE) else NA_integer_)
     rv$board <- species_board(b$obs, b$points, rv$nvis)
-    rv$label <- label; rv$site <- b$meta$site; rv$is_demo <- is_demo; rv$sp <- NULL
+    rv$label <- label; rv$site <- b$meta$site; rv$is_demo <- is_demo; rv$sp <- NULL; rv$grid <- NULL
     yrs <- range(b$obs$year, na.rm=TRUE); rv$ctx <- paste0(b$meta$site, " · ", if (yrs[1]==yrs[2]) yrs[1] else paste0(yrs[1],"–",yrs[2]))
     shinyjs::show("mainTabsWrap"); shinyjs::show("spPickerWrap"); shinyjs::hide("splash")
     ch <- setNames(rv$board$scientificName, sprintf("%s · %s", rv$board$vernacular %||% rv$board$scientificName, rv$board$scientificName))
@@ -74,14 +74,20 @@ server <- function(input, output, session) {
   # ---- hero ----
   output$heroStats <- renderUI({
     sb <- site_birds(rv$obs, rv$points, rv$nvis); if (is.null(sb)) return(NULL)
-    hero <- function(v,l,suf="",icon,tone,ttl=NULL) div(class=paste0("hero-stat hero-",tone), title=ttl,
-      div(class="hs-icon", bs_icon(icon)), div(div(class="hs-v count-up", `data-target`=v, `data-suffix`=suf, "0"), div(class="hs-l", l)))
+    hero <- function(v,l,suf="",icon,tone,info=NULL) div(class=paste0("hero-stat hero-",tone),
+      div(class="hs-icon", bs_icon(icon)),
+      div(div(class="hs-v count-up", `data-target`=v, `data-suffix`=suf, "0"),
+          div(class="hs-l", l, if (!is.null(info)) info)))
     div(class="hero-band", div(class="hero-title", bs_icon("broadcast"), tags$b(rv$label)),
       div(class="hero-grid",
-        hero(sb$n_species, "species", icon="feather", tone="navy"),
-        hero(sb$n_points, "count points", icon="geo", tone="pine"),
-        hero(sb$birds_per_count, "birds / count", icon="soundwave", tone="gold", ttl="A detection index (birds per 6-min point-count), not a population estimate — detectability differs by species."),
-        hero(sb$n_visits, "point-counts run", icon="clipboard-check", tone="terra")))
+        hero(sb$n_species, "species", icon="feather", tone="navy",
+          info=info_pop("Species", p("The number of different bird species ", tags$b("detected"), " here across all years of counts. 'Detected' matters — shy, rare, or nocturnal birds can be present but missed, so the true total is higher (see the Chao2 estimate)."))),
+        hero(sb$n_points, "count points", icon="geo", tone="pine",
+          info=info_pop("Count points", p("The fixed spots where an observer stands and records every bird seen or heard in a ", tags$b("6-minute count"), ". NEON returns to the same points each breeding season."))),
+        hero(sb$birds_per_count, "birds / count", icon="soundwave", tone="gold",
+          info=info_pop("Birds per count", p("Average birds tallied in one 6-minute count — a ", tags$b("detection index, not a population"), ". Loud, conspicuous species inflate it; quiet, skulking ones are undercounted, so it can't be compared between species as abundance."))),
+        hero(sb$n_visits, "point-counts run", icon="clipboard-check", tone="terra",
+          info=info_pop("Point-counts run", p("The total number of ", tags$b("6-minute counts"), " performed here. A point counted twice in one year counts as two — this is the effort behind the ", tags$b("birds / count"), " average.")))))
   })
 
   # ---- Overview ----
@@ -90,7 +96,8 @@ server <- function(input, output, session) {
     brd$lab <- factor(brd$vernacular %||% brd$scientificName, levels = rev(brd$vernacular %||% brd$scientificName))
     plot_ly(brd, x=~index, y=~lab, type="bar", orientation="h", marker=list(color=method_col(brd$method)),
       text=~paste0(method), hovertemplate="%{y}<br>%{x:.2f} birds/count · %{text}<extra></extra>") %>%
-      plotly_theme(legend=FALSE) %>% plotly::layout(showlegend=FALSE, xaxis=list(title="Detection index (birds / point-count)"), yaxis=list(title=""), margin=list(l=170))
+      plotly_theme(legend=FALSE) %>% plotly::layout(showlegend=FALSE, xaxis=list(title="Detection index (birds / point-count)"), yaxis=list(title=""), margin=list(l=170, t=34),
+        annotations=list(list(text=sprintf("at <b>%s</b> · this site only", rv$site %||% "this site"), x=0, y=1.07, xref="paper", yref="paper", showarrow=FALSE, xanchor="left", font=list(color=if(is_dark())"#b3a692" else "#7a6f5d", size=11))))
   })
   output$overviewInsight <- renderUI({
     brd <- rv$board; req(brd); top <- brd[which.max(brd$index),]; ubi <- brd[which.max(brd$ubiquity),]
@@ -99,11 +106,19 @@ server <- function(input, output, session) {
   })
   output$siteInsights <- renderUI({
     brd <- rv$board; req(brd); ch <- chao2_points(rv$obs, rv$points)
-    pts <- c(sprintf("Across <b>%d</b> point-counts at <b>%d</b> points, observers logged <b>%s</b> birds of <b>%d</b> species.",
-      rv$nvis, nrow(rv$points), format(sum(brd$total_birds), big.mark=","), nrow(brd)))
-    if (!is.null(ch)) pts <- c(pts, sprintf("Across <b>%d</b> survey occasions (point × year), <b>Chao2</b> estimates at least <b>%.0f</b> species use the site — point counts miss secretive, nocturnal, and rare birds, so the true total is higher than the <b>%d</b> observed.", ch$m, ch$chao2, ch$S_obs))
-    pts <- c(pts, "Counts are a <b>detection index</b>, not a census: a loud species and a quiet one at equal density give unequal counts. Open a species' profile to see its detection-decay with distance.")
-    div(class="insight-list", lapply(pts, function(t) div(class="il-item", bs_icon("dot"), HTML(t))))
+    yrs <- range(rv$obs$year, na.rm=TRUE); yr_lab <- if (yrs[1]==yrs[2]) as.character(yrs[1]) else sprintf("%d–%d", yrs[1], yrs[2])
+    top <- brd[which.max(brd$index),]; ubi <- brd[which.max(brd$ubiquity),]
+    nm <- function(r) r$vernacular %||% r$scientificName
+    sing_share <- round(100 * mean(species_level_only(rv$obs)$detectionMethod %in% "singing", na.rm=TRUE))
+    pts <- c(
+      sprintf("Over <b>%s</b>, NEON ran <b>%s</b> six-minute point-counts at <b>%d</b> points here and tallied <b>%s</b> birds of <b>%d</b> species.",
+        yr_lab, fmt_int(rv$nvis), nrow(rv$points), fmt_int(sum(brd$total_birds)), nrow(brd)),
+      sprintf("The most-detected bird is the <b>%s</b> (<i>%s</i>), about <b>%.2f</b> per count; the most <i>widespread</i> is the <b>%s</b>, heard at <b>%.0f%%</b> of points.",
+        nm(top), top$scientificName, top$index, nm(ubi), ubi$ubiquity))
+    if (is.finite(sing_share)) pts <- c(pts, sprintf("<b>%d%%</b> of detections were birds <i>singing</i> on territory — the rest were call notes or birds seen, the texture of a breeding-season morning.", sing_share))
+    if (!is.null(ch)) pts <- c(pts, sprintf("Observers found <b>%d</b> species; <b>Chao2</b> (across %s survey occasions) estimates at least <b>%.0f</b> really use the site — point counts miss secretive, nocturnal, and rare birds.", ch$S_obs, fmt_int(ch$m), ch$chao2))
+    pts <- c(pts, "Remember: these are a <b>detection index</b>, not a census — a loud species and a quiet one at equal density give unequal counts. Open any species' profile for its detectability-by-distance.")
+    tags$ul(class="insight-list", lapply(pts, function(t) tags$li(HTML(t))))
   })
 
   # ---- Community ----
@@ -148,7 +163,7 @@ server <- function(input, output, session) {
     mx <- stats::median(brd$ubiquity); my <- stats::median(brd$index[brd$reliable])
     xr <- range(brd$ubiquity); yr <- range(brd$index); px <- diff(xr)*0.02; py <- diff(yr)*0.02
     qlab <- function(x,y,t,xa,ya) list(text=t, x=x, y=y, xref="x", yref="y", showarrow=FALSE, xanchor=xa, yanchor=ya, font=list(color=qcol, size=10.5))
-    ann <- list(list(text="each dot is a species · ubiquity × detection index (not a population)", x=0, y=1.07, xref="paper", yref="paper", showarrow=FALSE, xanchor="left", font=list(color=muted, size=11)),
+    ann <- list(list(text=sprintf("at <b>%s</b> (this site) · each dot is a species · ubiquity × detection index (not a population)", rv$site %||% "this site"), x=0, y=1.07, xref="paper", yref="paper", showarrow=FALSE, xanchor="left", font=list(color=muted, size=11)),
       qlab(xr[2]-px, yr[2]-py, "EVERYONE'S NEIGHBOUR \U0001F3C6", "right", "top"),
       qlab(xr[1]+px, yr[2]-py, "LOCAL SPECIALIST", "left", "top"),
       qlab(xr[2]-px, yr[1]+py, "THINLY EVERYWHERE", "right", "bottom"),
@@ -178,7 +193,7 @@ server <- function(input, output, session) {
     bar_col <- method_col((rv$board$method[rv$board$scientificName == sci])[1] %||% "other")  # match its Bird Board dot
     plot_ly(dd, x=~band, y=~density, type="bar", marker=list(color=bar_col),
             customdata=~n, hovertemplate="%{x} m<br>%{y} detections/ha · %{customdata} raw<extra></extra>") %>%
-      plotly_theme(legend=FALSE) %>% plotly::layout(xaxis=list(title="Distance from observer (m)"), yaxis=list(title="Detections / hectare (area-corrected)"), margin=list(l=52,r=10,t=10,b=40))
+      plotly_theme(legend=FALSE) %>% plotly::layout(xaxis=list(title="Distance from observer (m)"), yaxis=list(title="Detections / ha"), margin=list(l=46,r=10,t=10,b=40))
   })
   output$speciesProfile <- renderUI({
     if (is.null(rv$sp)) return(div(class="qc-empty", div(class="qc-empty-icon","\U0001F426"), h4("Pick a species to open its profile"),
@@ -225,11 +240,38 @@ server <- function(input, output, session) {
     # warm field-guide ramp (parchment -> goldfinch -> rust -> deep) = "more birds, warmer"
     pal <- leaflet::colorNumeric(c("#f3e9d2","#e8a317","#c1502e","#7a2e16"), domain=dom)
     rr <- range(g$richness, na.rm=TRUE); g$radius <- if (diff(rr)>0) 7 + 13*(g$richness-rr[1])/diff(rr) else 11
-    leaflet::leaflet(g) %>% leaflet::addProviderTiles(input$view %||% "Esri.WorldImagery") %>%
+    leaflet::leaflet(g) %>% leaflet::addProviderTiles(input$view %||% "Esri.WorldTopoMap") %>%
       leaflet::addCircleMarkers(lng=~lng, lat=~lat, radius=~radius, fillColor=pal(val), color="#fff", weight=1, fillOpacity=0.85,
-        label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count", short_point(plotID), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
+        layerId=~plotID,
+        label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", short_point(plotID), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
       leaflet::addLegend("bottomright", pal=pal, values=val, title=if (metric=="richness") "species" else "birds/count")
   })
+  observeEvent(input$map_marker_click, { id <- input$map_marker_click$id; if (!is.null(id)) rv$grid <- id })
+  output$gridPanel <- renderUI({
+    if (is.null(rv$obs)) return(NULL)
+    if (is.null(rv$grid)) return(div(class="grid-empty", bs_icon("hand-index-thumb"),
+      span(" Tap a grid marker above to list every bird species detected there — then download it.")))
+    gs <- grid_species(rv$obs, rv$grid)
+    if (is.null(gs) || !nrow(gs)) return(div(class="grid-empty", bs_icon("info-circle"), span(sprintf(" No species records at grid %s.", short_point(rv$grid)))))
+    rows <- lapply(seq_len(nrow(gs)), function(i) tags$tr(
+      tags$td(tags$b(gs$vernacular[i] %||% gs$scientificName[i]), tags$br(), tags$em(class="grid-sci", gs$scientificName[i])),
+      tags$td(class="grid-num", gs$birds[i]), tags$td(class="grid-num", gs$detections[i]),
+      tags$td(span(class="grid-method", style=sprintf("color:%s", method_col(gs$method[i])), gs$method[i] %||% "—"))))
+    div(class="grid-card",
+      div(class="grid-head",
+        div(tags$b(sprintf("Grid %s", short_point(rv$grid))), span(class="grid-sub", sprintf(" · %d species detected here", nrow(gs)))),
+        downloadButton("gridSpeciesCsv", "Download species list (CSV)", class="smt-clear-btn")),
+      div(class="grid-scroll", tags$table(class="inspect-tbl grid-tbl",
+        tags$thead(tags$tr(tags$th("Species"), tags$th(class="grid-num","Birds"), tags$th(class="grid-num","Detections"), tags$th("Mostly"))),
+        tags$tbody(rows))))
+  })
+  output$gridSpeciesCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_%s_grid-%s_%s.csv", rv$site %||% "site", gsub("[^A-Za-z0-9]","",short_point(rv$grid %||% "grid")), format(Sys.Date(),"%Y%m%d")),
+    content = function(file){ req(rv$grid); gs <- grid_species(rv$obs, rv$grid); req(!is.null(gs))
+      out <- gs[, c("scientificName","vernacular","birds","detections","method")]
+      names(out) <- c("scientificName","vernacularName","total_birds","detections","primary_method")
+      utils::write.csv(out, file, row.names=FALSE, na="") },
+    contentType="text/csv")
 
   # ---- Splash: national site picker (the continental story, pre-site) -------
   output$nationalPicker <- leaflet::renderLeaflet({
@@ -247,9 +289,10 @@ server <- function(input, output, session) {
   # ---- Across the continent: cross-site climate gradient (flagship) ---------
   output$climateGradient <- renderPlotly({
     g <- GRADIENT; if (is.null(g) || !nrow(g)) return(note_plot("Climate gradient unavailable — run scripts/build_cross_site.R", "\U0001F30D"))
+    unit <- input$tempUnit %||% "F"
     xvar <- input$gradX %||% "temp"
     if (identical(xvar, "precip")) { g <- g[!is.na(g$precip_annual_mm), ]; xcol <- "precip_annual_mm"; xlab <- "Annual precipitation (mm · NEON record)"; xsuf <- " mm" }
-    else { xcol <- "breeding_temp_c"; xlab <- "Breeding-season air temperature (°C · NEON record)"; xsuf <- "°C" }
+    else { xcol <- "breeding_temp_c"; xlab <- sprintf("Breeding-season air temperature (%s · NEON record)", temp_unit_lab(unit)); xsuf <- temp_unit_lab(unit) }
     tcom <- if ("t_used" %in% names(g)) g$t_used[1] else NA
     metric <- input$gradMetric %||% "rarefied"
     yc <- switch(metric,
@@ -261,10 +304,11 @@ server <- function(input, output, session) {
       list(col = "S_rare", lab = "Species richness (rarefied)"))
     if (!yc$col %in% names(g)) yc <- list(col = "n_species", lab = "Species richness (observed)")
     g$xx <- suppressWarnings(as.numeric(g[[xcol]])); g$yy <- suppressWarnings(as.numeric(g[[yc$col]]))
+    if (identical(xvar, "temp")) g$xx <- temp_val(g$xx, unit)
     g <- g[is.finite(g$xx) & is.finite(g$yy), ]; if (!nrow(g)) return(note_plot("No sites with this combination", "\U0001F30D"))
     g$tip <- paste0("<span class='smt-pin-emoji'>\U0001F985</span> <b>", g$site, " · ", g$name, "</b><br/>",
       "<em>", g$biome_lab, " · ", g$state, "</em><br/>",
-      "<span class='smt-pin-stats'>", round(g$breeding_temp_c, 1), "°C breeding · ",
+      "<span class='smt-pin-stats'>", temp_disp(g$breeding_temp_c, unit), " breeding · ",
       ifelse(is.na(g$precip_annual_mm), "no precip sensor", paste0(g$precip_annual_mm, " mm/yr")), "<br/>",
       g$n_species, " species seen",
       ifelse(is.na(g$S_rare), "", paste0(" · ", g$S_rare, " rarefied")), " · ", g$n_points, " points<br/>",
@@ -286,13 +330,16 @@ server <- function(input, output, session) {
         hovertemplate = paste0("viewing ", ir$site, "<extra></extra>")) }
     rho <- suppressWarnings(stats::cor(g$xx, g$yy, method = "spearman"))
     conf <- if (identical(metric, "observed")) "biome, latitude &amp; survey effort (raw richness tracks effort — see the rarefied metric)" else "biome &amp; latitude"
+    # both caveats stacked at the TOP, so they never collide with the x-axis title
+    # + legend at the bottom (the overlap fix).
     ann <- list(
-      list(text = sprintf("each dot is a NEON site · %s × %s · dot size = survey effort (points)", if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
-           x = 0, y = 1.08, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11)),
+      list(text = sprintf("Every dot is one of <b>46 NEON sites</b> · %s × %s · dot size = survey effort (points)", if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
+           x = 0, y = 1.15, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11)),
       list(text = sprintf("Spearman ρ = %.2f · space-for-time (46 places, not one site warming) — correlational, confounded by %s", ifelse(is.na(rho), 0, rho), conf),
-           x = 0, y = -0.16, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)))
-    p %>% plotly_theme() %>% plotly::layout(xaxis = list(title = xlab), yaxis = list(title = yc$lab, rangemode = "tozero"),
-      annotations = ann, hovermode = "closest", margin = list(b = 64))
+           x = 0, y = 1.075, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)))
+    p %>% plotly_theme() %>% plotly::layout(xaxis = list(title = list(text = xlab, standoff = 10)),
+      yaxis = list(title = yc$lab, rangemode = "tozero"),
+      annotations = ann, hovermode = "closest", margin = list(l = 60, r = 30, t = 96, b = 52))
   })
 
   # ---- Within-site: breeding window against the seasonal climatology --------
@@ -300,14 +347,16 @@ server <- function(input, output, session) {
     req(rv$site); if (is.null(SITE_MONTH_CLIM)) return(note_plot("No environmental data bundled", "\U0001F326"))
     mc <- SITE_MONTH_CLIM[SITE_MONTH_CLIM$site == rv$site, , drop = FALSE]; if (!nrow(mc)) return(note_plot("No environmental data for this site", "\U0001F326"))
     mc <- mc[order(mc$mon), ]; cl <- if (!is.null(SITE_CLIMATE)) SITE_CLIMATE[SITE_CLIMATE$site == rv$site, , drop = FALSE] else NULL
+    unit <- input$tempUnit %||% "F"; mc$temp_d <- temp_val(mc$temp_c, unit)
+    thov <- if (identical(unit, "C")) "%{y:.1f} °C<extra></extra>" else "%{y:.0f} °F<extra></extra>"
     p <- plot_ly()
     if (any(!is.na(mc$greenup_pct)))
       p <- p %>% add_trace(x = ~mc$mon, y = ~mc$greenup_pct, type = "scatter", mode = "lines+markers", name = "Green-up %",
         line = list(color = "#1a7f37", width = 3), marker = list(color = "#1a7f37", size = 6), yaxis = "y",
         hovertemplate = "%{y:.0f}% leafing out<extra></extra>")
-    p <- p %>% add_trace(x = ~mc$mon, y = ~mc$temp_c, type = "scatter", mode = "lines", name = "Air temp °C",
+    p <- p %>% add_trace(x = ~mc$mon, y = ~mc$temp_d, type = "scatter", mode = "lines", name = paste0("Air temp ", temp_unit_lab(unit)),
         line = list(color = "#c1502e", width = 2, dash = "dot"), yaxis = "y2",
-        hovertemplate = "%{y:.1f} °C<extra></extra>")
+        hovertemplate = thov)
     shp <- list()
     if (!is.null(cl) && nrow(cl) && !is.na(cl$count_month_min))
       shp <- list(list(type = "rect", xref = "x", yref = "paper", x0 = cl$count_month_min - 0.5, x1 = cl$count_month_max + 0.5,
@@ -316,9 +365,9 @@ server <- function(input, output, session) {
     p %>% plotly_theme() %>% plotly::layout(
       xaxis = list(title = "", tickvals = 1:12, ticktext = c("J","F","M","A","M","J","J","A","S","O","N","D"), range = c(0.5, 12.5)),
       yaxis = list(title = "Green-up %", rangemode = "tozero"),
-      yaxis2 = list(title = "Temp °C", overlaying = "y", side = "right", showgrid = FALSE),
-      shapes = shp, margin = list(l = 48, r = 48, t = 16, b = 30),
-      annotations = list(list(text = "shaded band = when the breeding counts run", x = 0, y = 1.12, xref = "paper", yref = "paper",
+      yaxis2 = list(title = paste0("Temp ", temp_unit_lab(unit)), overlaying = "y", side = "right", showgrid = FALSE),
+      shapes = shp, margin = list(l = 52, r = 52, t = 28, b = 30),
+      annotations = list(list(text = sprintf("at <b>%s</b> · shaded band = when the breeding counts run", rv$site), x = 0, y = 1.16, xref = "paper", yref = "paper",
         showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11))))
   })
   output$seasonInsight <- renderUI({

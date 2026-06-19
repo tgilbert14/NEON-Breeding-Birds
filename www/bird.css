@@ -111,7 +111,13 @@ body {
 .sc-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 
 /* ---- overview insight list ------------------------------------------------- */
-.insight-list { display: flex; flex-direction: column; gap: 6px; }
+.insight-list { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 11px; }
+.insight-list li { position: relative; padding-left: 20px; color: var(--ink); font-size: 14.5px; line-height: 1.62; }
+.insight-list li::before { content: ""; position: absolute; left: 2px; top: 9px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--rust); box-shadow: 0 0 0 3px rgba(193,80,46,0.12); }
+.insight-list li:last-child { color: var(--ink2); font-size: 13.5px; }
+.insight-list li:last-child::before { background: var(--muted); box-shadow: none; }
+.insight-list b { color: var(--ink); font-weight: 700; }
 .il-item { display: flex; gap: 8px; align-items: baseline; color: var(--ink); font-size: 14px; line-height: 1.5; }
 .il-item .ci-hero { color: var(--rust); font-weight: 800; }
 
@@ -167,3 +173,35 @@ body {
 [data-bs-theme="dark"] .selectize-input,
 [data-bs-theme="dark"] .selectize-dropdown { background: #211b14 !important; color: var(--ink); border-color: var(--line); }
 [data-bs-theme="dark"] .deck-foot code { color: var(--goldfinch); background: #2e2820; }
+
+/* ---- scope chips (this site vs all 46) ------------------------------------ */
+.scope-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .02em; padding: 3px 10px; border-radius: 20px; margin-top: 8px; line-height: 1; }
+.scope-site { color: var(--rust2); background: rgba(193,80,46,0.12); border: 1px solid rgba(193,80,46,0.25); }
+.scope-all  { color: var(--gold-ink); background: rgba(232,163,23,0.16); border: 1px solid rgba(232,163,23,0.32); }
+[data-bs-theme="dark"] .scope-site { color: #e8a98e; }
+[data-bs-theme="dark"] .scope-all  { color: var(--goldfinch); }
+
+/* ---- temperature toggle (compact inline radio) ---------------------------- */
+.temp-toggle-row .shiny-options-group { display: inline-flex; gap: 4px; margin: 0; }
+.temp-toggle-row .radio-inline { margin: 0 !important; padding: 2px 9px; border: 1px solid var(--line);
+  border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.temp-toggle-row .radio-inline input { margin-right: 3px; }
+
+/* ---- map grid species panel (click a grid -> bird list + download) -------- */
+.grid-empty { display: flex; gap: 9px; align-items: center; color: var(--muted); font-size: 13.5px;
+  background: var(--paper); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 15px; margin-top: 12px; }
+.grid-empty .bi { color: var(--rust); }
+.grid-card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  margin-top: 12px; box-shadow: 0 3px 12px var(--shadow); }
+.grid-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.grid-head > div:first-child { font-size: 15px; color: var(--ink); }
+.grid-sub { color: var(--muted); font-weight: 400; font-size: 13px; }
+.grid-scroll { max-height: 320px; overflow-y: auto; }
+.grid-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.grid-tbl th { text-align: left; color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .04em; padding: 4px 8px; border-bottom: 2px solid var(--line); position: sticky; top: 0; background: var(--paper); }
+.grid-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.grid-tbl .grid-num { text-align: right; font-variant-numeric: tabular-nums; }
+.grid-sci { color: var(--muted); font-size: 11.5px; }
+.grid-method { font-weight: 600; font-size: 12px; }
