@@ -253,10 +253,14 @@ server <- function(input, output, session) {
       span(" Tap a grid marker above to list every bird species detected there — then download it.")))
     gs <- grid_species(rv$obs, rv$grid)
     if (is.null(gs) || !nrow(gs)) return(div(class="grid-empty", bs_icon("info-circle"), span(sprintf(" No species records at grid %s.", short_point(rv$grid)))))
-    rows <- lapply(seq_len(nrow(gs)), function(i) tags$tr(
-      tags$td(tags$b(gs$vernacular[i] %||% gs$scientificName[i]), tags$br(), tags$em(class="grid-sci", gs$scientificName[i])),
-      tags$td(class="grid-num", gs$birds[i]), tags$td(class="grid-num", gs$detections[i]),
-      tags$td(span(class="grid-method", style=sprintf("color:%s", method_col(gs$method[i])), gs$method[i] %||% "—"))))
+    rows <- lapply(seq_len(nrow(gs)), function(i) {
+      lbl <- gs$vernacular[i]; if (is.na(lbl)) lbl <- gs$scientificName[i]
+      m <- gs$method[i]; if (is.na(m)) m <- "—"
+      tags$tr(
+        tags$td(tags$b(lbl), tags$br(), tags$em(class="grid-sci", gs$scientificName[i])),
+        tags$td(class="grid-num", gs$birds[i]), tags$td(class="grid-num", gs$detections[i]),
+        tags$td(span(class="grid-method", style=sprintf("color:%s", method_col(m)), m)))
+    })
     div(class="grid-card",
       div(class="grid-head",
         div(tags$b(sprintf("Grid %s", short_point(rv$grid))), span(class="grid-sub", sprintf(" · %d species detected here", nrow(gs)))),
@@ -332,8 +336,9 @@ server <- function(input, output, session) {
     conf <- if (identical(metric, "observed")) "biome, latitude &amp; survey effort (raw richness tracks effort — see the rarefied metric)" else "biome &amp; latitude"
     # both caveats stacked at the TOP, so they never collide with the x-axis title
     # + legend at the bottom (the overlap fix).
+    nshown <- if (nrow(g) < 46) sprintf("<b>%d of 46 NEON sites</b>", nrow(g)) else "<b>each of 46 NEON sites</b>"
     ann <- list(
-      list(text = sprintf("Every dot is one of <b>46 NEON sites</b> · %s × %s · dot size = survey effort (points)", if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
+      list(text = sprintf("Every dot is %s · %s × %s · dot size = survey effort (points)", nshown, if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
            x = 0, y = 1.15, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11)),
       list(text = sprintf("Spearman ρ = %.2f · space-for-time (46 places, not one site warming) — correlational, confounded by %s", ifelse(is.na(rho), 0, rho), conf),
            x = 0, y = 1.075, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)))
@@ -366,8 +371,8 @@ server <- function(input, output, session) {
       xaxis = list(title = "", tickvals = 1:12, ticktext = c("J","F","M","A","M","J","J","A","S","O","N","D"), range = c(0.5, 12.5)),
       yaxis = list(title = "Green-up %", rangemode = "tozero"),
       yaxis2 = list(title = paste0("Temp ", temp_unit_lab(unit)), overlaying = "y", side = "right", showgrid = FALSE),
-      shapes = shp, margin = list(l = 52, r = 52, t = 28, b = 30),
-      annotations = list(list(text = sprintf("at <b>%s</b> · shaded band = when the breeding counts run", rv$site), x = 0, y = 1.16, xref = "paper", yref = "paper",
+      shapes = shp, margin = list(l = 52, r = 52, t = 44, b = 30),
+      annotations = list(list(text = sprintf("at <b>%s</b> · shaded band = when the breeding counts run", rv$site), x = 0, y = 1.14, xref = "paper", yref = "paper",
         showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11))))
   })
   output$seasonInsight <- renderUI({

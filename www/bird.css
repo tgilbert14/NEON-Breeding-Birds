@@ -14,7 +14,7 @@
   --pine: #2b2722;   --pine2: #6b4a2e;        /* primary text/heading → ink-brown */
   --terra: #c1502e;  --gold: #e8a317;  --gold-ink: #9a6b0f;   /* rust + goldfinch */
   --sky: #2f7fb5;    --green: #1a7f37;        /* KEEP — these are the data palette */
-  --ink: #2b2722;    --muted: #7a6f5d;
+  --ink: #2b2722;    --ink2: #4a443c;  --muted: #7a6f5d;
   --bg: #f7f3e9;     --paper: #fffdf6;  --line: #e3d9c4;       /* parchment */
   --shadow: rgba(74, 55, 40, 0.12);
   --rust: #c1502e;   --rust2: #a23f22;  --goldfinch: #e8a317;
@@ -23,7 +23,7 @@
 [data-bs-theme="dark"] {
   --pine: #efe7d6;   --pine2: #e0c8a8;
   --terra: #e07a52;  --gold: #f0b94a;  --gold-ink: #f0b94a;
-  --ink: #efe7d6;    --muted: #b3a692;
+  --ink: #efe7d6;    --ink2: #cabfa8;  --muted: #b3a692;
   --bg: #1c1813;     --paper: #27211a;  --line: #3d352a;
   --shadow: rgba(0, 0, 0, 0.5);
   --rust: #e07a52;   --rust2: #c1502e;  --goldfinch: #f0b94a;
@@ -118,8 +118,11 @@ body {
 .insight-list li:last-child { color: var(--ink2); font-size: 13.5px; }
 .insight-list li:last-child::before { background: var(--muted); box-shadow: none; }
 .insight-list b { color: var(--ink); font-weight: 700; }
-.il-item { display: flex; gap: 8px; align-items: baseline; color: var(--ink); font-size: 14px; line-height: 1.5; }
-.il-item .ci-hero { color: var(--rust); font-weight: 800; }
+
+/* hero stat info dots sit on a LIGHT parchment card — the base .info-dot is near-
+   white (for dark card headers), so it needs a visible color here. */
+.hs-l .info-dot { color: var(--muted); margin-left: 4px; font-size: 13px; }
+.hs-l .info-dot:hover { color: var(--rust); }
 
 /* ---- chart-insight rail tones (remap navy→rust; keep pine=green) ----------- */
 .ci-navy  { --ci-rail: #c1502e; } .ci-pine { --ci-rail: #1a7f37; }
