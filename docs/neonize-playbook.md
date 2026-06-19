@@ -139,5 +139,39 @@ invent the product-native ones the research surfaces.
 
 ---
 
+## 6. The non-technical-polish checklist (catch these BEFORE the user does)
+
+The bird sibling shipped a "complete" revamp that the user still found six gaps in on first click. They
+are the same gaps every NEONized app risks, because they're invisible to a developer who knows the data.
+Bake these into the build + the Alyssa/Vera/Wes review lenses from the start:
+
+- **Units the audience actually uses.** Default to the audience's units, not the data's. For a US field-
+  science audience that means **°F by default** with a °C toggle (sensor data is °C; convert for display
+  only — a monotonic transform, so rank stats like Spearman are unaffected). Same for any metric/imperial
+  fork. Add a sidebar unit control; thread a `*_disp()` helper through every place the value is shown.
+- **Plain-English info dots on EVERY headline number.** Each hero/stat tile and any jargon term ("ubiquity",
+  "detection index", "Chao2", "occasion") gets an `info_pop()` ⓘ written for someone who's never seen the
+  data. Gotcha: the shared `.info-dot` base color is near-white (for dark card headers) — on a LIGHT stat
+  card it's invisible; add a surface-scoped override.
+- **State the SCOPE on every view.** A chart must say whether it's *this entity* or *all entities* —
+  screenshot-safe. Use a scope chip in the tab-head (`this site` vs `all 46 sites`) AND put the entity name
+  in the chart's own top annotation. When a view filters the set (e.g. a precip axis dropping ungauged
+  sites), show the **actual count plotted**, never a hardcoded total ("19 of 46", not "46").
+- **The auto-written narrative must read like prose, not a stat dump.** Lead with a self-describing scope
+  sentence ("Over 2017–2023, NEON ran N counts at M points…"), then ranked sentences (most-X, most-Y),
+  rendered as a real `<ul><li>`, not icon+flex rows. Steal `site_insights()` structure from the flagship.
+- **Make map markers DO something.** A dot that only hovers a tooltip is a dead end — wire `layerId` +
+  `_marker_click` → a detail panel (the entity's full list) **with a CSV download**. Coalesce NA labels
+  explicitly (`%||%` doesn't catch NA → renders the literal "NA").
+- **Plot-label spacing is a first-class bug.** Long axis titles clip in short plots (shorten them); bottom
+  caption annotations collide with the axis title + legend (move caveats to the TOP); leaflet/plotly in a
+  hidden bslib tab render 0-sized (add a `shown.bs.tab` → window-resize nudge).
+
+These are cheap, but only if planned in §3's build — retrofitting a unit system or a scope convention across
+every render afterward is the expensive path.
+
+---
+
 *Living doc. The plant-diversity sibling (DP1.10058.001) is the first full NEONize built against
-this playbook; its research + design decisions are folded into §2f and §3 above.*
+this playbook; its research + design decisions are folded into §2f and §3 above. §6 was added after the
+bird sibling (DP1.10003.001) shipped a 46-site + climate revamp and surfaced the non-technical-polish gaps.*
