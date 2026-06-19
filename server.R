@@ -195,12 +195,33 @@ server <- function(input, output, session) {
             customdata=~n, hovertemplate="%{x} m<br>%{y} detections/ha · %{customdata} raw<extra></extra>") %>%
       plotly_theme(legend=FALSE) %>% plotly::layout(xaxis=list(title="Distance from observer (m)"), yaxis=list(title="Detections / ha"), margin=list(l=46,r=10,t=10,b=40))
   })
+  # data-quality flags for the viewed species (recomputed per species; cheap)
+  qc <- reactive({ req(rv$sp); bird_qc(rv$obs, rv$sp, rv$points) })
+  qc_icon <- function(level) switch(level, high = "exclamation-octagon-fill", warn = "exclamation-triangle-fill", info = "info-circle-fill", "check-circle-fill")
+
   output$speciesProfile <- renderUI({
     if (is.null(rv$sp)) return(div(class="qc-empty", div(class="qc-empty-icon","\U0001F426"), h4("Pick a species to open its profile"),
       p("Use the Bird Board (tap a dot → “Open species profile”) or the sidebar picker.")))
     r <- rv$board[rv$board$scientificName == rv$sp,]; req(nrow(r)==1)
     my <- detection_by_year(rv$obs, rv$sp); mm <- method_mix(rv$obs, rv$sp)
     tile <- function(v,l) div(class="qc-tile", div(class="qc-tile-v", v), div(class="qc-tile-l", l))
+    qf <- qc()$flags
+    qc_block <- tagList(
+      div(class="qc-section-h", bs_icon("clipboard-check"), " Data-quality review flags ",
+        tags$span(class="qcf-sub","· verify, not errors")),
+      if (length(qf)) tagList(
+        div(class="qc-flags", lapply(qf, function(f) div(
+          class = paste0("qc-flag qc-flag-", f$level, " qc-flag-click"), role = "button", tabindex = "0",
+          onclick = sprintf("Shiny.setInputValue('birdQcInspect','%s',{priority:'event'})", f$key),
+          bs_icon(qc_icon(f$level)),
+          div(class="qcf-body",
+            div(class="qcf-title", f$title, tags$span(class="qcf-n", f$n)),
+            div(class="qcf-detail", f$detail)),
+          tags$span(class="qcf-go", bs_icon("chevron-right"))))),
+        div(class="qcf-hint", bs_icon("hand-index-thumb"), " tap a flag to list the exact detections behind it"))
+      else div(class="qc-flag qc-flag-ok", bs_icon("check-circle-fill"),
+        div(class="qcf-body", div(class="qcf-title","No data-quality flags for this species"),
+          div(class="qcf-detail","Distances, flock sizes, names, and point effort all look consistent — nothing to verify."))))
     body <- div(id="qcCardNode", class="qc-card", `data-short`=gsub("[^A-Za-z]","",substr(r$vernacular %||% r$scientificName,1,20)),
       div(class="qc-head", span(class="qc-emoji","\U0001F985"),
         div(div(class="qc-id", r$vernacular %||% r$scientificName), div(class="qc-sci", em(r$scientificName))),
@@ -215,12 +236,42 @@ server <- function(input, output, session) {
       if (!is.null(my) && nrow(my)) div(class="qc-cap-scroll", tags$table(class="inspect-tbl",
         tags$thead(tags$tr(tags$th("Year"), tags$th("Birds counted"))),
         tags$tbody(lapply(seq_len(nrow(my)), function(i) tags$tr(tags$td(my$year[i]), tags$td(my$birds[i])))))) else p(class="qc-cap-note","—"),
+      qc_block,
       p(class="qc-cap-note", style="margin-top:8px", bs_icon("info-circle"),
         " Detections are a detection index, not a population. The bars are area-corrected (detections per hectare per distance ring) — far rings cover more ground, so a raw count would rise then fall on geometry alone; dividing by ring area recovers the true detectability decline."))
     div(div(class="plot-profile-wrap", body), div(class="qc-toolbar",
       tags$button(class="smt-snap-btn", type="button", onclick="smtSaveQcCard()", bsicons::bs_icon("download"), " Save species card (PNG)"),
-      downloadButton("spCsv", "Download detections (CSV)", class="smt-clear-btn")))
+      downloadButton("spCsv", "Download detections (CSV)", class="smt-clear-btn"),
+      if (length(qf)) downloadButton("qcReportCsv", "Download QC report (CSV)", class="smt-clear-btn")),
+      uiOutput("birdQcInspector"))
   })
+
+  # clickable QC inspector: lists the exact offending detections for the tapped flag
+  output$birdQcInspector <- renderUI({
+    key <- input$birdQcInspect; q <- qc(); req(!is.null(key), key %in% names(q$sets))
+    st <- q$sets[[key]]; req(!is.null(st), nrow(st))
+    f <- Filter(function(x) x$key == key, q$flags)[[1]]
+    show <- intersect(c("vernacularName","plotID","pointkey","year","bout","observerDistance","detectionMethod","clusterSize"), names(st))
+    head_n <- min(nrow(st), 200L); sv <- st[seq_len(head_n), show, drop=FALSE]
+    div(class="qc-inspector",
+      div(class="qci-head", bs_icon(qc_icon(f$level)), tags$b(sprintf(" %s — %d detection%s", f$title, f$n, if (f$n==1) "" else "s")),
+        downloadButton("qcSubsetCsv", "Download these", class="btn-outline-dark btn-sm qci-dl")),
+      div(class="qc-cap-scroll", tags$table(class="inspect-tbl",
+        tags$thead(tags$tr(lapply(show, tags$th))),
+        tags$tbody(lapply(seq_len(nrow(sv)), function(i)
+          tags$tr(lapply(show, function(cc) tags$td(format(sv[[cc]][i]))))) ))),
+      if (nrow(st) > head_n) p(class="qc-cap-note", sprintf("Showing first %d of %d — download for the full list.", head_n, nrow(st))))
+  })
+  output$qcSubsetCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_QC-%s_%s_%s.csv", input$birdQcInspect %||% "flag",
+      gsub("[^A-Za-z]","",substr(rv$sp %||% "species",1,20)), format(Sys.Date(),"%Y%m%d")),
+    content = function(file){ q <- qc(); st <- q$sets[[input$birdQcInspect]]; req(!is.null(st))
+      utils::write.csv(st, file, row.names=FALSE, na="") }, contentType="text/csv")
+  output$qcReportCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_QC-report_%s_%s.csv", gsub("[^A-Za-z]","",substr(rv$sp %||% "species",1,20)), format(Sys.Date(),"%Y%m%d")),
+    content = function(file){ rep <- bird_qc_report(rv$obs, rv$sp, rv$points)
+      if (is.null(rep)) rep <- data.frame(note="No data-quality flags for this species.")
+      utils::write.csv(rep, file, row.names=FALSE, na="") }, contentType="text/csv")
   output$spCsv <- downloadHandler(
     filename = function() sprintf("NEON-Birds_%s_%s.csv", gsub("[^A-Za-z]","",substr(rv$sp %||% "species",1,24)), format(Sys.Date(),"%Y%m%d")),
     content = function(file){ sci <- rv$sp; req(sci); d <- species_detail(rv$obs, sci); req(!is.null(d))

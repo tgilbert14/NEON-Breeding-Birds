@@ -53,12 +53,25 @@ these from the flagship and adapt the data layer:
 ### 2c. Shared analysis helpers — port the defensible ones
 From `R/helpers.R`: `species_level_only()` (drop genus-only/morphospecies before any richness), `make_species_pal()` (one color per species across all charts), Hill numbers / `species_accum()` (rarefaction + Chao1 w/ CI), `mode_chr()`, `safe_*()` NA-safe reducers, the n-gate idioms. The diversity family ports to almost any taxon product.
 
-### 2d. The Size Lab pin-card system — the signature interactive
-`www/pincards.js` + the plotly `customdata` pattern (see `size-lab-feature` memory). Tap a dot →
-pin a draggable/resizable card with a gold leader line; download the chart with pins baked in
-(html-to-image); a chip on the card opens a downloadable per-entity QC record. **It is plotly,
-not ggiraph.** Reusable for any "position entities in a 2-D space, pick one, inspect it" view.
-Carry the hard-won gotchas (§4).
+### 2d. The interactive-downloadable-plot funnel — the signature every app gets
+The Size Lab (`www/pincards.js` + the plotly `customdata` pattern; see `size-lab-feature` memory) is
+the template for **the one interactive every NEONize app should ship**: a "position entities in a
+2-D space → pick one → inspect → take it with you" funnel. The full funnel, in order:
+
+1. **Position** every entity (individual / plot / species / taxon — the product's unit) on one chart,
+   coloured by a meaningful class, with **a filter (species/site/etc.) and an honest, gated overlay**
+   (a fit line drawn *only* where the relationship is real; framed as what it IS, e.g. "a QC map, not
+   a body-condition index").
+2. **Click → pin a profile card** (draggable/resizable, gold leader line anchored to DATA coords).
+3. **Chip on the card → a per-entity profile / QC record** (`output$…Card` + `individual_qc_flags()`
+   analog: ranked, *"verify not wrong"* data-quality flags). **Scroll it into view** on open (custom
+   message → scroll the rendered card node, §4).
+4. **Download the works:** the chart with pins baked in (html-to-image PNG), the profile/QC card
+   (PNG), and the raw per-entity record as **analysis-ready CSV metadata** (`downloadHandler`).
+
+**It is plotly, not ggiraph** (the apps are already plotly; no second rendering stack). This funnel —
+click-for-profile, QC checks, downloadable plot + card + metadata — is a **default deliverable**, not a
+one-off; map it to each product's unit. Carry the hard-won gotchas (§4).
 
 ### 2e. Report PDF — `R/report_pdf.R`
 Base `grid`/`grDevices` `cairo_pdf` (no LaTeX/Chrome), streamed by a `downloadHandler`. Re-theme
@@ -112,7 +125,12 @@ This is exactly how the Size Lab and the plant-diversity sibling were built.
 - **`validate(need())` doesn't display in some widget outputs** (stale output persists) — return a real message-chart/empty-state instead.
 - **`asset_url()` bakes the cache-bust version at app start** (ui is an object, built once) — a running server serves the old `?v=` after you edit a `www/` file; **restart** to pick up JS/CSS changes in preview.
 - **html-to-image over WebGL fails** — force SVG (`scatter`, not `scattergl`/`toWebGL`) for any chart you want to export; `Plotly.Plots.resize(gd)` before `toPng` (a tab that rendered hidden can be 0-sized); strip live animation classes before capture.
+- **Register pin-binding listeners BEFORE any aux handler in the IIFE.** A `Shiny.addCustomMessageHandler(...)` (or any statement) placed near the top of `pincards.js`, before the `DOMContentLoaded`/`shown.bs.tab` bind listeners, can throw during head-eval and abort the IIFE so binding never registers — tap-to-pin silently dead, with **no captured console error** (the throw predates the preview's console hook). Put the binding listeners first; put aux handlers last and `try`-guarded. (Caught verifying the Size Lab scroll fix — it had killed the whole pin layer.)
+- **The `dataSig` pin-clear must ignore the highlight/"tracking" trace.** Selecting an entity appends a gold highlight trace (N→N+1); a trace-count-based signature flips and wipes every pin the instant the user opens a profile from a pin (the happy path). Filter the highlight trace out of the signature.
+- **Scroll-into-view: target the rendered card node, NOT the uiOutput wrapper.** A bslib `uiOutput` in a fill layout is `display:contents` — it has **no box**, so `scrollIntoView` on `#…Output` is a silent no-op. Scroll the actual rendered child (`#…CardNode` / the empty-state node), polling until it exists AND has `height > 1` (the card re-renders async after the select). (The Size Lab scroll bug: a fixed-delay scroll to the wrapper did nothing.)
 - **Never pool repeated visits as independent samples.** NEON re-surveys the same plots/quadrats yearly. Pooling years into a richness / rarefaction / Chao estimate treats one quadrat's 7 visits as 7 spatial samples — it inflates richness ~2× and the incidence-unit count several-fold, and conflates spatial with temporal turnover. Compute snapshot metrics on **one survey per unit** (a `latest_snapshot()`); reserve the multi-year table for the explicit time-series. (Caught by the plant-app review.)
+- **Area-scaled metrics (density, per-ha, cover share) must be scoped to the population actually sampled over that area.** NEON nested-samples small stems / fine scales over a SMALLER area than the headline area variable — dividing everything by the big area biases the small classes low (a flat curve that's a sampling artifact, not biology). Scope to the protocol threshold (e.g. trees ≥10 cm DBH over `totalSampledAreaTrees`) and label it. Quadratic/RMS stats (QMD) must be POOLED (`sqrt(ΣD²/Σn)`), never a mean of per-unit RMS values (Jensen). (Veg-app review blocker.)
+- **One fixed output id, not one-per-entity.** A `renderPlotly`/`renderUI` registered under a per-row id (`output[[paste0("spark_", id)]]`) accumulates a new binding for every entity the user opens (a slow leak). Use a single fixed output that reads the selected-entity reactive.
 - **Cover/percentage SHARES need a structural-zero denominator** (divide by all sampled units, not only where-present) — present-only means inflate patchy categories and distort the share. And a headline metric must use **one shared function** in the bundler and the app, or the picker and the hero will show different numbers for the same thing.
 - **dplyr `summarise()` sees earlier newly-created columns** — `richness = mean(richness)` then `sd = sd(richness)` makes sd operate on the scalar mean (→ NA). Compute the spread before the reassignment.
 - **Adversarially verify the DIFF with a fresh agent** every time — it has caught real regressions on every session it was run (incl. the plant app's year-pooling blocker and the Size Lab's dead-after-re-render blocker).
@@ -139,39 +157,69 @@ invent the product-native ones the research surfaces.
 
 ---
 
-## 6. The non-technical-polish checklist (catch these BEFORE the user does)
+## 6. Deployment & maintenance — the full lifecycle (dev → deploy → self-update)
 
-The bird sibling shipped a "complete" revamp that the user still found six gaps in on first click. They
-are the same gaps every NEONized app risks, because they're invisible to a developer who knows the data.
-Bake these into the build + the Alyssa/Vera/Wes review lenses from the start:
+The suite has **migrated off shinyapps.io to Posit Connect Cloud with a GIT-BACKED deploy**.
+This is now the standard; shinyapps.io (small-mammal reference) is legacy and slated to follow.
 
-- **Units the audience actually uses.** Default to the audience's units, not the data's. For a US field-
-  science audience that means **°F by default** with a °C toggle (sensor data is °C; convert for display
-  only — a monotonic transform, so rank stats like Spearman are unaffected). Same for any metric/imperial
-  fork. Add a sidebar unit control; thread a `*_disp()` helper through every place the value is shown.
-- **Plain-English info dots on EVERY headline number.** Each hero/stat tile and any jargon term ("ubiquity",
-  "detection index", "Chao2", "occasion") gets an `info_pop()` ⓘ written for someone who's never seen the
-  data. Gotcha: the shared `.info-dot` base color is near-white (for dark card headers) — on a LIGHT stat
-  card it's invisible; add a surface-scoped override.
-- **State the SCOPE on every view.** A chart must say whether it's *this entity* or *all entities* —
-  screenshot-safe. Use a scope chip in the tab-head (`this site` vs `all 46 sites`) AND put the entity name
-  in the chart's own top annotation. When a view filters the set (e.g. a precip axis dropping ungauged
-  sites), show the **actual count plotted**, never a hardcoded total ("19 of 46", not "46").
-- **The auto-written narrative must read like prose, not a stat dump.** Lead with a self-describing scope
-  sentence ("Over 2017–2023, NEON ran N counts at M points…"), then ranked sentences (most-X, most-Y),
-  rendered as a real `<ul><li>`, not icon+flex rows. Steal `site_insights()` structure from the flagship.
-- **Make map markers DO something.** A dot that only hovers a tooltip is a dead end — wire `layerId` +
-  `_marker_click` → a detail panel (the entity's full list) **with a CSV download**. Coalesce NA labels
-  explicitly (`%||%` doesn't catch NA → renders the literal "NA").
-- **Plot-label spacing is a first-class bug.** Long axis titles clip in short plots (shorten them); bottom
-  caption annotations collide with the axis title + legend (move caveats to the TOP); leaflet/plotly in a
-  hidden bslib tab render 0-sized (add a `shown.bs.tab` → window-resize nudge).
+**Deploy model (the new standard — Connect Cloud, git-backed):**
+- The app lives on Connect Cloud, pointed at the GitHub repo + its watched branch. **A push to the
+  watched branch IS the deploy** — Connect Cloud auto-republishes. So there are **no shinyapps.io
+  secrets, no `rsconnect/` dir, and no `deploy.R` step** (those are the legacy shinyapps path).
+- Required in-repo: a lean **`manifest.json`** (`rsconnect::writeManifest()`; bundle-only, keep
+  `neonUtilities` OUT via the computed-package-name trick), the committed `data/` bundles, and a
+  `docs/index.html` GitHub Pages showcase whose `APP_URL` points at the live Connect Cloud app.
+- Branch naming is split across the suite (`main` vs `master`) — each workflow must push to the
+  branch its own Connect Cloud app watches. Standardize new repos on `main`.
 
-These are cheap, but only if planned in §3's build — retrofitting a unit system or a scope convention across
-every render afterward is the expensive path.
+**Auto-refresh + self-deploy (`.github/workflows/refresh-data.yml`) — copy this shape:**
+- **Schedule (identical across the suite):** `cron: "0 6 * * 0"` (Sunday 06:00 UTC = Saturday 23:00
+  America/Phoenix, off-peak), with a **gate job** that proceeds only on the **first Saturday of the
+  month** (`dow=6 && day<=7`, `TZ=America/Phoenix`) — cron can't say "first Saturday", so fire weekly
+  and gate. `workflow_dispatch` with a `skip_download` input always proceeds (fast redeploy test).
+- **Flow:** gate → checkout → `setup-r` + deps → fetch raw + rebuild `data/sites/*.rds` (+ any
+  overlays) → **commit/push to the watched branch (= the deploy on Connect Cloud)** → optionally open
+  a data-refresh PR. Time-box + `continue-on-error` the heavy/optional steps so they can't block the
+  deploy. `NEON_TOKEN` is an optional secret (anonymous works, slower).
+- **Two deploy triggers seen in the wild — prefer auto-push:** (a) *auto* — push refreshed data
+  straight to the watched branch (mammal/bird/phe/plant). (b) *PR-merge* — open a PR a human merges
+  (veg) — this is NOT self-deploying; convert to auto-push unless a review gate is wanted.
+
+**Derived/master apps (e.g. Driver Cascade):** their bundle is built FROM sibling repos' bundles, so
+CI must obtain them — `git clone --depth 1` each sibling repo (use the real slugs, not dir names:
+NEON-Small-Mammal-Tracker-App, NEON-Plant-Diversity, NEON-Breeding-Birds,
+NEON-Plant-Phenology-Explorer, NEON-Vegetation-Structure-Explorer, NEON-Ground-Beetle-Tracker),
+copy their `data/`, run the build script, commit the derived `.rds`. A master app needs a **GitHub
+remote + a Connect Cloud app** before any of this works.
+
+## 7. Per-app readiness checklist (audit every app against this)
+
+Data bundles: `data/sites/*.rds` present + valid (loadable, non-empty) · `data/site_index.rds`
+(picker) · `data-sample/demo.rds` (instant demo) · all git-tracked · refreshed within the cadence.
+Automation: `.github/workflows/refresh-data.yml` on the **standard schedule** · self-deploys via
+**auto-push** (not PR-merge) · `manifest.json` present · GitHub **remote** exists · `docs/index.html`
+`APP_URL` is live. NEONization: cover/landing splash · **in-app sibling links** + `docs` cross-promo
+grid covering the WHOLE suite · mobile-responsive CSS (`@media`, prefers-reduced-motion) · **QC-flag
+system** (§ below) · metadata/codebook view · comprehensive downloads (CSV + card PNG + report PDF) ·
+entity pin-cards · current shared chrome (styles.css + app.js + pincards.js).
+
+**The QC-flag system (gold standard — every app gets it; first ported to birds):** `<entity>_qc()` →
+ranked *"verify, not wrong"* flags (high/warn/info) + the EXACT offending rows behind each; surfaced
+on the entity profile INSIDE the export node (PNG captures it); each flag **clickable → inspector
+table** of offending rows + per-flag CSV; a full **QC-report CSV** (`<entity>_qc_report()`); clean
+path shows a green reassurance. Tune thresholds **data-derived + domain-grounded** (ask the domain
+agent) and validate on contrasting sites so it never cries wolf (target ~0 high on clean NEON data).
+CSS class convention: standardize on `.qc-flag-<level>` (not `.qc-flag.<level>`). Full recipe +
+bird thresholds: memory `neonize-qc-flag-pattern`.
+
+**Sibling links + cover page:** maintain ONE registry of the suite (name · emoji · tagline · DPID ·
+github.io showcase URL · live Connect Cloud URL) and render it both in `docs/index.html` (the
+`.series-grid`) AND in-app (an "Explore the NEON series" block in About/footer). When a new app ships,
+add it to the registry so EVERY sibling links to it (Breeding Birds + Driver Cascade were missing).
 
 ---
 
-*Living doc. The plant-diversity sibling (DP1.10058.001) is the first full NEONize built against
-this playbook; its research + design decisions are folded into §2f and §3 above. §6 was added after the
-bird sibling (DP1.10003.001) shipped a 46-site + climate revamp and surfaced the non-technical-polish gaps.*
+*Living doc. Plant-diversity (DP1.10058.001) was the first full NEONize; birds/phenology/veg/cascade
+followed. §6–7 added from the suite-wide automation+bundle audit (the Connect-Cloud git-backed deploy
+migration, the shared off-peak schedule, the QC-flag generalization). Keep the **Cody** subagent
+(hosting/CI) and a future **neonize** subagent in sync with §6–7.*

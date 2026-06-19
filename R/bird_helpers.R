@@ -171,6 +171,96 @@ grid_species <- function(obs, plotid) {
     dplyr::arrange(dplyr::desc(.data$birds), dplyr::desc(.data$detections))
 }
 
+# ---------------------------------------------------------------------------
+# bird_qc(): the data-quality-flag system for ONE species (the Species Profile).
+# The family's gold-standard feature, ported from the Small Mammal Tracker's
+# individual_qc_flags()/flagged_measure_captures(). Returns ranked "verify, not
+# wrong" flags PLUS the exact offending detections behind each, so the UI can
+# list them (clickable) and download a QC report. Thresholds grounded in BBS /
+# IMBCR / distance-sampling practice (Fauna review; see docs/neonize-playbook.md):
+#   high = almost certainly an error (vernacular drift; distance > 1 km)
+#   warn = worth a look (exact-0 / visual-far distance; solitary-species mega-cluster; under-effort points)
+#   info = a note (missing-distance share; flocking-species log-scale outliers)
+# Flagged-far / large-cluster records are RETAINED for modelling (truncated only
+# at analysis, per Buckland) — a flag means "review", never "delete".
+# Returns list(flags = <list(level,title,key,n,detail)>, sets = <named list of data.frames>).
+# ---------------------------------------------------------------------------
+bird_qc <- function(obs, sci, points = NULL) {
+  out <- list(flags = list(), sets = list())
+  d <- species_detail(obs, sci); if (is.null(d) || !nrow(d)) return(out)
+  cols <- intersect(c("vernacularName","pointkey","plotID","year","bout","observerDistance","detectionMethod","clusterSize"), names(d))
+  tidy <- function(rows, label) { x <- d[rows, cols, drop = FALSE]; if (!nrow(x)) return(NULL); x$flag <- label; x }
+  add <- function(level, title, key, rows, detail) {
+    rows <- rows[!is.na(rows)]; n <- length(rows); if (!n) return(invisible())
+    out$flags[[length(out$flags) + 1L]] <<- list(level = level, title = title, key = key, n = n, detail = detail)
+    out$sets[[key]] <<- tidy(rows, title)
+  }
+  od   <- if ("observerDistance" %in% names(d)) suppressWarnings(as.numeric(d$observerDistance)) else rep(NA_real_, nrow(d))
+  cs   <- if ("clusterSize"      %in% names(d)) suppressWarnings(as.numeric(d$clusterSize))      else rep(NA_real_, nrow(d))
+  meth <- if ("detectionMethod"  %in% names(d)) as.character(d$detectionMethod)                  else rep(NA_character_, nrow(d))
+
+  # 1 — vernacularName drift for one scientificName (deterministic, ~0 false positives)
+  if ("vernacularName" %in% names(d)) {
+    vn <- unique(trimws(d$vernacularName[!is.na(d$vernacularName) & nzchar(trimws(d$vernacularName))]))
+    if (length(vn) > 1)
+      add("high", "Two common names for one scientific name", "vernacular", seq_len(nrow(d)),
+          sprintf("Recorded under %d different common names (%s). One accepted scientific name should map to one common name — usually a join or mid-dataset taxonomy revision to reconcile.", length(vn), paste(vn, collapse = " / ")))
+  }
+  # 2 — implausibly far (> 1 km): a units / transcription error, not a real far bird
+  add("high", "Detection beyond 1 km", "far", which(is.finite(od) & od > 1000),
+      "Recorded farther than 1 km from the observer — implausible for a 6-minute landbird count and almost always a units or transcription error. (Legitimate far birds are truncated at analysis, not flagged.)")
+  # 3 — exact-0 distance (heaping at the origin / placeholder entry)
+  add("warn", "Distance recorded as exactly 0 m", "zero", which(is.finite(od) & od == 0),
+      "A distance of exactly 0 m puts the bird on the observer — usually a default/placeholder. Distance sampling assumes near-perfect detection AT the point, so a pile-up of zeros distorts the curve's origin; verify these are real at-point detections.")
+  # 4 — visual ID at long range. 500 m (not 250) so it doesn't cry wolf on open
+  # grassland, where conspicuous birds ARE legitimately seen far — past ~500 m an
+  # unaided visual species ID of a landbird is not credible regardless of habitat.
+  add("warn", "Visual ID at long range (> 500 m)", "visualfar", which(meth %in% "visual" & is.finite(od) & od > 500),
+      "An unaided visual identification past ~500 m is not credible for a landbird even on open ground. Worth confirming the species and the distance.")
+  # 5 — clusterSize: solitary-species mega-cluster (warn) OR flocking-species log-outlier (info).
+  # "Effectively solitary" = 99% of detections are 1–3 birds (p99 <= 3): this keeps a genuine
+  # flocking species (which is USUALLY counted as singletons on a breeding point count but has a
+  # real tail of flocks, e.g. Red-winged Blackbird) OUT of the solitary branch — its p99 is high.
+  csf <- cs[is.finite(cs)]
+  if (length(csf) >= 10) {
+    p99 <- stats::quantile(csf, 0.99, names = FALSE)
+    if (is.finite(p99) && p99 <= 3) {
+      add("warn", "Large flock for a typically solitary species", "cluster", which(is.finite(cs) & cs >= 6),
+          "99% of this species' detections are 1–3 birds, yet these report 6+ in one cluster — a likely transcription error or misidentification for a territorial species.")
+    } else {
+      l <- log1p(csf); mads <- stats::mad(l); thr <- stats::median(l) + 5 * mads
+      if (is.finite(thr) && mads > 0)
+        add("info", "Unusually large flock (vs this species)", "cluster", which(is.finite(cs) & log1p(cs) > thr),
+            "Flock size far above this species' own typical range (judged on the log scale, so ordinary flocks don't flag). Often genuine for gregarious species — noted for review, not presumed wrong.")
+    }
+  }
+  # 6 — missing distance: only surface when it's a MEANINGFUL share (>=10%). A handful of
+  # NA-distance flyovers is routine and not worth a flag (that just cries wolf on every species).
+  miss <- which(is.na(od)); pct <- if (nrow(d)) round(100 * length(miss) / nrow(d)) else 0
+  if (length(miss) && pct >= 25)
+    add("info", sprintf("Missing distance on %d%% of detections", pct), "missing", miss,
+        "A large share of detections have no observerDistance, so they can't enter a distance/detectability model — weakening any density estimate (often documented flyovers).")
+  # 7 — under-effort points (within-site robust MAD): low effort biases detection
+  if (!is.null(points) && all(c("n_visits","pointkey") %in% names(points)) && "pointkey" %in% names(d)) {
+    nv <- suppressWarnings(as.numeric(points$n_visits)); good <- is.finite(nv)
+    if (sum(good) >= 5) {
+      smed <- stats::median(nv[good]); smad <- stats::mad(nv[good])
+      if (is.finite(smad) && smad > 0) {
+        low_pts <- points$pointkey[good & nv < smed - 3 * smad]
+        add("warn", "Detected at under-sampled point(s)", "loweffort", which(d$pointkey %in% low_pts),
+            sprintf("Some detections fall on points visited far less than the site norm (< %.0f visits vs a site median of %.0f). Under-effort points under-detect species, biasing richness and any across-point comparison.", smed - 3 * smad, smed))
+      }
+    }
+  }
+  out
+}
+
+# every flagged detection for a species, across all flag types (the QC report CSV)
+bird_qc_report <- function(obs, sci, points = NULL) {
+  q <- bird_qc(obs, sci, points); if (!length(q$sets)) return(NULL)
+  do.call(rbind, c(q$sets, list(make.row.names = FALSE)))
+}
+
 # per-POINT (grid) summary for the map: richness + birds/visit per point
 point_summary <- function(obs, points) {
   sp <- species_level_only(obs)

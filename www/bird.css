@@ -208,3 +208,42 @@ body {
 .grid-tbl .grid-num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid-sci { color: var(--muted); font-size: 11.5px; }
 .grid-method { font-weight: 600; font-size: 12px; }
+
+/* =========================================================================
+   Data-quality flag system (ported from the Small Mammal gold standard).
+   Clickable ranked flags + the inspector that lists the offending detections.
+   bird.css loads after styles.css, so these win over the base .qc-flag rules.
+   ========================================================================= */
+.qc-flags { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 2px; }
+.qc-flag { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px;
+  border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; background: var(--paper); }
+.qc-flag > .bi { flex: 0 0 auto; margin-top: 2px; font-size: 15px; }
+.qc-flag-high { border-left-color: #c1502e; background: #fdecea; color: #7a1d12; }
+.qc-flag-warn { border-left-color: var(--gold); background: #fff6e0; color: #6b5300; }
+.qc-flag-info { border-left-color: var(--sky); background: #eef3fb; color: #243a52; }
+.qc-flag-ok   { border-left-color: var(--green); background: #e8f5ec; color: #1a5e2e; }
+.qc-flag-click { cursor: pointer; transition: transform .1s ease, box-shadow .1s ease; }
+.qc-flag-click:hover { transform: translateY(-1px); box-shadow: 0 5px 16px var(--shadow); }
+.qc-flag-click:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+.qcf-body { flex: 1 1 auto; min-width: 0; }
+.qcf-title { font-weight: 700; font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+.qcf-n { font-size: 11px; font-weight: 800; color: #fff; background: rgba(0,0,0,.45);
+  border-radius: 20px; padding: 0 7px; line-height: 17px; min-width: 17px; text-align: center; }
+.qcf-detail { font-size: 12px; line-height: 1.4; margin-top: 2px; opacity: .92; }
+.qcf-go { flex: 0 0 auto; opacity: .5; align-self: center; }
+.qcf-sub { font-weight: 500; font-size: 12px; color: var(--muted); }
+.qcf-hint { font-size: 11.5px; color: var(--muted); margin: 6px 2px 0; display: flex; align-items: center; gap: 5px; }
+
+.qc-inspector { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg); padding: 12px 14px; }
+.qci-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; margin-bottom: 8px; flex-wrap: wrap; }
+.qci-dl { margin-left: auto; }
+.qc-inspector .inspect-tbl { width: 100%; font-size: 12px; }
+.qc-inspector .inspect-tbl th { white-space: nowrap; }
+
+[data-bs-theme="dark"] .qc-flag { background: var(--paper); }
+[data-bs-theme="dark"] .qc-flag-high { background: #3a1c19; color: #f3b6ad; }
+[data-bs-theme="dark"] .qc-flag-warn { background: #352c12; color: #ecd28a; }
+[data-bs-theme="dark"] .qc-flag-info { background: #16263c; color: #a9c6e6; }
+[data-bs-theme="dark"] .qc-flag-ok   { background: #163224; color: #9fd9b3; }
+[data-bs-theme="dark"] .qc-inspector { background: rgba(255,255,255,0.03); }
