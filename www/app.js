@@ -45,8 +45,8 @@ document.addEventListener("DOMContentLoaded", function () {
 // ---- confetti on legendary / epic finds ----------------------------------
 function rodentConfetti(big) {
   if (typeof confetti !== "function") return;
-  // Desert Data Labs house palette (navy / cardinal / gold + warm accents).
-  const colors = ["#0C234B", "#AB0520", "#FFD200", "#c9a300", "#2f7fb5"];
+  // Field Guide palette (rust / goldfinch / singing-green / calling-blue / ink).
+  const colors = ["#c1502e", "#e8a317", "#1a7f37", "#2f7fb5", "#2b2722"];
   const burst = (opts) => confetti(Object.assign({ colors, disableForReducedMotion: true }, opts));
   burst({ particleCount: big ? 140 : 70, spread: big ? 100 : 70, origin: { y: 0.3 }, startVelocity: 42 });
   if (big) {
@@ -95,27 +95,6 @@ function smtLoadDone() {
 // (The site report card is now a server-side PDF streamed by a Shiny
 //  downloadHandler — output$reportPdf, via the hero downloadLink — so the old
 //  browser-print path (smtPrintReport) has been removed.)
-
-// ---- save the dossier trading card as a PNG (html-to-image) --------------
-function smtSaveCard() {
-  var node = document.getElementById("smtCardNode");
-  if (!node || typeof htmlToImage === "undefined") return;
-  var name = (node.querySelector(".tc-id") || {}).textContent || "card";
-  // skipFonts avoids html-to-image scanning cross-origin CDN stylesheets for
-  // @font-face (which throws CORS errors); Rubik is already loaded on the page,
-  // so the same-document canvas render still uses it.
-  htmlToImage.toPng(node, { pixelRatio: 2, cacheBust: true, skipFonts: true })
-    .then(function (dataUrl) {
-      var a = document.createElement("a");
-      a.download = "neon-mammal-" + name.replace(/[^A-Za-z0-9]+/g, "") + ".png";
-      a.href = dataUrl;
-      a.click();
-    })
-    .catch(function () {
-      if (typeof Swal !== "undefined") Swal.fire({ icon: "error", title: "Couldn't save the card",
-        text: "Try again, or screenshot it instead.", confirmButtonColor: "#0C234B" });
-    });
-}
 
 // ---- guided tour (driver.js) ---------------------------------------------
 function smtTour() {

@@ -24,8 +24,9 @@ method_col <- function(m) { m2 <- ifelse(m %in% names(METHOD_COLS), m, "other");
 
 # ---------------------------------------------------------------------------
 # species_board(): one row per species — the Bird Board. ubiquity = % of points
-# where ever detected (the LEAST detection-biased axis); abundance = a detection
-# index = birds per point-count (sum clusterSize / site point-visits).
+# where ever detected (a less count-biased axis than the index, though still a
+# detection floor); abundance = a detection index = birds per point-count
+# (sum clusterSize / site point-visits).
 # ---------------------------------------------------------------------------
 species_board <- function(obs, points, nvis) {
   sp <- species_level_only(obs); if (is.null(sp) || !nrow(sp)) return(NULL)
@@ -53,14 +54,21 @@ site_birds <- function(obs, points, nvis) {
        top = brd$vernacular[which.max(brd$index)] %||% brd$scientificName[which.max(brd$index)])
 }
 
+# A "sampling occasion" = one point counted in one year (pointkey × year). NEON
+# re-surveys the same points yearly, so this is the correct incidence replicate;
+# pooling a point's revisits as if they were distinct PLACES inflates richness and
+# the Chao2 estimator (the playbook's year-pooling rule). Used by chao2 + accum.
+sampling_occasion <- function(sp) paste(sp$pointkey, sp$year)
+
 # ---------------------------------------------------------------------------
-# Incidence-based richness estimate (Chao2) — species incidence across POINTS
-# (the sampling unit). The right estimator for presence/point data. Chao 1987.
+# Incidence-based richness estimate (Chao2) — species incidence across SAMPLING
+# OCCASIONS (point × year), the right replicate for presence/point data. The unit
+# is a point-count, not a place. Chao 1987; Colwell et al. 2012.
 # ---------------------------------------------------------------------------
 chao2_points <- function(obs, points) {
   sp <- species_level_only(obs); if (is.null(sp) || !nrow(sp)) return(NULL)
-  m <- max(1L, nrow(points))
-  inc <- tapply(sp$pointkey, sp$scientificName, function(p) length(unique(p)))
+  occ <- sampling_occasion(sp); m <- length(unique(occ))   # # point-count occasions
+  inc <- tapply(occ, sp$scientificName, function(o) length(unique(o)))
   inc <- as.numeric(inc); S <- length(inc); Q1 <- sum(inc == 1); Q2 <- sum(inc == 2)
   if (S == 0 || m < 2) return(NULL)
   corr <- (m - 1) / m
@@ -68,10 +76,11 @@ chao2_points <- function(obs, points) {
   list(S_obs = S, chao2 = round(chao, 1), m = m, Q1 = Q1, Q2 = Q2, unstable = Q2 < 3)
 }
 
-# sample-based species accumulation over points (mean over permutations)
+# sample-based species accumulation over point-count OCCASIONS (point × year),
+# mean over permutations. x-axis is point-counts, not unique places.
 bird_accum <- function(obs, points, perms = 40) {
   sp <- species_level_only(obs); if (is.null(sp) || !nrow(sp)) return(NULL)
-  byp <- split(sp$scientificName, sp$pointkey); k <- length(byp); if (k < 2) return(NULL)
+  byp <- split(sp$scientificName, sampling_occasion(sp)); k <- length(byp); if (k < 2) return(NULL)
   seeds <- 1:perms
   mat <- vapply(seeds, function(s) {
     ord <- byp[order((seq_len(k) * 7919 + s * 104729) %% k)]   # deterministic shuffle, no RNG-state dep
@@ -80,6 +89,35 @@ bird_accum <- function(obs, points, perms = 40) {
     out
   }, numeric(k))
   data.frame(points = seq_len(k), richness = round(rowMeans(mat), 1))
+}
+
+# ---------------------------------------------------------------------------
+# Cross-site effort standardization (dependency-light, no iNEXT). Raw richness is
+# an effort artifact — sites differ 13–144 points — so the gradient compares
+# richness rarefied to a common number of point-count occasions.
+#   Y = per-species incidence counts (# occasions detected); T = total occasions.
+# Incidence rarefaction (Colwell et al. 2012; Chao & Jost 2012); Hill q1/q2 on
+# incidence frequencies are effort-robust common/dominant diversity.
+# ---------------------------------------------------------------------------
+site_incidence <- function(obs) {
+  sp <- species_level_only(obs); if (is.null(sp) || !nrow(sp)) return(NULL)
+  occ <- sampling_occasion(sp)
+  Y <- tapply(occ, sp$scientificName, function(o) length(unique(o)))
+  list(Y = as.integer(Y), T = length(unique(occ)))
+}
+rarefy_incidence <- function(Y, T, t) {                # E[species] in t of T occasions
+  if (is.na(t) || t < 1 || t > T) return(NA_real_)
+  contrib <- ifelse(T - Y < t, 1, 1 - exp(lchoose(T - Y, t) - lchoose(T, t)))
+  round(sum(contrib), 1)
+}
+coverage_incidence <- function(Y, T) {                 # sample completeness, 0–1
+  U <- sum(Y); if (U == 0 || T < 2) return(NA_real_)
+  Q1 <- sum(Y == 1); Q2 <- sum(Y == 2)
+  1 - (Q1 / U) * ((T - 1) * Q1 / ((T - 1) * Q1 + 2 * max(Q2, 1)))
+}
+hill_incidence <- function(Y) {                        # q1 = exp(Shannon), q2 = invSimpson
+  p <- Y / sum(Y); p <- p[p > 0]
+  c(q1 = round(exp(-sum(p * log(p))), 1), q2 = round(1 / sum(p^2), 1))
 }
 
 # ---------------------------------------------------------------------------
@@ -98,7 +136,7 @@ species_detail <- function(obs, sci) {
 distance_decay <- function(obs, sci) {
   d <- species_detail(obs, sci); if (is.null(d)) return(NULL)
   v <- d$observerDistance[is.finite(d$observerDistance) & d$observerDistance >= 0 & d$observerDistance <= 200]
-  if (length(v) < 3) return(NULL)
+  if (length(v) < 8) return(NULL)   # n-gate: 3 detections across 6 bands is noise (Colwell/Buckland)
   brks <- c(0, 25, 50, 75, 100, 150, 200); labs <- c("0–25","25–50","50–75","75–100","100–150","150–200")
   cl <- cut(v, breaks = brks, labels = labs, right = FALSE)
   tab <- as.data.frame(table(band = cl), responseName = "n")

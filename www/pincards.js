@@ -25,7 +25,7 @@
   function bgColor() {
     var dark = document.documentElement.getAttribute("data-bs-theme") === "dark" ||
                document.body.getAttribute("data-bs-theme") === "dark";
-    return dark ? "#16213a" : "#ffffff";
+    return dark ? "#27211a" : "#fffdf6";
   }
 
   /* map a data point (dx, dy) to box-relative pixels via plotly's live axes, so
@@ -100,12 +100,12 @@
     var layer = linesLayer(box);
     var ln = document.createElementNS(NS, "line");
     ln.setAttribute("x1", a.ax); ln.setAttribute("y1", a.ay);
-    ln.setAttribute("stroke", "#FFD200"); ln.setAttribute("stroke-width", "2.5");
+    ln.setAttribute("stroke", "#e8a317"); ln.setAttribute("stroke-width", "2.5");
     ln.setAttribute("stroke-linecap", "round");
     layer.appendChild(ln);
     var dot = document.createElementNS(NS, "circle");
     dot.setAttribute("cx", a.ax); dot.setAttribute("cy", a.ay); dot.setAttribute("r", "4.5");
-    dot.setAttribute("fill", "#FFD200"); dot.setAttribute("stroke", "#0C234B");
+    dot.setAttribute("fill", "#e8a317"); dot.setAttribute("stroke", "#2b2722");
     dot.setAttribute("stroke-width", "1.5");
     layer.appendChild(dot);
     pin.__line = ln; pin.__dot = dot;
@@ -264,7 +264,8 @@
         .then(function () { saving = false; });
     }, 90);
   }
-  window.smtSaveScatter = function () { snap(document.querySelector(".smt-pinnable"), "neon-bodysize-lab.png"); };
+  window.smtSaveScatter = function () { snap(document.getElementById("boardPin") || document.querySelector(".smt-pinnable"), "neon-bird-board.png"); };
+  window.smtSaveClimate = function () { snap(document.getElementById("climatePin"), "neon-bird-climate-gradient.png"); };
   window.smtSaveQcCard = function () {
     var node = document.getElementById("qcCardNode");
     if (!node) return;
@@ -277,7 +278,10 @@
   function openChip(el) {
     if (!el || !window.Shiny) return;
     var tag = el.getAttribute("data-tag");
-    if (tag) Shiny.setInputValue("qcCardRequest", tag, { priority: "event" });
+    if (!tag) return;
+    // data-action="site" -> load that NEON site; default -> open a species profile
+    var input = el.getAttribute("data-action") === "site" ? "pickSite" : "qcCardRequest";
+    Shiny.setInputValue(input, tag, { priority: "event" });
   }
   document.addEventListener("click", function (e) {
     var el = e.target.closest(".smt-open");

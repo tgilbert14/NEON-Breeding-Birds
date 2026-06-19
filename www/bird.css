@@ -1,49 +1,128 @@
 /* =========================================================================
-   plant.css — NEON Plant Diversity Explorer additions on top of the ported
-   styles.css (Desert Data Labs house style). Only the plant-specific bits live
-   here: the hero band, splash site cards, native/introduced bar, insight list.
+   bird.css — NEON Breeding Bird Explorer "FIELD GUIDE" theme.
+   MUST load AFTER styles.css (ui.R loads styles.css then bird.css): this file
+   re-themes by OVERRIDING the same :root tokens styles.css drives everything off
+   (so cards/tables/popovers/headers re-theme for free), then re-declares the few
+   selectors that hard-code navy gradients. Parchment + ink-brown + dawn sky, a
+   Fraunces serif display, rust + goldfinch accents. The detection-method data
+   palette (singing #1a7f37 / calling #2f7fb5 / visual #c1502e) is LOCKED — it is
+   data, not theme, and is never aliased to a token.
    ========================================================================= */
 
-/* greened brand mark */
+/* ---- light tokens (override styles.css :root; later same-specificity wins) -- */
+:root {
+  --pine: #2b2722;   --pine2: #6b4a2e;        /* primary text/heading → ink-brown */
+  --terra: #c1502e;  --gold: #e8a317;  --gold-ink: #9a6b0f;   /* rust + goldfinch */
+  --sky: #2f7fb5;    --green: #1a7f37;        /* KEEP — these are the data palette */
+  --ink: #2b2722;    --muted: #7a6f5d;
+  --bg: #f7f3e9;     --paper: #fffdf6;  --line: #e3d9c4;       /* parchment */
+  --shadow: rgba(74, 55, 40, 0.12);
+  --rust: #c1502e;   --rust2: #a23f22;  --goldfinch: #e8a317;
+}
+/* ---- warm dark mode (NOT the mammal app's cold navy) ----------------------- */
+[data-bs-theme="dark"] {
+  --pine: #efe7d6;   --pine2: #e0c8a8;
+  --terra: #e07a52;  --gold: #f0b94a;  --gold-ink: #f0b94a;
+  --ink: #efe7d6;    --muted: #b3a692;
+  --bg: #1c1813;     --paper: #27211a;  --line: #3d352a;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --rust: #e07a52;   --rust2: #c1502e;  --goldfinch: #f0b94a;
+}
+
+/* ---- body: warm paper washes (replaces the navy/cardinal radial gradients) -- */
+body {
+  background:
+    radial-gradient(1100px 520px at 10% -8%, rgba(232,163,23,0.06), transparent 60%),
+    radial-gradient(900px 460px at 100% 0%, rgba(193,80,46,0.05), transparent 55%),
+    linear-gradient(180deg, #f7f3e9 0%, #f1ead9 100%) !important;
+  background-attachment: fixed !important;
+}
+[data-bs-theme="dark"] body {
+  background:
+    radial-gradient(1100px 520px at 10% -8%, rgba(232,163,23,0.06), transparent 60%),
+    radial-gradient(900px 460px at 100% 0%, rgba(193,80,46,0.05), transparent 55%),
+    linear-gradient(180deg, #1c1813 0%, #161009 100%) !important;
+}
+
+/* ---- Fraunces serif on display surfaces only (body stays Rubik) ------------ */
+.app-title, .brand-title, .tab-head-text h4, .card-header, .splash h3,
+.hs-v, .qc-id, .stat-value, .about-card h4, .home-btn > div:first-of-type {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
+  font-optical-sizing: auto; letter-spacing: 0;
+}
+
+/* ---- hero header band: the dawn-sky gradient with INK text (not white) ----- */
+.app-hero {
+  background: linear-gradient(112deg, #f6c89a 0%, #efb07f 32%, #c98ba0 60%, #8fb0c9 100%) !important;
+  color: #2b2722 !important; box-shadow: 0 6px 20px -10px rgba(74,55,40,0.4);
+}
+.app-title { color: #2b2722 !important; text-shadow: 0 1px 0 rgba(255,255,255,0.35); font-weight: 600; }
+.app-subtitle { color: #4a3a2a !important; }
+.title-tag { color: #2b2722 !important; border-color: rgba(43,39,34,0.4) !important; }
+[data-bs-theme="dark"] .app-hero {
+  background: linear-gradient(112deg, #5a3a28 0%, #6b4733 34%, #4a3550 64%, #3a3142 100%) !important;
+  color: #f3e9d8 !important;
+}
+[data-bs-theme="dark"] .app-title { color: #f3e9d8 !important; text-shadow: none; }
+[data-bs-theme="dark"] .app-subtitle { color: #e6d6bf !important; }
+[data-bs-theme="dark"] .title-tag { color: #f3e9d8 !important; border-color: rgba(243,233,216,0.4) !important; }
+
 .brand-mark { font-size: 26px; }
 
-/* ---- hero stat band ---------------------------------------------------- */
+/* ---- persistent detection-index caveat bar (new) -------------------------- */
+.hero-caveat {
+  display: flex; gap: 9px; align-items: center; font-size: 12.5px; color: var(--muted);
+  background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--rust);
+  border-radius: 8px; padding: 8px 13px; margin: 0 0 12px; line-height: 1.4;
+}
+.hero-caveat .bi { color: var(--rust); flex: none; }
+
+/* ---- hero stat band (retheme; server renders .hero-band / hero-{tone}) ----- */
 .hero-band { margin: 4px 0 14px; }
-.hero-title { font-weight: 700; color: var(--pine); font-size: 17px; display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.hero-title { font-weight: 700; color: var(--rust); font-size: 17px; display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
 .hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .hero-stat { display: flex; gap: 12px; align-items: center; background: var(--paper); border: 1px solid var(--line);
-  border-radius: 12px; padding: 12px 16px; box-shadow: 0 4px 14px var(--shadow); border-top: 3px solid var(--pine); }
+  border-radius: 12px; padding: 12px 16px; box-shadow: 0 4px 14px var(--shadow); border-top: 3px solid var(--rust); }
 .hero-stat.hero-pine  { border-top-color: var(--green); }
-.hero-stat.hero-terra { border-top-color: var(--terra); }
-.hero-stat.hero-gold  { border-top-color: var(--gold); }
-.hs-icon { font-size: 24px; color: var(--pine); opacity: .85; }
+.hero-stat.hero-terra { border-top-color: var(--rust2); }
+.hero-stat.hero-gold  { border-top-color: var(--goldfinch); }
+.hs-icon { font-size: 24px; color: var(--rust); opacity: .9; }
 .hero-pine  .hs-icon { color: var(--green); }
-.hero-terra .hs-icon { color: var(--terra); }
+.hero-terra .hs-icon { color: var(--rust2); }
 .hero-gold  .hs-icon { color: var(--gold-ink); }
-.hs-v { font-size: 28px; font-weight: 800; color: var(--ink); line-height: 1; }
+.hs-v { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1; }
 .hs-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 3px; }
 
-/* ---- splash site cards ------------------------------------------------- */
-.site-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 18px 0; }
-.site-card { display: flex; gap: 14px; align-items: center; background: var(--paper); border: 1px solid var(--line);
-  border-radius: 12px; padding: 14px 16px; text-decoration: none; color: inherit; box-shadow: 0 4px 14px var(--shadow);
-  border-left: 4px solid var(--green); transition: transform .12s ease, box-shadow .12s ease; }
+/* ---- splash: national map picker + collapsible 46-site list ---------------- */
+.site-browse { margin: 14px 0 4px; }
+.site-browse > summary { cursor: pointer; font-weight: 600; color: var(--rust); font-size: 13.5px;
+  list-style: none; display: flex; gap: 7px; align-items: center; padding: 6px 2px; }
+.site-browse > summary::-webkit-details-marker { display: none; }
+.site-browse[open] > summary { margin-bottom: 8px; }
+
+.site-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 6px 0; }
+.site-card { display: flex; gap: 13px; align-items: center; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 12px; border-left: 4px solid var(--rust); padding: 13px 15px; text-decoration: none; color: inherit;
+  box-shadow: 0 4px 14px var(--shadow); transition: transform .12s ease, box-shadow .12s ease;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(74,55,40,0.035) 24px); }
 .site-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px var(--shadow); }
-.sc-emoji { font-size: 30px; }
+.sc-emoji { font-size: 28px; }
 .sc-name { font-weight: 600; color: var(--ink); }
 .sc-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 
-/* ---- overview insight list -------------------------------------------- */
+/* ---- overview insight list ------------------------------------------------- */
 .insight-list { display: flex; flex-direction: column; gap: 6px; }
 .il-item { display: flex; gap: 8px; align-items: baseline; color: var(--ink); font-size: 14px; line-height: 1.5; }
-.il-item .ci-hero { color: var(--green); font-weight: 800; }
+.il-item .ci-hero { color: var(--rust); font-weight: 800; }
 
-/* ---- native vs introduced cover bar (plot card) ----------------------- */
-.piv-bar { display: flex; height: 24px; border-radius: 7px; overflow: hidden; border: 1px solid var(--line); font-size: 11px; font-weight: 600; }
-.piv-native { background: #1a7f37; color: #fff; display: flex; align-items: center; justify-content: center; }
-.piv-intro  { background: #c1502e; color: #fff; display: flex; align-items: center; justify-content: center; }
+/* ---- chart-insight rail tones (remap navy→rust; keep pine=green) ----------- */
+.ci-navy  { --ci-rail: #c1502e; } .ci-pine { --ci-rail: #1a7f37; }
+.ci-gold  { --ci-rail: #9a6b0f; } .ci-terra { --ci-rail: #a23f22; }
+[data-bs-theme="dark"] .ci-navy  { --ci-rail: #e07a52; } [data-bs-theme="dark"] .ci-pine { --ci-rail: #5fcf86; }
+[data-bs-theme="dark"] .ci-gold  { --ci-rail: #f0b94a; } [data-bs-theme="dark"] .ci-terra { --ci-rail: #e07a52; }
+.ci-hero { color: var(--rust); font-weight: 800; }
 
-/* ---- Diversity Lab selected-plot strip -------------------------------- */
+/* ---- selected-card strip (Bird Board) ------------------------------------- */
 .lab-sel { display: flex; gap: 14px; align-items: center; background: var(--bg); border: 1px solid var(--line);
   border-radius: 10px; padding: 10px 14px; margin-top: 12px; }
 .ls-emoji { font-size: 26px; }
@@ -51,6 +130,40 @@
 .ls-dom { font-size: 12.5px; color: var(--muted); }
 .lab-sel .btn { margin-left: auto; }
 
-/* hero count-up uses the shared .count-up engine from app.js */
+/* ---- pin card: ink card + goldfinch edge (replaces navy .smt-pin) ---------- */
+.smt-pin { background: rgba(43,39,34,0.97) !important; border-color: var(--goldfinch) !important; }
+.smt-pin em { color: #d8c9ac !important; }
+.smt-pin-stats { color: #cbbfa6 !important; }
+.smt-pin .smt-open { background: var(--goldfinch); color: #2b2722; }
+.smt-pin .smt-open:hover { background: #f3b94a; }
+
+/* ---- load overlay: parchment (was cold blue-grey) ------------------------- */
+.load-overlay { background: rgba(247,243,233,0.97) !important; }
+[data-bs-theme="dark"] .load-overlay { background: rgba(28,24,19,0.97) !important; }
+.load-bar::after { background: linear-gradient(90deg, transparent, var(--rust), var(--goldfinch), transparent) !important; }
+
+/* ---- dark-mode card surfaces (warm, not navy) ----------------------------- */
 [data-bs-theme="dark"] .hero-stat,
-[data-bs-theme="dark"] .site-card { background: var(--paper); }
+[data-bs-theme="dark"] .site-card,
+[data-bs-theme="dark"] .hero-caveat { background: var(--paper); }
+
+/* ---- de-navy the dark mode: styles.css hard-codes several navy literals in its
+   [data-bs-theme=dark] block that the token overrides can't reach. Re-theme each
+   to a warm Field Guide tone. (Keep header/insight text legible — these surfaces
+   carry white-ish text.) ---------------------------------------------------- */
+[data-bs-theme="dark"] .control-deck { background: #211b14 !important; }
+[data-bs-theme="dark"] .card-header { background: #372d1c !important; }
+[data-bs-theme="dark"] .card-header:has(.nav-tabs) { background: #2b2318 !important; }
+[data-bs-theme="dark"] .brand-title,
+[data-bs-theme="dark"] .bio-links-title,
+[data-bs-theme="dark"] .tab-head-text h4,
+[data-bs-theme="dark"] .hr-indiv-lab,
+[data-bs-theme="dark"] .stat-sub { color: var(--pine) !important; }
+[data-bs-theme="dark"] .tab-intro .bi,
+[data-bs-theme="dark"] .chart-hint .bi { color: var(--goldfinch) !important; }
+[data-bs-theme="dark"] .chart-insight { background: linear-gradient(180deg, #2e2820 0%, var(--paper) 100%) !important; }
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select,
+[data-bs-theme="dark"] .selectize-input,
+[data-bs-theme="dark"] .selectize-dropdown { background: #211b14 !important; color: var(--ink); border-color: var(--line); }
+[data-bs-theme="dark"] .deck-foot code { color: var(--goldfinch); background: #2e2820; }
