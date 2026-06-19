@@ -33,7 +33,7 @@
       --paper: #fffdf6;
       --ink: #2b2722;
       --ink2: #5a4f3e;
-      --muted: #7a6f5d;
+      --muted: #6f6450;
       --rust: #c1502e;
       --rust2: #a23f22;
       --gold: #e8a317;
@@ -127,6 +127,15 @@
     .cta-foot { display: inline-block; margin-bottom: 10px; font-weight: 700; color: var(--rust) }
 
     @media(max-width:760px) { .stats { grid-template-columns: repeat(2, 1fr) } .grid { grid-template-columns: 1fr } }
+
+    /* Keyboard focus ring on the page's signature action (and all links/buttons) */
+    .btn:focus-visible, a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 12px }
+
+    /* Honor reduced-motion: kill transitions + hover lifts for users who ask */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important }
+      .btn-primary:hover, .series-card:hover, .feat:hover { transform: none !important }
+    }
   </style>
 </head>
 
@@ -134,7 +143,7 @@
 
   <header class="hero">
     <div class="wrap">
-      <span class="badge"><span aria-hidden="true">🐦</span> NEON · Breeding Landbird Point Counts · DP1.10003.001</span>
+      <span class="badge">NEON · Breeding Landbird Point Counts · DP1.10003.001</span>
       <h1>NEON Breeding Bird Explorer <span class="tag">unofficial</span></h1>
       <p class="lead">Who's singing where, across a continent. Tap a site on the national map, then explore
         every species NEON counts, how widespread and how often each is heard, the distance at which it's
@@ -259,7 +268,7 @@
 
   <footer>
     <div class="wrap">
-      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer"><span aria-hidden="true">👋</span> Want a custom data app like this for your project?</a><br>
+      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer">Want a custom data app like this for your project?</a><br>
       Built on the NEON <a href="https://data.neonscience.org/data-products/DP1.10003.001" target="_blank"
         rel="noopener">Breeding Landbird Point Counts</a> product by <b>Desert Data Labs</b> · Tucson, AZ.
       Data: National Ecological Observatory Network (operated by Battelle, funded by NSF). An educational
@@ -294,7 +303,7 @@
         var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
         var killer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
         fetch(APP_URL, { mode: "no-cors", cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
-          .then(function () { warm.textContent = "Ready when you are."; })
+          .then(function () { warm.textContent = "App is waking up — launch when you're ready."; })
           .catch(function () { warm.textContent = ""; })
           .finally(function () { if (killer) clearTimeout(killer); });
       } catch (e) { /* ignore */ }
