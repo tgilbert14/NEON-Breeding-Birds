@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEON Breeding Bird Explorer</title>
+  <meta name="description"
+    content="Explore real NEON breeding-landbird point-count data across 46 field sites — tap a site on the national map, then dive into every species, how widespread each is, detectability by distance, and how whole bird communities shift across a continent of climates. Honest statistics, instant loads." />
+
+  <meta name="theme-color" content="#c1502e" />
+
+  <!-- Open Graph / social card. Absolute URLs = the GitHub Pages domain for this repo. -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://tgilbert14.github.io/NEON-Breeding-Birds/" />
+  <meta property="og:title" content="NEON Breeding Bird Explorer" />
+  <meta property="og:description"
+    content="Real NEON breeding-bird point counts across 46 sites — who's singing where, how communities shift from arctic tundra to Caribbean dry forest. Honest stats, instant loads." />
+  <meta property="og:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="NEON Breeding Bird Explorer" />
+  <meta name="twitter:description"
+    content="Real NEON breeding-bird data across 46 sites — a continent of bird communities. Honest stats, instant loads." />
+  <meta name="twitter:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Rubik:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --parch: #f7f3e9;
+      --paper: #fffdf6;
+      --ink: #2b2722;
+      --ink2: #5a4f3e;
+      --muted: #7a6f5d;
+      --rust: #c1502e;
+      --rust2: #a23f22;
+      --gold: #e8a317;
+      --gold-ink: #9a6b0f;
+      --green: #1a7f37;
+      --line: #e3d9c4;
+    }
+
+    * { box-sizing: border-box }
+
+    body {
+      margin: 0;
+      font-family: Rubik, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--parch);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55
+    }
+
+    h1, h2, h3 { font-family: Fraunces, Georgia, serif; line-height: 1.12; margin: 0; font-weight: 600 }
+    a { color: var(--rust) }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px }
+
+    /* Hero — the Field Guide dawn-sky band with ink text */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      color: var(--ink);
+      background: linear-gradient(116deg, #f6c89a 0%, #efb07f 30%, #d99a96 52%, #b39bb0 70%, #8fb0c9 100%)
+    }
+    .hero::after {
+      content: "";
+      position: absolute; inset: 0; opacity: .5; pointer-events: none;
+      background:
+        radial-gradient(50px 50px at 16% 34%, rgba(255, 255, 255, .22), transparent 70%),
+        radial-gradient(60px 60px at 82% 24%, rgba(255, 255, 255, .16), transparent 70%)
+    }
+    .hero .wrap { position: relative; padding: 66px 22px 60px }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--rust2); background: rgba(255, 255, 255, .42);
+      padding: 6px 13px; border-radius: 999px
+    }
+
+    .hero h1 { font-size: clamp(2.2rem, 5.4vw, 3.5rem); margin: 18px 0 10px; letter-spacing: -.01em }
+    .hero h1 .tag {
+      font-family: Rubik, sans-serif; font-size: .34em; font-weight: 700; vertical-align: middle; margin-left: 12px;
+      text-transform: uppercase; letter-spacing: .12em; color: var(--ink);
+      border: 1px solid rgba(43, 39, 34, .4); border-radius: 999px; padding: 3px 10px
+    }
+    .hero p.lead {
+      font-size: clamp(1.05rem, 2.2vw, 1.24rem); max-width: 62ch; margin: 0 0 28px; color: #3a3026
+    }
+
+    .cta-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.04rem;
+      padding: 14px 26px; border-radius: 12px; text-decoration: none;
+      transition: transform .12s ease, box-shadow .12s ease
+    }
+    .btn-primary { background: var(--rust); color: #fff; box-shadow: 0 8px 24px rgba(74, 43, 28, .28) }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(74, 43, 28, .36) }
+    .btn-ghost { color: var(--ink); border: 1.5px solid rgba(43, 39, 34, .5) }
+    .btn-ghost:hover { background: rgba(255, 255, 255, .35) }
+    .warm { font-size: .82rem; color: #4a3a2a; margin-top: 14px; min-height: 1.2em }
+
+    /* Stats strip */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: -34px auto 0; position: relative; z-index: 2 }
+    .stat { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 18px 16px; box-shadow: 0 6px 22px rgba(74, 55, 40, .12) }
+    .stat .n { font-family: Fraunces, serif; font-weight: 700; font-size: 1.7rem; color: var(--rust) }
+    .stat .l { font-size: .82rem; color: var(--muted); font-weight: 500 }
+
+    /* Features */
+    section.body { padding: 54px 0 10px }
+    .sub { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .78rem }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 22px }
+    .feat { background: var(--paper); border: 1px solid var(--line); border-top: 3px solid #d8cdb5; border-radius: 12px; padding: 20px }
+    .feat-star { border-top: 3px solid var(--gold); background: linear-gradient(180deg, rgba(232, 163, 23, .07), var(--paper) 42%) }
+    .feat h3 { font-size: 1.12rem; margin-bottom: 6px; color: var(--ink) }
+    .feat p { margin: 0; color: #4a4032; font-size: .95rem }
+
+    .honest { margin: 40px 0; background: rgba(193, 80, 46, .06); border-left: 4px solid var(--rust); border-radius: 10px; padding: 20px 22px }
+    .honest h2 { font-size: 1.3rem; margin-bottom: 10px; color: var(--ink) }
+    .honest ul { margin: 0; padding-left: 18px; color: #43392c }
+    .honest li { margin: 6px 0 }
+
+    footer { border-top: 1px solid var(--line); padding: 26px 0 50px; color: var(--muted); font-size: .9rem }
+    footer a { font-weight: 600; text-decoration: none }
+    .cta-foot { display: inline-block; margin-bottom: 10px; font-weight: 700; color: var(--rust) }
+
+    @media(max-width:760px) { .stats { grid-template-columns: repeat(2, 1fr) } .grid { grid-template-columns: 1fr } }
+  </style>
+</head>
+
+<body>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="badge"><span aria-hidden="true">🐦</span> NEON · Breeding Landbird Point Counts · DP1.10003.001</span>
+      <h1>NEON Breeding Bird Explorer <span class="tag">unofficial</span></h1>
+      <p class="lead">Who's singing where, across a continent. Tap a site on the national map, then explore
+        every species NEON counts, how widespread and how often each is heard, the distance at which it's
+        detected — and how whole bird communities shift from arctic tundra to Caribbean dry forest, on real
+        breeding-season point-count data.</p>
+      <div class="cta-row">
+        <a id="launch" class="btn btn-primary" href="#">Launch the app&nbsp;→</a>
+        <a class="btn btn-ghost" href="https://github.com/tgilbert14/NEON-Breeding-Birds"
+          target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+      <div class="warm" id="warm"></div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat"><div class="n">46</div><div class="l">field sites</div></div>
+      <div class="stat"><div class="n">555</div><div class="l">species</div></div>
+      <div class="stat"><div class="n">−2°→26°C</div><div class="l">climate gradient</div></div>
+      <div class="stat"><div class="n">instant</div><div class="l">no live API waits</div></div>
+    </div>
+  </div>
+
+  <section class="body">
+    <div class="wrap">
+      <span class="sub">What you can do</span>
+      <div class="grid">
+        <div class="feat feat-star">
+          <h3>Pick a site on the map</h3>
+          <p>The landing is a national map of every NEON site — dot size is species richness, colour is the
+            biome (forest, prairie, desert, tundra, tropical dry forest). Tap a dot to dive in.</p>
+        </div>
+        <div class="feat feat-star">
+          <h3>Across the continent</h3>
+          <p>The flagship: every site as a dot in climate space — breeding-season temperature against its bird
+            community, with richness <b>rarefied to equal survey effort</b> so it reflects ecology, not effort.
+            A continental temperature–productivity gradient, stated honestly as space-for-time.</p>
+        </div>
+        <div class="feat">
+          <h3>The Bird Board</h3>
+          <p>Every species on one board — <b>ubiquity</b> (how widespread) × <b>detection index</b> (how often
+            counted), coloured by how it's detected: singing, calling, or seen. Tap a dot to pin its card.</p>
+        </div>
+        <div class="feat">
+          <h3>Species profiles</h3>
+          <p>Open any species for its <b>detectability-by-distance</b> signature (area-corrected), yearly
+            counts, and a downloadable card + raw detections (CSV).</p>
+        </div>
+        <div class="feat">
+          <h3>When the counts happen</h3>
+          <p>For each site, the breeding-count window shaded against its <b>green-up and temperature</b> year —
+            co-located NEON environment data, as honest seasonal context (not a fabricated bird-vs-weather link).</p>
+        </div>
+        <div class="feat feat-star">
+          <h3>Tap a grid for its bird list</h3>
+          <p>On the site map, <b>click any point-count grid</b> for the full list of birds detected there —
+            sorted, with detections and counts — and <b>download it as CSV</b>.</p>
+        </div>
+      </div>
+
+      <div class="honest">
+        <h2>Honest statistics</h2>
+        <p>Every view states its method, on the chart:</p>
+        <ul>
+          <li><b>Detection index, not population</b> — a loud species and a quiet one at equal density give
+            unequal counts, so the abundance axis is birds per 6-minute point-count, never a census. Ubiquity
+            (% of points detected) is the less count-biased axis, though still a detection floor.</li>
+          <li><b>Richness done right</b> — Chao2 and species accumulation use the point × year <i>occasion</i>
+            as the incidence unit (a point's yearly revisits aren't pooled as separate places). Across sites,
+            richness is rarefied to a common number of point-counts, because raw richness just tracks effort.</li>
+          <li><b>Detectability</b> — each species' detections-by-distance are area-corrected to detections per
+            hectare, since a raw point-count histogram rises with distance on geometry alone.</li>
+          <li><b>Climate gradient</b> — a space-for-time comparison of 46 contemporaneous places, correlational
+            and confounded by biome and latitude — never read as one site warming. Precipitation is shown only
+            for the 19 sites with a NEON gauge, never imputed.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .series { background: #2b2722; color: #fbf5e6; padding: 56px 0; }
+    .series h2 { color: #fbf5e6; margin: 0; font-size: 1.6rem; }
+    .series-sub { color: #cabfa8; margin: 8px 0 26px; max-width: 640px; }
+    .series-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .series-card { display: flex; flex-direction: column; gap: 5px; padding: 22px; border-radius: 16px;
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: #fbf5e6;
+      text-decoration: none; transition: transform .15s ease, border-color .15s ease, background .15s ease; }
+    .series-card:hover { transform: translateY(-3px); border-color: var(--gold); background: rgba(255,255,255,.10); }
+    .series-emoji { font-size: 1.9rem; line-height: 1; }
+    .series-name { font-weight: 800; font-size: 1.12rem; font-family: Rubik, sans-serif; }
+    .series-tag { color: #cabfa8; font-size: .95rem; }
+    .series-go { color: var(--gold); font-weight: 700; margin-top: 6px; }
+    @media (max-width: 640px) { .series-grid { grid-template-columns: 1fr; } }
+  </style>
+  <section class="series">
+    <div class="wrap">
+      <h2>Check out some of our other NEON series apps</h2>
+      <p class="series-sub">Pick another data type to explore.</p>
+      <div class="series-grid">
+        <a class="series-card" href="https://tgilbert14.github.io/NEON-Small-Mammal-Tracker-App/" target="_blank" rel="noopener">
+          <span class="series-emoji">🐀</span>
+          <span class="series-name">NEON Small Mammal Tracker</span>
+          <span class="series-tag">Small-mammal box-trapping across 46 NEON field sites.</span>
+          <span class="series-go">Open&nbsp;→</span>
+        </a>
+        <a class="series-card" href="https://tgilbert14.github.io/NEON-WaterChemistry-Analyte-Viewer-App/" target="_blank" rel="noopener">
+          <span class="series-emoji">💧</span>
+          <span class="series-name">NEON Water Chemistry Analyte Viewer</span>
+          <span class="series-tag">Surface-water chemistry across 34 aquatic sites.</span>
+          <span class="series-go">Open&nbsp;→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer"><span aria-hidden="true">👋</span> Want a custom data app like this for your project?</a><br>
+      Built on the NEON <a href="https://data.neonscience.org/data-products/DP1.10003.001" target="_blank"
+        rel="noopener">Breeding Landbird Point Counts</a> product by <b>Desert Data Labs</b> · Tucson, AZ.
+      Data: National Ecological Observatory Network (operated by Battelle, funded by NSF). An educational
+      data-exploration tool, not affiliated with NEON, Battelle, or the NSF.
+    </div>
+  </footer>
+
+  <script>
+    // ── Set this to your deployed app URL. After deploying on Posit Connect Cloud
+    //    (New Content → Shiny → from Git → this repo), paste the share URL here
+    //    (or "app/" for a future shinylive static build) and re-publish Pages. ──
+    const APP_URL = "https://REPLACE-WITH-YOUR-CONNECT-CLOUD-URL.share.connect.posit.cloud/";
+
+    (function () {
+      const placeholder = APP_URL.indexOf("REPLACE-WITH") !== -1;
+      const launch = document.getElementById("launch");
+      const warm = document.getElementById("warm");
+
+      if (placeholder) {
+        launch.addEventListener("click", function (e) {
+          e.preventDefault();
+          warm.textContent = "⚠ Set APP_URL in docs/index.html to your deployed app URL, then re-publish.";
+        });
+        return;
+      }
+      launch.href = APP_URL;
+
+      // Pre-warm the (possibly sleeping) app while the visitor reads, to soften cold start.
+      // Aborts after 8s so a hung request never leaves "Warming up…" stuck on screen.
+      try {
+        warm.textContent = "Warming up the app…";
+        var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        var killer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
+        fetch(APP_URL, { mode: "no-cors", cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
+          .then(function () { warm.textContent = "Ready when you are."; })
+          .catch(function () { warm.textContent = ""; })
+          .finally(function () { if (killer) clearTimeout(killer); });
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+</body>
+
+</html>

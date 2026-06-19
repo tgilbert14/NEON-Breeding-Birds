@@ -6,6 +6,8 @@ Caribbean dry forest (Guánica, 26 °C) — a *NEONize* sibling of the Small Mam
 built to the same Desert Data Labs quality bar, in a warm **"Field Guide"** theme
 (parchment + ink, Fraunces serif, dawn-sky hero) distinct from the mammal app's house style.
 
+🌐 **Landing page** → <https://tgilbert14.github.io/NEON-Breeding-Birds/> · 🚀 **Live app** → _set after deploy ([DEPLOY.md](DEPLOY.md))_ · ▶ Run locally → `shiny::runApp(".")`
+
 > The unit is a **species detected at a site** (community grain, with detection). The honesty
 > backbone: raw point-count totals are *detection-confounded* — a loud species and a quiet one
 > at equal density give unequal counts — so the abundance axis is a **detection index** (birds

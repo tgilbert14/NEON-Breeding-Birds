@@ -32,6 +32,11 @@ MON_LAB <- c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","
 env_files <- list.files(ENV_DIR, pattern = "\\.rds$", full.names = TRUE)
 if (!length(env_files)) stop("No env files in ", ENV_DIR, " — copy data/env/<SITE>.rds first.")
 
+# CI-safety: keep the realized count window from the last build when the raw
+# bird files aren't present this run (e.g. an env-only monthly top-up). Bird
+# point counts are annual, so the window doesn't drift month-to-month.
+PREV <- tryCatch(as.data.frame(readRDS("data/site_climate.rds")), error = function(e) NULL)
+
 # realized count months for a site, from the raw countdata startDate (build-time
 # only; the runtime bundle deliberately doesn't carry the date). Returns integer
 # months present, or NULL if the raw file is missing.
@@ -85,9 +90,16 @@ for (f in env_files) {
 
   # realized count window + breeding-season temp from those months
   cm <- count_months(s)
-  cm_min <- if (!is.null(cm)) min(cm) else NA_integer_
-  cm_max <- if (!is.null(cm)) max(cm) else NA_integer_
-  bwin <- if (!is.null(cm)) sort(unique(cm)) else 5:7   # fallback: protocol window
+  pr <- if (!is.null(PREV)) PREV[PREV$site == s, , drop = FALSE] else NULL
+  if (is.null(cm) && !is.null(pr) && nrow(pr) && !is.na(pr$count_month_min)) {
+    cm_min <- as.integer(pr$count_month_min); cm_max <- as.integer(pr$count_month_max)
+    cm_lab <- as.character(pr$count_months_lab); bwin <- seq(cm_min, cm_max)   # raw absent -> keep last window
+  } else {
+    cm_min <- if (!is.null(cm)) min(cm) else NA_integer_
+    cm_max <- if (!is.null(cm)) max(cm) else NA_integer_
+    cm_lab <- month_span_lab(cm)
+    bwin <- if (!is.null(cm)) sort(unique(cm)) else 5:7   # fallback: protocol window
+  }
   breeding_temp <- if (any(!is.na(mc$temp_c[mc$mon %in% bwin]))) mean(mc$temp_c[mc$mon %in% bwin], na.rm = TRUE) else NA_real_
 
   meta <- neon_sites[neon_sites$site == s, ]
@@ -106,7 +118,7 @@ for (f in env_files) {
     n_precip_months = n_precip,
     count_month_min = cm_min,
     count_month_max = cm_max,
-    count_months_lab = month_span_lab(if (!is.null(cm)) cm else NULL),
+    count_months_lab = cm_lab,
     env_year_min = suppressWarnings(min(as.integer(e$yr), na.rm = TRUE)),
     env_year_max = suppressWarnings(max(as.integer(e$yr), na.rm = TRUE)))
 }

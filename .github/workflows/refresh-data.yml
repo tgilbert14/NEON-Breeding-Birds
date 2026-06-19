@@ -1,0 +1,125 @@
+name: Refresh NEON data bundle
+
+# Keeps the bundled "database" current and lets Posit Connect Cloud auto-redeploy.
+# Connect Cloud watches this repo and re-publishes on every push to `master`, so
+# this workflow's job is simply to refresh the committed data and push it.
+#
+# CADENCE — tuned to how each product updates:
+#   • MONTHLY (first Saturday night, Arizona time): a light ENV top-up
+#     (precip/temperature/phenology, last ~14 months) + a rebuild of the climate
+#     precompute tables. Fast (~10-20 min) and low-risk — it never drops sites.
+#   • ON DEMAND: the full 46-site BIRD re-pull (DP1.10003.001). Breeding-bird
+#     point counts are published ~annually on a lag, so a monthly re-pull is
+#     wasteful; tick `refetch_birds` in the Actions tab when NEON publishes a new
+#     season. (Mirrors the mammal app's flow, adapted to the bird cadence.)
+#
+# REQUIRES one optional repo secret (Settings → Secrets and variables → Actions):
+#   NEON_TOKEN   a free NEON API token (raises the anonymous rate limit). The
+#                pulls work without it, just slower.
+
+on:
+  schedule:
+    # Every Sunday 06:00 UTC == Saturday 23:00 America/Phoenix (Arizona, no DST).
+    # Cron can't say "first Saturday", so we fire every Saturday and gate below.
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      refetch_birds:
+        description: "Also re-pull all 46 bird sites (DP1.10003.001) — slow, do this when NEON publishes a new season"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write          # push the refreshed data bundle to master
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run — proceeding."; echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          dow=$(TZ='America/Phoenix' date +%u)    # 6 = Saturday
+          day=$(TZ='America/Phoenix' date +%-d)   # day of month
+          if [ "$dow" = "6" ] && [ "$day" -le 7 ]; then
+            echo "First Saturday in Arizona (day $day) — proceeding."
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not the first Saturday (dow=$dow day=$day) — skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  refresh:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    env:
+      NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install R packages
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: >
+            neonUtilities, dplyr, tibble, tidyr, stringr, rsconnect,
+            shiny, bslib, bsicons, plotly, leaflet, DT, shinyjs,
+            shinycssloaders, RColorBrewer, htmltools, cpp11
+
+      # Heavy, ON-DEMAND: re-pull all 46 bird sites and re-bundle. Guarded so a
+      # partial pull can't silently shrink the app — only re-bundles when ≥40
+      # sites were fetched (else the committed bundles are kept).
+      - name: Re-pull bird sites (on demand)
+        if: ${{ github.event.inputs.refetch_birds == 'true' }}
+        timeout-minutes: 240
+        run: |
+          Rscript scripts/fetch_bird_all.R
+          n=$(ls ../bird-data-fetch/*_raw.rds 2>/dev/null | wc -l)
+          echo "fetched $n raw site files"
+          if [ "$n" -ge 40 ]; then
+            Rscript scripts/bundle_bird_data.R
+          else
+            echo "Only $n sites fetched (<40) — keeping the committed bundles, skipping re-bundle."
+          fi
+
+      # MONTHLY: light environmental top-up — re-pull only the last ~14 months of
+      # precip/temperature/phenology and merge into the committed history. Time-
+      # boxed + non-fatal so it can never stall or block the push below.
+      - name: Top up the environmental overlays (recent months)
+        continue-on-error: true
+        timeout-minutes: 50
+        env:
+          SMT_ENV_RECENT_MONTHS: "14"
+        run: Rscript scripts/refresh_env_data.R
+
+      # Rebuild the precompute tables the app loads at boot (climate normals,
+      # monthly climatology, effort-rarefied cross-site metrics). CI-safe: when
+      # the raw bird files aren't present (env-only run) it preserves the realized
+      # count window from the committed table.
+      - name: Rebuild climate + cross-site precompute
+        run: |
+          Rscript scripts/refresh_site_climate.R
+          Rscript scripts/build_cross_site.R
+
+      # Push the refreshed data straight to master -> Connect Cloud re-publishes.
+      # Skips cleanly when nothing changed.
+      - name: Commit & push refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/sites data/env data/site_index.rds data/site_climate.rds data/site_month_clim.rds data/cross_site.rds data-sample 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No data changes — nothing to push."
+          else
+            git commit -m "data: monthly NEON refresh (env top-up + climate precompute)"
+            git push origin HEAD:master
+            echo "Pushed refreshed data — Connect Cloud will re-publish."
+          fi
