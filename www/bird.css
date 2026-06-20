@@ -94,11 +94,32 @@ body {
 .hs-l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 3px; }
 
 /* ---- splash: national map picker + collapsible 46-site list ---------------- */
-.site-browse { margin: 14px 0 4px; }
-.site-browse > summary { cursor: pointer; font-weight: 600; color: var(--rust); font-size: 13.5px;
-  list-style: none; display: flex; gap: 7px; align-items: center; padding: 6px 2px; }
-.site-browse > summary::-webkit-details-marker { display: none; }
-.site-browse[open] > summary { margin-bottom: 8px; }
+/* Canonical "Browse all sites" pill: closed by default, summary styled as a
+   touch-friendly button with a chevron that rotates 180° when [open]; the body
+   scrolls so a 46-row list never pushes the page. Rust + goldfinch accent. */
+.site-browse { margin: 14px auto 4px; max-width: 920px; text-align: left; }
+.site-browse > summary.site-browse-summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; min-height: 40px; padding: 9px 15px; border-radius: 12px;
+  font-weight: 600; font-size: 13.5px; color: var(--rust);
+  background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--rust);
+  box-shadow: 0 4px 14px var(--shadow); transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .12s ease;
+}
+.site-browse > summary.site-browse-summary::-webkit-details-marker { display: none; }
+.site-browse .sbs-label { display: flex; align-items: center; gap: 8px; }
+.site-browse .sbs-label .bi { color: var(--rust); }
+.site-browse .sbs-chevron { display: inline-flex; color: var(--rust); transition: transform .2s ease; }
+.site-browse > summary.site-browse-summary:hover {
+  background: rgba(193,80,46,0.06); border-color: var(--rust); box-shadow: 0 8px 20px var(--shadow); transform: translateY(-1px);
+}
+.site-browse > summary.site-browse-summary:focus-visible {
+  outline: none; box-shadow: 0 0 0 3px rgba(193,80,46,0.28);
+}
+.site-browse[open] > summary.site-browse-summary { margin-bottom: 10px; border-left-color: var(--goldfinch); }
+.site-browse[open] .sbs-chevron { transform: rotate(180deg); }
+.site-browse-body { max-height: 360px; overflow-y: auto; padding: 2px 4px 2px 2px; }
+[data-bs-theme="dark"] .site-browse > summary.site-browse-summary:hover { background: rgba(224,122,82,0.12); }
+[data-bs-theme="dark"] .site-browse > summary.site-browse-summary:focus-visible { box-shadow: 0 0 0 3px rgba(224,122,82,0.32); }
 
 .site-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 6px 0; }
 .site-card { display: flex; gap: 13px; align-items: center; background: var(--paper); border: 1px solid var(--line);
