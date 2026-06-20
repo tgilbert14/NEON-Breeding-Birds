@@ -20,7 +20,24 @@ species_level_only <- function(d){
 # stable species->color by primary detection method (no family in the basic package)
 METHOD_COLS <- c(singing = "#1a7f37", calling = "#2f7fb5", visual = "#c1502e",
                  drumming = "#9c6644", "non-vocal" = "#9c6644", other = "#9aa6b2", unknown = "#9aa6b2")
-method_col <- function(m) { m2 <- ifelse(m %in% names(METHOD_COLS), m, "other"); unname(METHOD_COLS[m2]) }
+# Map compound NEON methods to their dominant breeding-signal component before colouring,
+# so "calling and singing"/"visual and singing" read as the territorial-singing signal they
+# carry instead of dumping into grey "other". A singing component IS a breeding signal.
+canon_method <- function(m) {
+  m <- tolower(trimws(as.character(m)))
+  ifelse(is.na(m) | m == "", "unknown",
+  ifelse(grepl("singing", m), "singing",
+  ifelse(grepl("drumming", m), "drumming",
+  ifelse(grepl("calling", m), "calling",
+  ifelse(grepl("visual",  m), "visual",
+  ifelse(grepl("flyover", m), "flyover", m))))))
+}
+method_col <- function(m) { m2 <- canon_method(m); m2 <- ifelse(m2 %in% names(METHOD_COLS), m2, "other"); unname(METHOD_COLS[m2]) }
+# Flyovers are birds passing overhead, NOT holding a breeding territory at the point
+# (IMBCR/BBS convention excludes them from a breeding-density index). Quarantine them
+# from the detection index so 300–500-bird flyover flocks don't distort it. Kept in the
+# raw data and the QC/profile surfaces — only excluded from the index denominator-math.
+is_flyover <- function(x) grepl("flyover", tolower(as.character(x)), fixed = FALSE)
 
 # ---------------------------------------------------------------------------
 # species_board(): one row per species — the Bird Board. ubiquity = % of points
@@ -31,26 +48,33 @@ method_col <- function(m) { m2 <- ifelse(m %in% names(METHOD_COLS), m, "other");
 species_board <- function(obs, points, nvis) {
   sp <- species_level_only(obs); if (is.null(sp) || !nrow(sp)) return(NULL)
   np <- max(1L, nrow(points)); nv <- max(1L, nvis)
+  # flyovers are summed for honest total_birds/detections, but EXCLUDED from the
+  # breeding detection index (index_birds) — passing flocks aren't territory holders.
+  sp$.fly <- is_flyover(sp$detectionMethod)
   sp %>% dplyr::group_by(.data$scientificName) %>%
     dplyr::summarise(
       vernacular = mode_chr(.data$vernacularName),
       detections = dplyr::n(),
       total_birds = sum(.data$clusterSize, na.rm = TRUE),
+      index_birds = sum(.data$clusterSize[!.data$.fly], na.rm = TRUE),   # flyovers removed
+      flyover_birds = sum(.data$clusterSize[.data$.fly], na.rm = TRUE),
       n_points = dplyr::n_distinct(.data$pointkey),
       n_grids  = dplyr::n_distinct(.data$plotID),
       mean_cluster = round(mean(.data$clusterSize, na.rm = TRUE), 2),
       method = mode_chr(.data$detectionMethod),
       .groups = "drop") %>%
     dplyr::mutate(ubiquity = round(100 * .data$n_points / np, 1),
-                  index = round(.data$total_birds / nv, 3)) %>%   # detection index: birds / point-count
+                  index = round(.data$index_birds / nv, 3)) %>%   # detection index: breeding birds / point-count (flyovers excluded)
     dplyr::arrange(dplyr::desc(.data$index))
 }
 
-# site headline
+# site headline. birds_per_count is the breeding detection index — flyovers excluded
+# (passing flocks aren't territory holders). flyover_birds carries the quarantined
+# count so the UI can disclose it behind a click without altering the headline.
 site_birds <- function(obs, points, nvis) {
   brd <- species_board(obs, points, nvis); if (is.null(brd)) return(NULL)
-  list(n_species = nrow(brd), birds_per_count = round(sum(brd$total_birds) / max(1L, nvis), 2),
-       n_points = nrow(points), n_visits = nvis,
+  list(n_species = nrow(brd), birds_per_count = round(sum(brd$index_birds) / max(1L, nvis), 2),
+       flyover_birds = sum(brd$flyover_birds), n_points = nrow(points), n_visits = nvis,
        top = brd$vernacular[which.max(brd$index)] %||% brd$scientificName[which.max(brd$index)])
 }
 
@@ -73,7 +97,24 @@ chao2_points <- function(obs, points) {
   if (S == 0 || m < 2) return(NULL)
   corr <- (m - 1) / m
   chao <- if (Q2 > 0) S + corr * Q1^2 / (2 * Q2) else S + corr * Q1 * (Q1 - 1) / 2
-  list(S_obs = S, chao2 = round(chao, 1), m = m, Q1 = Q1, Q2 = Q2, unstable = Q2 < 3)
+  f0 <- max(0, chao - S)   # estimated undetected species
+  # analytic log-normal 95% CI for the Chao2 estimate (Chao 1987 variance of the
+  # added f0 term, Colwell et al. 2012 eq. for the asymmetric log-normal interval).
+  var_f0 <- if (Q2 > 0)
+    corr * (Q1 * (Q1 - 1)) / (2 * (Q2 + 1)) +
+      corr^2 * (Q1 * (2 * Q1 - 1)^2) / (4 * (Q2 + 1)^2) +
+      corr^2 * (Q1^2 * Q2 * (Q1 - 1)^2) / (4 * (Q2 + 1)^4)
+  else
+    corr * (Q1 * (Q1 - 1)) / 2 + corr^2 * (Q1 * (2 * Q1 - 1)^2) / 4 -
+      corr^2 * (Q1^4) / (4 * chao)
+  var_f0 <- max(var_f0, 0)
+  ci_lo <- ci_hi <- NA_real_
+  if (f0 > 0 && var_f0 > 0) {
+    K <- exp(1.96 * sqrt(log(1 + var_f0 / f0^2)))
+    ci_lo <- S + f0 / K; ci_hi <- S + f0 * K
+  } else if (f0 == 0) { ci_lo <- ci_hi <- S }
+  list(S_obs = S, chao2 = round(chao, 1), m = m, Q1 = Q1, Q2 = Q2, unstable = Q2 < 3,
+       ci_lo = round(ci_lo, 1), ci_hi = round(ci_hi, 1))
 }
 
 # sample-based species accumulation over point-count OCCASIONS (point × year),
@@ -114,6 +155,12 @@ coverage_incidence <- function(Y, T) {                 # sample completeness, 0�
   U <- sum(Y); if (U == 0 || T < 2) return(NA_real_)
   Q1 <- sum(Y == 1); Q2 <- sum(Y == 2)
   1 - (Q1 / U) * ((T - 1) * Q1 / ((T - 1) * Q1 + 2 * max(Q2, 1)))
+}
+# sample-coverage completeness for ONE site's detections (Chao & Jost 2012). The
+# honest completeness story to lead with when the Chao2 point estimate is unstable.
+site_coverage <- function(obs) {
+  si <- site_incidence(obs); if (is.null(si)) return(NA_real_)
+  coverage_incidence(si$Y, si$T)
 }
 hill_incidence <- function(Y) {                        # q1 = exp(Shannon), q2 = invSimpson
   p <- Y / sum(Y); p <- p[p > 0]
@@ -259,6 +306,50 @@ bird_qc <- function(obs, sci, points = NULL) {
 bird_qc_report <- function(obs, sci, points = NULL) {
   q <- bird_qc(obs, sci, points); if (!length(q$sets)) return(NULL)
   do.call(rbind, c(q$sets, list(make.row.names = FALSE)))
+}
+
+# ---------------------------------------------------------------------------
+# Machine-readable column codebook for the CSV downloads (FAIR data dictionary).
+# Documents what every exported column means, its units, and — critically — that
+# observerDistance NA means "distance not estimable" (the former 999 sentinel),
+# plus the index/ubiquity formulas. One row per column; shipped as codebook.csv.
+# ---------------------------------------------------------------------------
+bird_codebook <- function() {
+  data.frame(
+    column = c("scientificName","vernacularName","pointkey","plotID","pointID","year","bout",
+               "observerDistance","detectionMethod","clusterSize","taxonRank","is_species",
+               "index","ubiquity","detections","total_birds","mean_cluster","n_points","n_grids",
+               "S_obs","chao2","coverage","S_rare","birds_per_count","pct_singing"),
+    units = c("","","","","","year","bout #","metres","category","# birds","","logical",
+              "birds / point-count","% of points","# detection rows","# birds","# birds","# points","# grids",
+              "# species","# species","0–1","# species","birds / point-count","% of detections"),
+    description = c(
+      "Accepted scientific (Latin) name of the species detected.",
+      "Common (English) name; one accepted scientificName should map to one vernacular.",
+      "Point identifier = plotID_pointID; the fixed spot an observer stands for a 6-minute count.",
+      "NEON plot (grid) identifier.",
+      "Point identifier within a plot.",
+      "Calendar year of the point-count.",
+      "Bout (visit) number within the breeding season; a point may be counted 1–2× per year.",
+      "Observer-ESTIMATED distance from observer to bird, in metres. NA = distance NOT ESTIMABLE (flocks / flyovers / detected-but-far; the former 999/9999 sentinel, recoded to NA at build). NA is not 0 — it means no usable distance.",
+      "How the bird was first detected (singing / calling / visual / drumming / flyover / compound, e.g. 'visual and singing').",
+      "Number of birds in the detection (a flock counts as one detection row with clusterSize > 1).",
+      "Taxonomic rank of the identification (species / subspecies / genus / …).",
+      "TRUE if identified to species level (genus-only 'sp.' and slash morphospecies are FALSE and excluded from richness).",
+      "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population — detectability differs by species.",
+      "Naive occupancy floor = % of points where the species was EVER detected. Less count-biased than the index, but still effort/detection-dependent (under-counts quiet/secretive birds).",
+      "Number of detection rows for the species (a count of records, not birds).",
+      "Total birds summed across all detections (includes flyovers; the index excludes them).",
+      "Mean clusterSize across the species' detections.",
+      "Number of distinct points where the species was detected.",
+      "Number of distinct grids (plots) where the species was detected.",
+      "Observed species richness at the site (species detected).",
+      "Chao2 incidence-based richness estimate (a bias-corrected MINIMUM; unstable when <3 species are detected at exactly two occasions). Chao 1987.",
+      "Sample-coverage completeness, 0–1 (fraction of the community detected). Chao & Jost 2012.",
+      "Species richness RAREFIED to a common number of point-count occasions across sites (incidence rarefaction; Colwell et al. 2012) — comparable across sites of unequal effort.",
+      "Site detection index = total breeding birds (flyovers excluded) / point-counts run.",
+      "Singing share = % of detections where the bird was singing (a habitat/detectability signature)."),
+    stringsAsFactors = FALSE)
 }
 
 # per-POINT (grid) summary for the map: richness + birds/visit per point

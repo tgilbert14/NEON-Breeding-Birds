@@ -30,6 +30,14 @@ build_site <- function(site) {
   r <- readRDS(f)
   cd <- tibble::as_tibble(r$brd_countdata); pp <- tibble::as_tibble(r$brd_perpoint)
   num <- function(x) suppressWarnings(as.numeric(x))
+  # NEON codes "distance not estimable" (flocks / flyovers / detected-but-far) as the
+  # sentinel observerDistance == 999 (occasionally 9999) — a placeholder, NOT a metre
+  # measurement. Recode to NA so the 999 spike (~0.3% of detections, 28 sites) cannot
+  # (a) masquerade as a real long-range visual ID in bird_qc()'s "visualfar" flag,
+  # (b) leak into the raw distance shown in the profile table / per-species CSV, or
+  # (c) pollute any distance summary. It is already truncated out of distance_decay
+  # (<=200 m); NA routes it into the honest missing-distance accounting instead.
+  na_sentinel <- function(x) { x <- num(x); ifelse(x %in% c(999, 9999), NA_real_, x) }
   pk <- function(plot, pt) paste(plot, pt, sep = "_")
 
   obs <- cd %>%
@@ -39,7 +47,7 @@ build_site <- function(site) {
       year = as.integer(substr(as.character(startDate), 1, 4)), bout = boutNumber, eventID,
       taxonID, scientificName, vernacularName, taxonRank,
       is_species = is_species_rank(taxonRank, scientificName),
-      observerDistance = num(observerDistance), detectionMethod, clusterSize = num(clusterSize),
+      observerDistance = na_sentinel(observerDistance), detectionMethod, clusterSize = num(clusterSize),
       sexOrAge) %>%
     dplyr::filter(!is.na(.data$year))
 
@@ -69,7 +77,7 @@ for (s in SITES) {
   top <- ab$scientificName[which.max(ab$clusterSize)]
   idx[[s]] <- data.frame(site = s, n_species = length(unique(sp$scientificName)),
                          n_points = nrow(b$points), n_visits = b$meta$n_visits,
-                         birds_per_count = round(sum(sp$clusterSize) / b$meta$n_visits, 2),
+                         birds_per_count = round(sum(sp$clusterSize[!grepl("flyover", tolower(sp$detectionMethod))]) / b$meta$n_visits, 2),  # flyovers excluded — match the live species_board() breeding index
                          top_species = top, lat = b$meta$lat, lng = b$meta$lng, stringsAsFactors = FALSE)
   cat(sprintf("  %s: %d species, %d points, %d visits, %.2f birds/count, top %s | obs %d | size %s\n",
       s, idx[[s]]$n_species, idx[[s]]$n_points, idx[[s]]$n_visits, idx[[s]]$birds_per_count, top, nrow(b$obs),

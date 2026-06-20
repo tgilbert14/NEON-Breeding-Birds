@@ -128,6 +128,7 @@ ui <- bslib::page_sidebar(
             selectInput("gradMetric", tagList(bs_icon("bar-chart"), " Community metric (y)"),
               choices = c("Richness — effort-rarefied" = "rarefied", "Richness — observed (raw)" = "observed",
                           "Common-species diversity (Hill q1)" = "hill1", "Mean ubiquity" = "ubiquity",
+                          "Singing share (% of detections)" = "singing",
                           "Birds per count (detection index)" = "index"), selected = "rarefied", width = "240px"),
             radioButtons("gradX", "Climate axis (x)", inline = TRUE,
               choices = c("Temperature · 46 sites" = "temp", "Precipitation · 19 sites" = "precip"), selected = "temp"))),

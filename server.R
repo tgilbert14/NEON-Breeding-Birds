@@ -85,7 +85,9 @@ server <- function(input, output, session) {
         hero(sb$n_points, "count points", icon="geo", tone="pine",
           info=info_pop("Count points", p("The fixed spots where an observer stands and records every bird seen or heard in a ", tags$b("6-minute count"), ". NEON returns to the same points each breeding season."))),
         hero(sb$birds_per_count, "birds / count", icon="soundwave", tone="gold",
-          info=info_pop("Birds per count", p("Average birds tallied in one 6-minute count — a ", tags$b("detection index, not a population"), ". Loud, conspicuous species inflate it; quiet, skulking ones are undercounted, so it can't be compared between species as abundance."))),
+          info=info_pop("Birds per count", p("Average birds tallied in one 6-minute count — a ", tags$b("detection index, not a population"), ". Loud, conspicuous species inflate it; quiet, skulking ones are undercounted, so it can't be compared between species as abundance."),
+            p(tags$b("Flyovers are excluded."), " Birds passing overhead aren't holding a territory at the point, so they don't count toward this breeding index (IMBCR/BBS convention)",
+              if (!is.null(sb$flyover_birds) && sb$flyover_birds > 0) HTML(sprintf(" — %s flyover bird%s quarantined here", fmt_int(sb$flyover_birds), if (sb$flyover_birds == 1) "" else "s")), "."))),
         hero(sb$n_visits, "point-counts run", icon="clipboard-check", tone="terra",
           info=info_pop("Point-counts run", p("The total number of ", tags$b("6-minute counts"), " performed here. A point counted twice in one year counts as two — this is the effort behind the ", tags$b("birds / count"), " average.")))))
   })
@@ -116,7 +118,13 @@ server <- function(input, output, session) {
       sprintf("The most-detected bird is the <b>%s</b> (<i>%s</i>), about <b>%.2f</b> per count; the most <i>widespread</i> is the <b>%s</b>, heard at <b>%.0f%%</b> of points.",
         nm(top), top$scientificName, top$index, nm(ubi), ubi$ubiquity))
     if (is.finite(sing_share)) pts <- c(pts, sprintf("<b>%d%%</b> of detections were birds <i>singing</i> on territory — the rest were call notes or birds seen, the texture of a breeding-season morning.", sing_share))
-    if (!is.null(ch)) pts <- c(pts, sprintf("Observers found <b>%d</b> species; <b>Chao2</b> (across %s survey occasions) estimates at least <b>%.0f</b> really use the site — point counts miss secretive, nocturnal, and rare birds.", ch$S_obs, fmt_int(ch$m), ch$chao2))
+    if (!is.null(ch)) {
+      cov <- site_coverage(rv$obs)
+      if (ch$unstable && is.finite(cov))
+        pts <- c(pts, sprintf("Observers found <b>%d</b> species, and sample <b>coverage is %.0f%%</b> — almost every species present was detected. (A Chao2 richness extrapolation is unstable here, so read the completeness, not a single projected number.)", ch$S_obs, round(100 * cov)))
+      else
+        pts <- c(pts, sprintf("Observers found <b>%d</b> species; <b>Chao2</b> (across %s survey occasions) estimates at least <b>%.0f</b> really use the site — point counts miss secretive, nocturnal, and rare birds.", ch$S_obs, fmt_int(ch$m), ch$chao2))
+    }
     pts <- c(pts, "Remember: these are a <b>detection index</b>, not a census — a loud species and a quiet one at equal density give unequal counts. Open any species' profile for its detectability-by-distance.")
     tags$ul(class="insight-list", lapply(pts, function(t) tags$li(HTML(t))))
   })
@@ -137,8 +145,20 @@ server <- function(input, output, session) {
   })
   output$chaoBanner <- renderUI({
     ch <- chao2_points(rv$obs, rv$points); req(!is.null(ch))
-    insight_banner("calculator", tone="gold", HTML(sprintf("Observed <b>%d</b> species across %d survey occasions (point × year). <b>Chao2</b> estimates <span class='ci-hero'>%.0f</span> use the site%s — roughly <b>%.0f</b> remain undetected by point counts.",
-      ch$S_obs, ch$m, ch$chao2, if (ch$unstable) " (a rough floor)" else "", max(0, round(ch$chao2 - ch$S_obs)))))
+    cov <- site_coverage(rv$obs)
+    ci_txt <- if (is.finite(ch$ci_lo) && is.finite(ch$ci_hi)) sprintf("%.0f–%.0f species", ch$ci_lo, ch$ci_hi) else "wide"
+    # Chao2 estimate + its analytic 95% CI, always available behind a click (Chao 1987).
+    chao_pop <- info_pop("Chao2 estimate",
+      p(tags$b("Chao2"), " estimates ", tags$b(sprintf("%.0f", ch$chao2)), " species use the site (95% CI ", tags$b(ci_txt), "; Chao 1987 log-normal interval), so roughly ", tags$b(sprintf("%.0f", max(0, round(ch$chao2 - ch$S_obs)))), " remain undetected."),
+      if (ch$unstable) p(class="pop-caveat", bsicons::bs_icon("exclamation-triangle"),
+        sprintf(" Only %d species were detected at exactly two occasions (Q2=%d), so this point estimate is a 3×-style extrapolation — read the CI and the coverage, not the single number.", ch$Q2, ch$Q2)))
+    if (ch$unstable && is.finite(cov)) {
+      # lead with the honest completeness story; the volatile point estimate hides behind the click
+      insight_banner("calculator", tone="gold", HTML(sprintf("Observed <b>%d</b> species across %d survey occasions (point × year). Sample <b>coverage is %.0f%%</b> — almost every species present was detected, so few remain unseen. A Chao2 richness extrapolation is unstable here (only %d species seen twice). ", ch$S_obs, ch$m, round(100 * cov), ch$Q2)), chao_pop)
+    } else {
+      insight_banner("calculator", tone="gold", HTML(sprintf("Observed <b>%d</b> species across %d survey occasions (point × year). <b>Chao2</b> estimates <span class='ci-hero'>%.0f</span> use the site (95%% CI %s) — roughly <b>%.0f</b> remain undetected by point counts.",
+        ch$S_obs, ch$m, ch$chao2, ci_txt, max(0, round(ch$chao2 - ch$S_obs)))), chao_pop)
+    }
   })
 
   # ---- Bird Board (flagship) ----
@@ -242,7 +262,8 @@ server <- function(input, output, session) {
     div(div(class="plot-profile-wrap", body), div(class="qc-toolbar",
       tags$button(class="smt-snap-btn", type="button", onclick="smtSaveQcCard()", bsicons::bs_icon("download"), " Save species card (PNG)"),
       downloadButton("spCsv", "Download detections (CSV)", class="smt-clear-btn"),
-      if (length(qf)) downloadButton("qcReportCsv", "Download QC report (CSV)", class="smt-clear-btn")),
+      if (length(qf)) downloadButton("qcReportCsv", "Download QC report (CSV)", class="smt-clear-btn"),
+      downloadButton("codebookCsv", "Download column codebook (CSV)", class="smt-clear-btn")),
       uiOutput("birdQcInspector"))
   })
 
@@ -276,6 +297,11 @@ server <- function(input, output, session) {
     filename = function() sprintf("NEON-Birds_%s_%s.csv", gsub("[^A-Za-z]","",substr(rv$sp %||% "species",1,24)), format(Sys.Date(),"%Y%m%d")),
     content = function(file){ sci <- rv$sp; req(sci); d <- species_detail(rv$obs, sci); req(!is.null(d))
       utils::write.csv(d[, c("scientificName","vernacularName","pointkey","plotID","year","bout","observerDistance","detectionMethod","clusterSize")], file, row.names=FALSE, na="") },
+    contentType="text/csv")
+  # machine-readable column dictionary for every CSV export (FAIR codebook)
+  output$codebookCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_codebook_%s.csv", format(Sys.Date(),"%Y%m%d")),
+    content = function(file) utils::write.csv(bird_codebook(), file, row.names=FALSE, na=""),
     contentType="text/csv")
 
   # ---- Map (grids) ----
@@ -355,6 +381,7 @@ server <- function(input, output, session) {
       observed = list(col = "n_species",     lab = "Species richness (observed — effort differs)"),
       hill1    = list(col = "hill_q1",       lab = "Common-species diversity (Hill q1)"),
       ubiquity = list(col = "mean_ubiquity", lab = "Community mean ubiquity (% of points)"),
+      singing  = list(col = "pct_singing",  lab = "Singing share (% of detections — habitat/detectability signature)"),
       index    = list(col = "birds_per_count", lab = "Birds per count (detection index — biome-biased)"),
       list(col = "S_rare", lab = "Species richness (rarefied)"))
     if (!yc$col %in% names(g)) yc <- list(col = "n_species", lab = "Species richness (observed)")
@@ -384,6 +411,15 @@ server <- function(input, output, session) {
         marker = list(symbol = "diamond", size = 18, color = "#e8a317", line = list(color = "#fff", width = 1.6)),
         hovertemplate = paste0("viewing ", ir$site, "<extra></extra>")) }
     rho <- suppressWarnings(stats::cor(g$xx, g$yy, method = "spearman"))
+    n_sites <- nrow(g)
+    # Fisher-z 95% CI for Spearman ρ (SE = 1.03/sqrt(n-3); Fieller et al. 1957) — computed
+    # LIVE so the interval always matches the dots as the user switches metric/unit.
+    ci_str <- ""
+    if (is.finite(rho) && n_sites > 4 && abs(rho) < 1) {
+      z <- atanh(rho); se <- 1.03 / sqrt(n_sites - 3)
+      lo <- tanh(z - 1.96 * se); hi <- tanh(z + 1.96 * se)
+      ci_str <- sprintf(", 95%% CI [%.2f, %.2f], n = %d", lo, hi, n_sites)
+    } else if (is.finite(rho)) ci_str <- sprintf(", n = %d", n_sites)
     conf <- if (identical(metric, "observed")) "biome, latitude &amp; survey effort (raw richness tracks effort — see the rarefied metric)" else "biome &amp; latitude"
     # both caveats stacked at the TOP, so they never collide with the x-axis title
     # + legend at the bottom (the overlap fix).
@@ -391,7 +427,7 @@ server <- function(input, output, session) {
     ann <- list(
       list(text = sprintf("Every dot is %s · %s × %s · dot size = survey effort (points)", nshown, if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
            x = 0, y = 1.15, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11)),
-      list(text = sprintf("Spearman ρ = %.2f · space-for-time (46 places, not one site warming) — correlational, confounded by %s", ifelse(is.na(rho), 0, rho), conf),
+      list(text = sprintf("Spearman ρ = %.2f%s · space-for-time (46 places, not one site warming) — correlational, confounded by %s", ifelse(is.na(rho), 0, rho), ci_str, conf),
            x = 0, y = 1.075, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)))
     p %>% plotly_theme() %>% plotly::layout(xaxis = list(title = list(text = xlab, standoff = 10)),
       yaxis = list(title = yc$lab, rangemode = "tozero"),
