@@ -126,3 +126,19 @@ GRADIENT <- local({
   g$biome <- biome_of(g$site); g$biome_col <- biome_col(g$biome); g$biome_lab <- unname(BIOME_LAB[g$biome])
   g[order(g$mat_c), ]
 })
+
+# The app mascot — a flat (no-gradient, no-id so it's safely reusable) cheerful
+# goldfinch in the Field Guide accent. Used as the loading spinner, the splash
+# guide, and the celebration hop. Parts are classed so the CSS can wiggle "ears"
+# (the wing tufts) / blink eyes.
+MASCOT_CRITTER <- htmltools::HTML(paste0(
+  '<svg class="mascot" viewBox="0 0 120 120" aria-hidden="true">',
+  '<g fill="#f0b94a"><path d="M54,30 L57,16 L62,30 Z"/><path d="M62,30 L65,14 L70,30 Z"/></g>',
+  '<ellipse cx="60" cy="66" rx="32" ry="33" fill="#ffce5a"/>',
+  '<ellipse cx="60" cy="76" rx="19" ry="21" fill="#fff3d6"/>',
+  '<g class="mascot-ear-l"><path d="M30,58 Q14,66 22,86 Q34,80 40,64 Z" fill="#e0714a"/></g>',
+  '<g class="mascot-ear-r"><path d="M90,58 Q106,66 98,86 Q86,80 80,64 Z" fill="#e0714a"/></g>',
+  '<path d="M54,68 L66,68 L60,80 Z" fill="#f0993a"/>',
+  '<g class="mascot-eyes"><circle cx="50" cy="60" r="6.5" fill="#2a160a"/><circle cx="70" cy="60" r="6.5" fill="#2a160a"/>',
+  '<circle cx="48" cy="57.5" r="2.4" fill="#ffffff"/><circle cx="68" cy="57.5" r="2.4" fill="#ffffff"/></g>',
+  '</svg>'))
