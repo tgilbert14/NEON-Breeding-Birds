@@ -230,7 +230,7 @@
     @keyframes bdHalo { 0%,100%{ opacity:.42; transform:scale(1) } 50%{ opacity:.72; transform:scale(1.07) } }
     @keyframes bdDash { to { stroke-dashoffset:-60 } }
     @keyframes bdTwinkle { 0%,100%{ opacity:.25; transform:scale(.7) } 50%{ opacity:1; transform:scale(1.18) } }
-    @keyframes bdShim { 0%,100%{ fill-opacity:.66 } 50%{ fill-opacity:.97 } }
+    @keyframes bdShim { 0%,100%{ fill-opacity:.8 } 50%{ fill-opacity:1 } }
     @media (max-width:760px){ .flybird{ width:152px; top:-4px; right:-10px; opacity:.6 } }
     @media (max-width:430px){ .flybird{ display:none } }
 
@@ -248,7 +248,7 @@
   <header class="hero">
     <div class="wrap">
       <div class="flybird" aria-hidden="true">
-        <svg viewBox="0 0 300 220" role="img" aria-label="A stylized soaring bird">
+        <svg viewBox="0 0 300 220" role="img" aria-label="A low-poly bird in flight, side profile">
           <defs>
             <radialGradient id="bdHalo" cx="50%" cy="46%" r="55%">
               <stop offset="0%" stop-color="#f5b13f" stop-opacity=".55" />
@@ -266,37 +266,41 @@
               <stop offset="100%" stop-color="#e0714a" />
             </linearGradient>
           </defs>
-          <circle class="halo" cx="150" cy="96" r="98" fill="url(#bdHalo)" />
-          <ellipse class="orbit" cx="150" cy="104" rx="132" ry="46" fill="none" stroke="url(#bdStroke)"
-            stroke-width="1.1" opacity=".28" stroke-dasharray="3 9" transform="rotate(-13 150 104)" />
+          <circle class="halo" cx="150" cy="90" r="96" fill="url(#bdHalo)" />
+          <ellipse class="orbit" cx="150" cy="96" rx="134" ry="44" fill="none" stroke="url(#bdStroke)"
+            stroke-width="1.1" opacity=".26" stroke-dasharray="3 9" transform="rotate(-11 150 96)" />
           <g class="bird">
-            <polygon fill="url(#bdFill)" opacity=".96" points="150,40 178,54 159,64 214,60 292,82 198,100 160,124 166,150 170,186 150,168 130,186 134,150 140,124 102,100 8,82 86,60 141,64" />
-            <g stroke="url(#bdStroke)" stroke-width=".7" stroke-opacity=".5" stroke-linejoin="round">
-              <polygon class="facet fa" fill="#fff3d6" points="150,40 141,64 150,86" />
-              <polygon class="facet fb" fill="#ffd98a" points="150,40 150,86 159,64" />
-              <polygon class="facet fc" fill="#ffcf7a" points="178,54 159,64 150,64" />
-              <polygon class="facet fb" fill="#f5b13f" points="150,86 214,60 292,82" />
-              <polygon class="facet fc" fill="#e0714a" points="150,86 292,82 198,100" />
-              <polygon class="facet fa" fill="#e8924a" points="150,86 198,100 150,126" />
-              <polygon class="facet fc" fill="#f5b13f" points="150,86 86,60 8,82" />
-              <polygon class="facet fa" fill="#e0714a" points="150,86 8,82 102,100" />
-              <polygon class="facet fb" fill="#e8924a" points="150,86 102,100 150,126" />
-              <polygon class="facet fb" fill="#eaa050" points="150,126 160,124 150,150" />
-              <polygon class="facet fc" fill="#eaa050" points="150,126 140,124 150,150" />
-              <polygon class="facet fa" fill="#e0714a" points="150,150 166,150 170,186" />
-              <polygon class="facet fc" fill="#c85a38" points="150,150 170,186 150,168" />
-              <polygon class="facet fb" fill="#c85a38" points="150,150 150,168 130,186" />
-              <polygon class="facet fa" fill="#e0714a" points="150,150 130,186 134,150" />
+            <polygon fill="url(#bdFill)" opacity=".5" points="30,112 58,92 82,90 116,106 208,36 150,120 236,110 272,100 248,122 268,138 232,128 146,142 96,132 54,122" />
+            <g stroke="rgba(255,240,210,.4)" stroke-width=".7" stroke-linejoin="round">
+              <polygon class="facet fa" fill="#fff1d0" points="30,112 58,92 54,122" />
+              <polygon class="facet fb" fill="#f5a93a" points="58,92 64,105 54,122" />
+              <polygon class="facet fc" fill="#ffd24a" points="58,92 82,90 64,105" />
+              <polygon class="facet fa" fill="#ef8a3c" points="64,105 82,90 116,106" />
+              <polygon class="facet fb" fill="#ffcf6a" points="64,105 116,106 96,132" />
+              <polygon class="facet fc" fill="#f5a93a" points="64,105 96,132 54,122" />
+              <polygon class="facet fa" fill="#ffd24a" points="116,106 184,54 166,74" />
+              <polygon class="facet fb" fill="#3fb4a8" points="184,54 208,36 166,74" />
+              <polygon class="facet fc" fill="#ef8a3c" points="116,106 166,74 150,120" />
+              <polygon class="facet fa" fill="#b14a6e" points="166,74 208,36 150,120" />
+              <polygon class="facet fb" fill="#ffcf6a" points="116,106 150,120 96,132" />
+              <polygon class="facet fc" fill="#ef8a3c" points="96,132 150,120 146,142" />
+              <polygon class="facet fa" fill="#e0714a" points="150,120 188,124 146,142" />
+              <polygon class="facet fb" fill="#b14a6e" points="150,120 236,110 188,124" />
+              <polygon class="facet fc" fill="#7c5aa6" points="188,124 236,110 232,128" />
+              <polygon class="facet fa" fill="#ef8a3c" points="188,124 232,128 146,142" />
+              <polygon class="facet fb" fill="#e0714a" points="236,110 272,100 248,122" />
+              <polygon class="facet fc" fill="#b14a6e" points="236,110 248,122 232,128" />
+              <polygon class="facet fa" fill="#3fb4a8" points="248,122 268,138 232,128" />
             </g>
+            <circle cx="66" cy="104" r="2.6" fill="#2a160a" />
+            <circle cx="65" cy="103" r=".9" fill="#fff1d0" />
           </g>
           <g fill="#fff3d6">
-            <circle class="spark s1" cx="292" cy="82" r="3.4" />
-            <circle class="spark s2" cx="8" cy="82" r="3.4" />
-            <circle class="spark s3" cx="150" cy="40" r="3" />
-            <circle class="spark s4" cx="214" cy="60" r="2.2" />
-            <circle class="spark s2" cx="86" cy="60" r="2.2" />
-            <circle class="spark s3" cx="170" cy="186" r="2" />
-            <circle class="spark s4" cx="130" cy="186" r="2" />
+            <circle class="spark s1" cx="208" cy="36" r="3.4" />
+            <circle class="spark s2" cx="272" cy="100" r="2.4" />
+            <circle class="spark s3" cx="268" cy="138" r="2.2" />
+            <circle class="spark s4" cx="82" cy="90" r="2.2" />
+            <circle class="spark s2" cx="30" cy="112" r="2.4" />
           </g>
         </svg>
       </div>
