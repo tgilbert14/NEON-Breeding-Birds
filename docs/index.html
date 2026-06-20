@@ -4,20 +4,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>NEON Breeding Bird Explorer — the Explorer Suite by Desert Data Labs</title>
+  <title>NEON Bird Explorer — the Explorer Suite by Desert Data Labs</title>
   <meta name="description"
-    content="Breeding-bird point counts turned into a living field guide: which species sing at each NEON site, how rich the community is, and how it shifts across 46 field sites and years. Honest statistics, instant loads." />
+    content="Bird point counts turned into a living field guide: which species sing at each NEON site, how rich the community is, and how it shifts across 46 field sites and years. Honest statistics, instant loads." />
   <meta name="theme-color" content="#1c1408" />
 
   <!-- Open Graph / social card. Absolute URLs = the GitHub Pages domain for this repo. -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://tgilbert14.github.io/NEON-Breeding-Birds/" />
-  <meta property="og:title" content="NEON Breeding Bird Explorer — Desert Data Labs" />
+  <meta property="og:title" content="NEON Bird Explorer — Desert Data Labs" />
   <meta property="og:description"
     content="Real NEON breeding-bird point counts across 46 sites — who's singing where, how communities shift from arctic tundra to Caribbean dry forest. Honest stats, instant loads." />
   <meta property="og:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="NEON Breeding Bird Explorer — Desert Data Labs" />
+  <meta name="twitter:title" content="NEON Bird Explorer — Desert Data Labs" />
   <meta name="twitter:description"
     content="Real NEON breeding-bird data across 46 sites — a continent of bird communities. Honest stats, instant loads." />
   <meta name="twitter:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
@@ -213,30 +213,31 @@
     html:not(.js) .cnode-lab { font-size:.95rem; margin-top:0 }
 
     /* ---------- digital field-guide bird (top-right hero accent) ---------- */
-    .flybird { position:absolute; top:-12px; right:-8px; width:clamp(160px,26vw,320px);
-      z-index:-1; pointer-events:none; animation: bdFloat 7.5s ease-in-out infinite; }
+    .flybird { position:absolute; top:-6px; right:-6px; width:clamp(150px,23vw,290px);
+      z-index:-1; pointer-events:none; animation: cbBob 4.6s ease-in-out infinite; }
     .flybird svg { width:100%; height:auto; overflow:visible; display:block }
-    .flybird .halo { transform-box:fill-box; transform-origin:center; animation: bdHalo 5s ease-in-out infinite }
-    .flybird .bird { transform-box:fill-box; transform-origin:center;
-      filter:drop-shadow(0 0 7px rgba(245,177,63,.55)) drop-shadow(0 0 17px rgba(224,113,74,.32));
-      animation: bdBreathe 4.4s ease-in-out infinite }
-    .flybird .orbit { animation: bdDash 4.5s linear infinite }
-    .flybird .facet { animation: bdShim 3.6s ease-in-out infinite }
-    .flybird .fb { animation-delay:-1.2s } .flybird .fc { animation-delay:-2.4s }
-    .flybird .spark { transform-box:fill-box; transform-origin:center; animation: bdTwinkle 3.2s ease-in-out infinite }
+    .flybird .halo { transform-box:fill-box; transform-origin:center; animation: cbHalo 5s ease-in-out infinite }
+    .flybird .bird { transform-box:fill-box; transform-origin:50% 70%;
+      filter:drop-shadow(0 7px 14px rgba(20,12,6,.4)) drop-shadow(0 0 13px rgba(245,177,63,.42));
+      animation: cbSquish 4.6s ease-in-out infinite }
+    .flybird .eyes { transform-box:fill-box; transform-origin:center; animation: cbBlink 5.4s ease-in-out infinite }
+    .flybird .wing-l { transform-box:fill-box; transform-origin:72% 14%; animation: cbFlutL 3.3s ease-in-out infinite }
+    .flybird .wing-r { transform-box:fill-box; transform-origin:28% 14%; animation: cbFlutR 3.3s ease-in-out infinite }
+    .flybird .spark { transform-box:fill-box; transform-origin:center; animation: cbTwinkle 3.2s ease-in-out infinite }
     .flybird .s2 { animation-delay:-1.1s } .flybird .s3 { animation-delay:-2.2s } .flybird .s4 { animation-delay:-.6s }
-    @keyframes bdFloat { 0%,100%{ transform:translateY(0) rotate(-1deg) } 50%{ transform:translateY(-12px) rotate(1.2deg) } }
-    @keyframes bdBreathe { 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.03) } }
-    @keyframes bdHalo { 0%,100%{ opacity:.42; transform:scale(1) } 50%{ opacity:.72; transform:scale(1.07) } }
-    @keyframes bdDash { to { stroke-dashoffset:-60 } }
-    @keyframes bdTwinkle { 0%,100%{ opacity:.25; transform:scale(.7) } 50%{ opacity:1; transform:scale(1.18) } }
-    @keyframes bdShim { 0%,100%{ fill-opacity:.8 } 50%{ fill-opacity:1 } }
-    @media (max-width:760px){ .flybird{ width:152px; top:-4px; right:-10px; opacity:.6 } }
+    @keyframes cbBob { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-8px) } }
+    @keyframes cbSquish { 0%,100%{ transform:scale(1,1) } 50%{ transform:scale(1.02,.98) } }
+    @keyframes cbHalo { 0%,100%{ opacity:.4; transform:scale(1) } 50%{ opacity:.7; transform:scale(1.06) } }
+    @keyframes cbBlink { 0%,88%,100%{ transform:scaleY(1) } 93%{ transform:scaleY(.08) } }
+    @keyframes cbFlutL { 0%,100%{ transform:rotate(0deg) } 50%{ transform:rotate(-10deg) } }
+    @keyframes cbFlutR { 0%,100%{ transform:rotate(0deg) } 50%{ transform:rotate(10deg) } }
+    @keyframes cbTwinkle { 0%,100%{ opacity:.25; transform:scale(.7) } 50%{ opacity:1; transform:scale(1.2) } }
+    @media (max-width:760px){ .flybird{ width:150px; top:-2px; right:-8px; opacity:.7 } }
     @media (max-width:430px){ .flybird{ display:none } }
 
     @media (prefers-reduced-motion: reduce){
       .sky::before, .launch, .ccore, .constel.lit .cnode-orb, .constel.lit .ctraces line, .frung.pip-on::before { animation:none !important }
-      .flybird, .flybird .halo, .flybird .bird, .flybird .orbit, .flybird .facet, .flybird .spark { animation:none !important }
+      .flybird, .flybird .halo, .flybird .bird, .flybird .eyes, .flybird .wing-l, .flybird .wing-r, .flybird .spark { animation:none !important }
       .launch::after { display:none }
     }
   </style>
@@ -248,59 +249,67 @@
   <header class="hero">
     <div class="wrap">
       <div class="flybird" aria-hidden="true">
-        <svg viewBox="0 0 300 220" role="img" aria-label="A low-poly bird in flight, side profile">
+        <svg viewBox="0 0 300 250" role="img" aria-label="A cute round goldfinch">
           <defs>
-            <radialGradient id="bdHalo" cx="50%" cy="46%" r="55%">
-              <stop offset="0%" stop-color="#f5b13f" stop-opacity=".55" />
-              <stop offset="45%" stop-color="#e0714a" stop-opacity=".22" />
+            <radialGradient id="cbHalo" cx="50%" cy="48%" r="55%">
+              <stop offset="0%" stop-color="#f5b13f" stop-opacity=".5" />
+              <stop offset="46%" stop-color="#e0714a" stop-opacity=".2" />
               <stop offset="100%" stop-color="#e0714a" stop-opacity="0" />
             </radialGradient>
-            <linearGradient id="bdFill" x1="6%" y1="0%" x2="92%" y2="100%">
-              <stop offset="0%" stop-color="#fff3d6" />
-              <stop offset="38%" stop-color="#ffd98a" />
-              <stop offset="70%" stop-color="#f5b13f" />
-              <stop offset="100%" stop-color="#e0714a" />
-            </linearGradient>
-            <linearGradient id="bdStroke" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#ffd98a" />
-              <stop offset="100%" stop-color="#e0714a" />
+            <radialGradient id="cbBody" cx="40%" cy="30%" r="72%">
+              <stop offset="0%" stop-color="#fff0c4" />
+              <stop offset="52%" stop-color="#ffce5a" />
+              <stop offset="100%" stop-color="#e8a23c" />
+            </radialGradient>
+            <radialGradient id="cbBelly" cx="50%" cy="34%" r="70%">
+              <stop offset="0%" stop-color="#fff8e8" />
+              <stop offset="100%" stop-color="#ffe6ad" />
+            </radialGradient>
+            <linearGradient id="cbWing" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#eaa050" />
+              <stop offset="100%" stop-color="#c85a38" />
             </linearGradient>
           </defs>
-          <circle class="halo" cx="150" cy="90" r="96" fill="url(#bdHalo)" />
-          <ellipse class="orbit" cx="150" cy="96" rx="134" ry="44" fill="none" stroke="url(#bdStroke)"
-            stroke-width="1.1" opacity=".26" stroke-dasharray="3 9" transform="rotate(-11 150 96)" />
+          <circle class="halo" cx="150" cy="126" r="104" fill="url(#cbHalo)" />
           <g class="bird">
-            <polygon fill="url(#bdFill)" opacity=".5" points="30,112 58,92 82,90 116,106 208,36 150,120 236,110 272,100 248,122 268,138 232,128 146,142 96,132 54,122" />
-            <g stroke="rgba(255,240,210,.4)" stroke-width=".7" stroke-linejoin="round">
-              <polygon class="facet fa" fill="#fff1d0" points="30,112 58,92 54,122" />
-              <polygon class="facet fb" fill="#f5a93a" points="58,92 64,105 54,122" />
-              <polygon class="facet fc" fill="#ffd24a" points="58,92 82,90 64,105" />
-              <polygon class="facet fa" fill="#ef8a3c" points="64,105 82,90 116,106" />
-              <polygon class="facet fb" fill="#ffcf6a" points="64,105 116,106 96,132" />
-              <polygon class="facet fc" fill="#f5a93a" points="64,105 96,132 54,122" />
-              <polygon class="facet fa" fill="#ffd24a" points="116,106 184,54 166,74" />
-              <polygon class="facet fb" fill="#3fb4a8" points="184,54 208,36 166,74" />
-              <polygon class="facet fc" fill="#ef8a3c" points="116,106 166,74 150,120" />
-              <polygon class="facet fa" fill="#b14a6e" points="166,74 208,36 150,120" />
-              <polygon class="facet fb" fill="#ffcf6a" points="116,106 150,120 96,132" />
-              <polygon class="facet fc" fill="#ef8a3c" points="96,132 150,120 146,142" />
-              <polygon class="facet fa" fill="#e0714a" points="150,120 188,124 146,142" />
-              <polygon class="facet fb" fill="#b14a6e" points="150,120 236,110 188,124" />
-              <polygon class="facet fc" fill="#7c5aa6" points="188,124 236,110 232,128" />
-              <polygon class="facet fa" fill="#ef8a3c" points="188,124 232,128 146,142" />
-              <polygon class="facet fb" fill="#e0714a" points="236,110 272,100 248,122" />
-              <polygon class="facet fc" fill="#b14a6e" points="236,110 248,122 232,128" />
-              <polygon class="facet fa" fill="#3fb4a8" points="248,122 268,138 232,128" />
+            <g fill="#f0b94a">
+              <path d="M132,74 L137,50 L147,72 Z" />
+              <path d="M148,72 L152,44 L160,72 Z" />
+              <path d="M160,74 L170,52 L165,76 Z" />
             </g>
-            <circle cx="66" cy="104" r="2.6" fill="#2a160a" />
-            <circle cx="65" cy="103" r=".9" fill="#fff1d0" />
+            <g fill="url(#cbWing)">
+              <path d="M182,176 Q214,182 234,198 Q210,202 178,192 Z" />
+              <path d="M180,186 Q210,196 228,208 Q204,210 174,198 Z" opacity=".92" />
+            </g>
+            <g stroke="#e0a040" stroke-width="3.4" stroke-linecap="round" fill="none">
+              <path d="M138,184 L136,206" /><path d="M136,206 l-7,7" /><path d="M136,206 l1,9" /><path d="M136,206 l7,7" />
+              <path d="M164,184 L166,206" /><path d="M166,206 l-7,7" /><path d="M166,206 l-1,9" /><path d="M166,206 l7,7" />
+            </g>
+            <ellipse cx="150" cy="130" rx="62" ry="66" fill="url(#cbBody)" />
+            <ellipse cx="150" cy="152" rx="40" ry="44" fill="url(#cbBelly)" />
+            <path class="wing wing-l" d="M104,102 Q76,120 86,162 Q106,154 118,116 Q114,106 104,102 Z" fill="url(#cbWing)" />
+            <path class="wing wing-r" d="M196,102 Q224,120 214,162 Q194,154 182,116 Q186,106 196,102 Z" fill="url(#cbWing)" />
+            <g fill="#f0897e" opacity=".34">
+              <ellipse cx="119" cy="128" rx="11" ry="7.5" />
+              <ellipse cx="181" cy="128" rx="11" ry="7.5" />
+            </g>
+            <path d="M141,120 L159,120 L150,134 Z" fill="#f0993a" />
+            <path d="M144,127 L156,127 L150,133 Z" fill="#d9772a" />
+            <g class="eyes">
+              <circle cx="128" cy="107" r="13.5" fill="#2a160a" />
+              <circle cx="172" cy="107" r="13.5" fill="#2a160a" />
+              <circle cx="123" cy="101" r="4.8" fill="#ffffff" />
+              <circle cx="167" cy="101" r="4.8" fill="#ffffff" />
+              <circle cx="133" cy="112" r="2.1" fill="#ffffff" opacity=".75" />
+              <circle cx="177" cy="112" r="2.1" fill="#ffffff" opacity=".75" />
+            </g>
           </g>
           <g fill="#fff3d6">
-            <circle class="spark s1" cx="208" cy="36" r="3.4" />
-            <circle class="spark s2" cx="272" cy="100" r="2.4" />
-            <circle class="spark s3" cx="268" cy="138" r="2.2" />
-            <circle class="spark s4" cx="82" cy="90" r="2.2" />
-            <circle class="spark s2" cx="30" cy="112" r="2.4" />
+            <circle class="spark s1" cx="58" cy="74" r="3.2" />
+            <circle class="spark s2" cx="244" cy="86" r="2.6" />
+            <circle class="spark s3" cx="214" cy="44" r="2.2" />
+            <circle class="spark s4" cx="86" cy="186" r="2.2" />
+            <circle class="spark s2" cx="240" cy="160" r="2.4" />
           </g>
         </svg>
       </div>
@@ -315,8 +324,8 @@
       </span>
 
       <div class="eyebrow">The NEON Explorer Suite · Consumers</div>
-      <h1>NEON Breeding Birds</h1>
-      <p class="lead">Breeding-bird point counts turned into a living <b>field guide</b>: which species
+      <h1>NEON Birds</h1>
+      <p class="lead">Bird point counts turned into a living <b>field guide</b>: which species
         sing at each NEON site, how <b>rich</b> the community is, and how it shifts across 46 field sites
         and years — from arctic tundra to Caribbean dry forest, on real breeding-season point-count data.</p>
 
@@ -336,8 +345,8 @@
       <div class="constel is-noscript" data-constel style="--n:7;">
         <svg class="ctraces" viewBox="-340 -340 680 680" aria-hidden="true"><g data-traces></g></svg>
 
-        <a class="ccore" data-core href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/" aria-label="Launch the NEON Breeding Birds app">
-          <span class="clabel">Breeding Birds<span class="csub">launch &rarr;</span></span>
+        <a class="ccore" data-core href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/" aria-label="Launch the NEON Birds app">
+          <span class="clabel">Birds<span class="csub">launch &rarr;</span></span>
         </a>
 
         <a class="cnode" style="--i:0; --hc:45,212,191" href="https://tgilbert14.github.io/NEON-Driver-Cascade/" aria-label="NEON Driver Cascade"><span class="cnode-orb"><span class="cnode-dot" aria-hidden="true"></span><span class="cnode-lab">Driver Cascade</span></span></a>
@@ -356,7 +365,7 @@
     <div class="wrap">
       <span class="kick">How the field guide reads</span>
       <h2>Every count starts with someone listening.</h2>
-      <p>Breeding birds are surveyed by timed point counts: an observer stands, listens, and watches.
+      <p>Birds are surveyed by timed point counts: an observer stands, listens, and watches.
         The field guide follows that same path — from a single count to a continent of communities, with
         the statistics shown at every step.</p>
       <div class="flow" data-flow>
@@ -396,7 +405,7 @@
 
   <footer>
     <div class="wrap">
-      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer">Want a custom data app like these for your project?</a><br>
+      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer">Want a custom data app like these for your project?</a><br>
       Built on the NEON <a href="https://data.neonscience.org/data-products/DP1.10003.001" target="_blank"
         rel="noopener">Breeding Landbird Point Counts</a> product by <b>Desert Data Labs</b> &middot; Tucson, AZ.
       Data: National Ecological Observatory Network (operated by Battelle, funded by NSF). Educational tools,

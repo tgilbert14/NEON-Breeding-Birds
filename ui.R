@@ -1,9 +1,9 @@
 # ===========================================================================
-# NEON Breeding Bird Explorer — ui.R
+# NEON Bird Explorer — ui.R
 # ===========================================================================
 ui <- bslib::page_sidebar(
   theme = app_theme, title = NULL,
-  window_title = "NEON Breeding Bird Explorer", fillable = FALSE,
+  window_title = "NEON Bird Explorer", fillable = FALSE,
   tags$head(
     tags$link(rel = "preconnect", href = "https://fonts.googleapis.com"),
     tags$link(rel = "preconnect", href = "https://fonts.gstatic.com", crossorigin = NA),
@@ -21,7 +21,7 @@ ui <- bslib::page_sidebar(
   sidebar = sidebar(
     width = 320, class = "control-deck",
     div(class = "brand", div(class = "brand-mark", "\U0001F426"),
-      div(div(class = "brand-title", "Breeding Bird Explorer"), div(class = "brand-sub", "NEON field observatory"))),
+      div(div(class = "brand-title", "Bird Explorer"), div(class = "brand-sub", "NEON field observatory"))),
     selectInput("stateSel", label = tagList(bs_icon("geo-alt-fill"), " 1 · Pick a state"), choices = NULL, width = "100%"),
     selectInput("site", label = tagList(bs_icon("pin-map-fill"), " 2 · Pick a site"), choices = NULL, width = "100%"),
     uiOutput("siteBio"),
@@ -49,7 +49,7 @@ ui <- bslib::page_sidebar(
   uiOutput("heroStats"),
   div(id = "splash", div(class = "splash",
     div(class = "app-hero app-hero-splash",
-      h1(class = "app-title", "NEON Breeding Bird Explorer", span(class = "title-tag", "unofficial")),
+      h1(class = "app-title", "NEON Bird Explorer", span(class = "title-tag", "unofficial")),
       p(class = "app-subtitle", "Who's singing where — every bird species NEON counts, how widespread and how often heard, the distance at which each is detected, and how whole communities shift across a continent of climates. Built on 6-minute breeding-season point counts (DP1.10003.001).")),
     p(tags$b("Tap a site on the map"), " (sized by richness, coloured by biome), search the sidebar, or open the Harvard Forest demo — a New England forest of ovenbirds, vireos, and veeries. ", tags$b("46 sites"), " from arctic tundra to Caribbean dry forest."),
     div(class = "picker-map-wrap", leafletOutput("nationalPicker", height = "440px")),
@@ -155,9 +155,9 @@ ui <- bslib::page_sidebar(
       nav_panel(title = tagList(bs_icon("info-circle"), " About"), value = "about", uiOutput("aboutPanel"))
     )),
   div(class = "ddl-footer",
-    div(tags$a(class = "custom-cta", href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer",
+    div(tags$a(class = "custom-cta", href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer",
       span(class = "hand", "\U0001F44B"), "Want a custom data app like this for your project?")),
     p(style = "margin-top:12px", HTML("Built by <strong>Desert Data Labs</strong> · Tucson, AZ · feedback or custom dashboards → "),
-      tags$a(href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer", "desertdatalabs@gmail.com")),
+      tags$a(href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer", "desertdatalabs@gmail.com")),
     p(style = "font-size:12px;opacity:.85", "Data: NEON Breeding Landbird Point Counts (DP1.10003.001). Not affiliated with NEON, Battelle, or the NSF. An educational data-exploration tool."))
 )
