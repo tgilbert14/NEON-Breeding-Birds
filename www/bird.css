@@ -331,6 +331,41 @@ body {
   background: linear-gradient(180deg, #2a2018 0%, #1a130d 100%) !important;
 }
 
+/* ---- THIRD prominent info-box: the .control-deck site/brand sidebar band --- *
+ * Brought onto the dark command-band model so the "light page, dark info-box"
+ * cascade holds on ALL THREE prominent surfaces (hero + KPI stats + this deck),
+ * in BOTH modes. Warm twilight glass + goldfinch top-rail + light brand text.
+ * Inputs stay on their own dark input wells (below) so they remain legible. */
+.control-deck {
+  background: linear-gradient(180deg, #2e2118 0%, #1f1812 100%) !important;
+  border-right: 1px solid rgba(232,163,23,.18) !important;
+  border-top: 3px solid var(--goldfinch) !important;
+  box-shadow: 0 12px 28px -14px rgba(20,12,6,.6) !important;
+}
+.control-deck .brand-title { color: #f5ead2 !important; }
+.control-deck .brand-sub   { color: #c4b69d !important; }
+.control-deck label,
+.control-deck .control-label { color: #e6d6bf !important; }
+.control-deck .prov-toggle .form-check-label,
+.control-deck .prov-toggle label,
+.control-deck .demo-hint,
+.control-deck .prov-hint,
+.control-deck .env-lag-hint { color: #c4b69d !important; }
+/* dark input wells on the now-dark deck (mirror the [data-bs-theme=dark] rule
+   so form controls stay legible on the LIGHT page too) */
+.control-deck .form-control,
+.control-deck .form-select,
+.control-deck .selectize-input,
+.control-deck .selectize-dropdown {
+  background: #211b14 !important; color: #f3e9d8 !important;
+  border-color: #3d352a !important;
+}
+.control-deck .selectize-input .item { color: #f3e9d8 !important; }
+.control-deck .deck-foot code { color: var(--goldfinch) !important; background: #2e2820 !important; }
+/* demo button: keep it readable on the dark deck */
+.control-deck .demo-btn { background: #2e2820 !important; border-color: var(--goldfinch) !important; color: #f0b94a !important; }
+.control-deck .demo-btn:hover { background: var(--goldfinch) !important; color: #2b2722 !important; }
+
 @media (prefers-reduced-motion: reduce) {
   .app-hero::before, .brand-mark, .app-emoji, .hero-stat::before { animation: none !important; }
   .hero-stat:hover { transform: none; }
