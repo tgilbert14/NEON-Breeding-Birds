@@ -28,6 +28,10 @@ on:
         description: "Also re-pull all 46 bird sites (DP1.10003.001) — slow, do this when NEON publishes a new season"
         type: boolean
         default: false
+      skip_download:
+        description: "Skip the environmental re-pull; just rebuild the precompute from committed bundles and redeploy (fast test)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write          # push the refreshed data bundle to master
@@ -94,6 +98,7 @@ jobs:
       # precip/temperature/phenology and merge into the committed history. Time-
       # boxed + non-fatal so it can never stall or block the push below.
       - name: Top up the environmental overlays (recent months)
+        if: ${{ github.event.inputs.skip_download != 'true' }}
         continue-on-error: true
         timeout-minutes: 50
         env:
