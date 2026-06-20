@@ -365,6 +365,21 @@ body {
 /* demo button: keep it readable on the dark deck */
 .control-deck .demo-btn { background: #2e2820 !important; border-color: var(--goldfinch) !important; color: #f0b94a !important; }
 .control-deck .demo-btn:hover { background: var(--goldfinch) !important; color: #2b2722 !important; }
+/* remaining sidebar text the dark deck left low-contrast (was only legible on hover) */
+.control-deck .theme-toggle-lab { color: #c4b69d !important; }
+.control-deck .deck-foot,
+.control-deck .deck-foot a,
+.control-deck .bio-links a { color: #c4b69d !important; }
+.control-deck .deck-foot a:hover,
+.control-deck .bio-links a:hover { color: #f0b94a !important; }
+.control-deck .bio-links-title { color: var(--goldfinch) !important; }
+.control-deck .bio-links a { background: #211b14 !important; border-color: #3d352a !important; }
+.control-deck .form-control::placeholder,
+.control-deck .form-select::placeholder { color: #9d8f7d !important; }
+.control-deck .selectize-input input { color: #f3e9d8 !important; }
+.control-deck .selectize-dropdown .option,
+.control-deck .selectize-dropdown-content { color: #f3e9d8 !important; }
+.control-deck .selectize-dropdown .option.active { background: #3d352a !important; color: #ffd98a !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .app-hero::before, .brand-mark, .app-emoji, .hero-stat::before { animation: none !important; }
