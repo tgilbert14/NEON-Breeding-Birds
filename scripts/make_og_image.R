@@ -55,7 +55,7 @@ text(70, 292, "forest, on real breeding-season point-count data. Honest stats, i
 
 # stat chips
 chips <- list(c("46", "field sites"), c("555", "species"),
-              c("29k", "point-counts"), c("instant", "no API waits"))
+              c("29k", "point-counts"), c("real", "public data"))
 x0 <- 70; gap <- 14; w <- 250; h <- 96; y1 <- 64
 for (i in seq_along(chips)) {
   xl <- x0 + (i - 1) * (w + gap)

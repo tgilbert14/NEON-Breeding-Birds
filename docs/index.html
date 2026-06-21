@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>NEON Bird Explorer · the Explorer Suite by Desert Data Labs</title>
   <meta name="description"
-    content="Explore the birds counted at 46 NEON research sites each breeding season. See how many species live at a site, which are common, and how bird life changes from the arctic to the desert. Free, no account, pick a site and start." />
+    content="Explore the birds counted at 46 NEON research sites each breeding season. See how many species live at a site, which are common, and how bird life changes from the arctic to the desert." />
   <meta name="theme-color" content="#1c1408" />
 
   <!-- Open Graph / social card. Absolute URLs = the GitHub Pages domain for this repo. -->
@@ -14,12 +14,12 @@
   <meta property="og:url" content="https://tgilbert14.github.io/NEON-Breeding-Birds/" />
   <meta property="og:title" content="NEON Bird Explorer · Desert Data Labs" />
   <meta property="og:description"
-    content="Explore the birds counted at 46 NEON research sites each breeding season. See which species live where, and how bird life changes from arctic tundra to Caribbean dry forest. Free, pick a site and start." />
+    content="Explore the birds counted at 46 NEON research sites each breeding season. See which species live where, and how bird life changes from arctic tundra to Caribbean dry forest." />
   <meta property="og:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="NEON Bird Explorer · Desert Data Labs" />
   <meta name="twitter:description"
-    content="Explore the birds counted at 46 NEON research sites each breeding season. See which species live where, and how bird life changes across the country. Free, pick a site and start." />
+    content="Explore the birds counted at 46 NEON research sites each breeding season. See which species live where, and how bird life changes across the country." />
   <meta name="twitter:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -347,9 +347,9 @@
         National Ecological Observatory Network, is a network of research sites all over the United
         States, funded by the National Science Foundation, that measures plants, animals, water, and
         weather the same way everywhere, year after year. Each breeding season, trained observers
-        stand at fixed spots and count every bird they see or hear. This free tool lets you explore
+        stand at fixed spots and count every bird they see or hear. This tool lets you explore
         those counts: <b>how many kinds of bird live at a site</b>, which ones are common, and how bird
-        life changes from the arctic to the desert. No account needed. Pick a site and start.</p>
+        life changes from the arctic to the desert.</p>
 
       <div class="cta-row">
         <a id="launch" class="launch" href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/">
@@ -404,8 +404,8 @@
       <div class="stats">
         <div class="stat"><div class="n">46</div><div class="l">research sites</div></div>
         <div class="stat"><div class="n">555</div><div class="l">kinds of bird</div></div>
-        <div class="stat"><div class="n">free</div><div class="l">no account</div></div>
-        <div class="stat"><div class="n">instant</div><div class="l">no waiting</div></div>
+        <div class="stat"><div class="n">6 min</div><div class="l">per bird count</div></div>
+        <div class="stat"><div class="n">every year</div><div class="l">same way, same spots</div></div>
       </div>
 
       <details class="more">
@@ -420,7 +420,7 @@
           effort, so we level the effort before comparing). When we compare sites across the country, we are
           comparing 46 different places watched at the same time, not one place warming up over the years,
           so the patterns are a starting point for questions, not proof of cause. Rainfall is shown only at
-          sites with an actual gauge, never guessed. <b>This is a free tool for learning and exploring. It is
+          sites with an actual gauge, never guessed. <b>This is a tool for learning and exploring. It is
           not affiliated with NEON, Battelle, or the NSF.</b>
         </div>
       </details>
@@ -429,7 +429,7 @@
 
   <footer>
     <div class="wrap">
-      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer">Want a custom data app like these for your project?</a><br>
+      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer">Get in touch with Desert Data Labs →</a><br>
       Built on the NEON <a href="https://data.neonscience.org/data-products/DP1.10003.001" target="_blank"
         rel="noopener">Breeding Landbird Point Counts</a> product by <b>Desert Data Labs</b> &middot; Tucson, AZ.
       Data: National Ecological Observatory Network (operated by Battelle, funded by NSF). Educational tools,
@@ -449,7 +449,7 @@
         var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
         var killer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
         fetch(APP_URL, { mode: "no-cors", cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
-          .then(function () { if (warm) warm.textContent = "Ready when you are."; })
+          .then(function () { if (warm) warm.textContent = "The app is ready."; })
           .catch(function () { if (warm) warm.textContent = ""; })
           .finally(function () { if (killer) clearTimeout(killer); });
       } catch (e) {}

@@ -27,7 +27,7 @@ ui <- bslib::page_sidebar(
     uiOutput("siteBio"),
     actionButton("loadBtn", tagList(bs_icon("globe-americas"), " Explore this site"),
                  class = "btn-primary btn-lg w-100 load-btn", onclick = "smtLoadStart()"),
-    actionButton("demoBtn", tagList(bs_icon("stars"), " or open the Harvard Forest demo (instant)"),
+    actionButton("demoBtn", tagList(bs_icon("stars"), " or open the Harvard Forest demo"),
                  class = "btn-link btn-sm w-100 reset-demo", onclick = "smtLoadStart('Harvard Forest — demo dataset')"),
     hidden(div(id = "spPickerWrap", hr(class = "deck-hr"),
       selectizeInput("spSel", label = tagList(bs_icon("search"), " Open a species profile"), choices = NULL,
@@ -62,7 +62,7 @@ ui <- bslib::page_sidebar(
         tags$span(class = "sbs-label", bs_icon("list-ul"), " Browse all 46 sites as a list"),
         tags$span(class = "sbs-chevron", bs_icon("chevron-down"))),
       div(class = "site-browse-body", uiOutput("siteCards"))),
-    div(class = "picker-actions", actionButton("demoBtn2", tagList(bs_icon("stars"), " Open the Harvard Forest demo instantly"),
+    div(class = "picker-actions", actionButton("demoBtn2", tagList(bs_icon("stars"), " Open the Harvard Forest demo"),
       class = "btn-primary btn-lg", onclick = "smtLoadStart('Harvard Forest — demo dataset')")))),
   div(id = "mainTabsWrap", class = "main-tabs-wrap",
     div(class = "hero-caveat", bs_icon("soundwave"),
@@ -163,8 +163,8 @@ ui <- bslib::page_sidebar(
     )),
   div(class = "ddl-footer",
     div(tags$a(class = "custom-cta", href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer",
-      span(class = "hand", "\U0001F44B"), "Want a custom data app like this for your project?")),
-    p(style = "margin-top:12px", HTML("Built by <strong>Desert Data Labs</strong> · Tucson, AZ · feedback or custom dashboards → "),
+      span(class = "hand", "\U0001F44B"), "Questions or feedback? Get in touch with Desert Data Labs.")),
+    p(style = "margin-top:12px", HTML("Built by <strong>Desert Data Labs</strong> · Tucson, AZ · get in touch →"),
       tags$a(href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer", "desertdatalabs@gmail.com")),
     p(style = "font-size:12px;opacity:.85", "Data: NEON Breeding Landbird Point Counts (DP1.10003.001). Not affiliated with NEON, Battelle, or the NSF. An educational data-exploration tool."))
 )
