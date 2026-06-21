@@ -48,9 +48,9 @@ text(68, 394, "Explorer",           col = ink, cex = 3.5, font = 2, adj = 0)
 gull(452, 404, 22, gold, lwd = 4)
 
 # subtitle
-text(70, 322, "Who's singing where — 46 NEON sites from arctic tundra to Caribbean dry",
+text(70, 322, "Who's singing where, 46 NEON sites from arctic tundra to Caribbean dry",
      col = ink2, cex = 1.12, adj = 0)
-text(70, 292, "forest, on real breeding-season point-count data. Honest stats, instant loads.",
+text(70, 292, "forest, on real breeding-season point-count data. Honest stats.",
      col = ink2, cex = 1.12, adj = 0)
 
 # stat chips

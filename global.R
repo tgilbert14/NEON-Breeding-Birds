@@ -19,7 +19,7 @@ LIVE_FETCH <- (Sys.getenv("BRD_LIVE", "0") != "0") && requireNamespace(.NEON_PKG
 
 SITE_DIR  <- "data/sites"
 DEMO_PATH <- "data-sample/demo.rds"
-DEMO_META <- list(site = "HARV", label = "HARV · Harvard Forest — demo")
+DEMO_META <- list(site = "HARV", label = "HARV · Harvard Forest · demo")
 
 read_bundle <- function(f) {
   if (!file.exists(f)) return(NULL)
@@ -45,7 +45,7 @@ bird_state_choices <- function() {
 bird_sites_in_state <- function(stt) {
   rows <- site_table[site_table$state == stt, ]; rows <- rows[order(rows$name), ]
   if (!nrow(rows)) return(character(0))
-  setNames(rows$site, sprintf("%s — %s", rows$site, rows$name))
+  setNames(rows$site, sprintf("%s · %s", rows$site, rows$name))
 }
 
 # Field Guide palette (parchment / ink / rust / goldfinch — an Audubon-plate look,

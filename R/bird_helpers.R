@@ -251,14 +251,14 @@ bird_qc <- function(obs, sci, points = NULL) {
     vn <- unique(trimws(d$vernacularName[!is.na(d$vernacularName) & nzchar(trimws(d$vernacularName))]))
     if (length(vn) > 1)
       add("high", "Two common names for one scientific name", "vernacular", seq_len(nrow(d)),
-          sprintf("Recorded under %d different common names (%s). One accepted scientific name should map to one common name — usually a join or mid-dataset taxonomy revision to reconcile.", length(vn), paste(vn, collapse = " / ")))
+          sprintf("Recorded under %d different common names (%s). One accepted scientific name should map to one common name, usually a join or mid-dataset taxonomy revision to reconcile.", length(vn), paste(vn, collapse = " / ")))
   }
   # 2 — implausibly far (> 1 km): a units / transcription error, not a real far bird
   add("high", "Detection beyond 1 km", "far", which(is.finite(od) & od > 1000),
-      "Recorded farther than 1 km from the observer — implausible for a 6-minute landbird count and almost always a units or transcription error. (Legitimate far birds are truncated at analysis, not flagged.)")
+      "Recorded farther than 1 km from the observer, implausible for a 6-minute landbird count and almost always a units or transcription error. (Legitimate far birds are truncated at analysis, not flagged.)")
   # 3 — exact-0 distance (heaping at the origin / placeholder entry)
   add("warn", "Distance recorded as exactly 0 m", "zero", which(is.finite(od) & od == 0),
-      "A distance of exactly 0 m puts the bird on the observer — usually a default/placeholder. Distance sampling assumes near-perfect detection AT the point, so a pile-up of zeros distorts the curve's origin; verify these are real at-point detections.")
+      "A distance of exactly 0 m puts the bird on the observer, usually a default/placeholder. Distance sampling assumes near-perfect detection AT the point, so a pile-up of zeros distorts the curve's origin; verify these are real at-point detections.")
   # 4 — visual ID at long range. 500 m (not 250) so it doesn't cry wolf on open
   # grassland, where conspicuous birds ARE legitimately seen far — past ~500 m an
   # unaided visual species ID of a landbird is not credible regardless of habitat.
@@ -273,12 +273,12 @@ bird_qc <- function(obs, sci, points = NULL) {
     p99 <- stats::quantile(csf, 0.99, names = FALSE)
     if (is.finite(p99) && p99 <= 3) {
       add("warn", "Large flock for a typically solitary species", "cluster", which(is.finite(cs) & cs >= 6),
-          "99% of this species' detections are 1–3 birds, yet these report 6+ in one cluster — a likely transcription error or misidentification for a territorial species.")
+          "99% of this species' detections are 1–3 birds, yet these report 6+ in one cluster, a likely transcription error or misidentification for a territorial species.")
     } else {
       l <- log1p(csf); mads <- stats::mad(l); thr <- stats::median(l) + 5 * mads
       if (is.finite(thr) && mads > 0)
         add("info", "Unusually large flock (vs this species)", "cluster", which(is.finite(cs) & log1p(cs) > thr),
-            "Flock size far above this species' own typical range (judged on the log scale, so ordinary flocks don't flag). Often genuine for gregarious species — noted for review, not presumed wrong.")
+            "Flock size far above this species' own typical range (judged on the log scale, so ordinary flocks don't flag). Often genuine for gregarious species, noted for review, not presumed wrong.")
     }
   }
   # 6 — missing distance: only surface when it's a MEANINGFUL share (>=10%). A handful of
@@ -286,7 +286,7 @@ bird_qc <- function(obs, sci, points = NULL) {
   miss <- which(is.na(od)); pct <- if (nrow(d)) round(100 * length(miss) / nrow(d)) else 0
   if (length(miss) && pct >= 25)
     add("info", sprintf("Missing distance on %d%% of detections", pct), "missing", miss,
-        "A large share of detections have no observerDistance, so they can't enter a distance/detectability model — weakening any density estimate (often documented flyovers).")
+        "A large share of detections have no observerDistance, so they can't enter a distance/detectability model, weakening any density estimate (often documented flyovers).")
   # 7 — under-effort points (within-site robust MAD): low effort biases detection
   if (!is.null(points) && all(c("n_visits","pointkey") %in% names(points)) && "pointkey" %in% names(d)) {
     nv <- suppressWarnings(as.numeric(points$n_visits)); good <- is.finite(nv)
@@ -331,12 +331,12 @@ bird_codebook <- function() {
       "Point identifier within a plot.",
       "Calendar year of the point-count.",
       "Bout (visit) number within the breeding season; a point may be counted 1–2× per year.",
-      "Observer-ESTIMATED distance from observer to bird, in metres. NA = distance NOT ESTIMABLE (flocks / flyovers / detected-but-far; the former 999/9999 sentinel, recoded to NA at build). NA is not 0 — it means no usable distance.",
+      "Observer-ESTIMATED distance from observer to bird, in metres. NA = distance NOT ESTIMABLE (flocks / flyovers / detected-but-far; the former 999/9999 sentinel, recoded to NA at build). NA is not 0. It means no usable distance.",
       "How the bird was first detected (singing / calling / visual / drumming / flyover / compound, e.g. 'visual and singing').",
       "Number of birds in the detection (a flock counts as one detection row with clusterSize > 1).",
       "Taxonomic rank of the identification (species / subspecies / genus / …).",
       "TRUE if identified to species level (genus-only 'sp.' and slash morphospecies are FALSE and excluded from richness).",
-      "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population — detectability differs by species.",
+      "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population. Detectability differs by species.",
       "Naive occupancy floor = % of points where the species was EVER detected. Less count-biased than the index, but still effort/detection-dependent (under-counts quiet/secretive birds).",
       "Number of detection rows for the species (a count of records, not birds).",
       "Total birds summed across all detections (includes flyovers; the index excludes them).",
@@ -346,7 +346,7 @@ bird_codebook <- function() {
       "Observed species richness at the site (species detected).",
       "Chao2 incidence-based richness estimate (a bias-corrected MINIMUM; unstable when <3 species are detected at exactly two occasions). Chao 1987.",
       "Sample-coverage completeness, 0–1 (fraction of the community detected). Chao & Jost 2012.",
-      "Species richness RAREFIED to a common number of point-count occasions across sites (incidence rarefaction; Colwell et al. 2012) — comparable across sites of unequal effort.",
+      "Species richness RAREFIED to a common number of point-count occasions across sites (incidence rarefaction; Colwell et al. 2012), comparable across sites of unequal effort.",
       "Site detection index = total breeding birds (flyovers excluded) / point-counts run.",
       "Singing share = % of detections where the bird was singing (a habitat/detectability signature)."),
     stringsAsFactors = FALSE)
