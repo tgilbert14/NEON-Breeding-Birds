@@ -171,17 +171,22 @@
     .frung + .frung { margin-top:10px }
     .frung::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.0;
       background:linear-gradient(100deg, transparent, rgba(var(--lrgb),.16), transparent); }
-    .frung.pip-on::before { animation: pip 2.4s ease-in-out; }     /* energy pulse sweeps each rung in turn */
+    .frung.pip-on::before { animation: pip 3.2s ease-in-out; }     /* energy pulse sweeps each rung in turn (slowed) */
     @keyframes pip { 0%{opacity:0; transform:translateX(-30%)} 40%{opacity:1} 100%{opacity:0; transform:translateX(30%)} }
     .frung .fmark { width:34px; height:34px; flex:0 0 auto; border-radius:9px; position:relative;
       background:rgba(var(--lrgb),.16); border:1px solid rgba(var(--lrgb),.5) }
     .frung .fmark::after { content:""; position:absolute; inset:0; margin:auto; width:12px; height:12px; border-radius:50%;
       background:var(--lc); box-shadow:0 0 12px var(--lc) }
     .frung .ftxt b { font-weight:800; font-size:1rem } .frung .ftxt span { color:var(--dim); font-size:.86rem }
-    .frung.r1 { --lc:var(--clim); --lrgb:255,217,138 }
-    .frung.r2 { --lc:var(--phen); --lrgb:245,177,63; margin-left:14px }
-    .frung.r3 { --lc:var(--prod); --lrgb:232,146,74; margin-left:28px }
-    .frung.r4 { --lc:var(--cons); --lrgb:224,113,74; margin-left:42px }
+    .frung.r1 { --lc:#ffd98a; --lrgb:255,217,138 }
+    .frung.r2 { --lc:#f5b13f; --lrgb:245,177,63 }
+    .frung.r3 { --lc:#e8924a; --lrgb:232,146,74 }
+    .frung.r4 { --lc:#e0714a; --lrgb:224,113,74 }
+    .frung.r5 { --lc:#f5b13f; --lrgb:245,177,63 }
+    .frung.r6 { --lc:#ffd98a; --lrgb:255,217,138 }
+    .frung.r7 { --lc:#e0714a; --lrgb:224,113,74 }
+    .cascade-band .hl-head { margin-top:30px }
+    .lead a { color:var(--bright); text-decoration:underline; text-underline-offset:2px; text-decoration-thickness:1px }
     .farrow { color:rgba(255,255,255,.32); text-align:center; margin:2px 0 2px 17px; font-size:1.05rem }
 
     /* ---------- stats + about ---------- */
@@ -343,13 +348,7 @@
 
       <div class="eyebrow">The NEON Explorer Suite · Birds</div>
       <h1>NEON Birds</h1>
-      <p class="lead">See the birds that nest at research sites across the country. NEON, the
-        National Ecological Observatory Network, is a network of research sites all over the United
-        States, funded by the National Science Foundation, that measures plants, animals, water, and
-        weather the same way everywhere, year after year. Each breeding season, trained observers
-        stand at fixed spots and count every bird they see or hear. This tool lets you explore
-        those counts: <b>how many kinds of bird live at a site</b>, which ones are common, and how bird
-        life changes from the arctic to the desert.</p>
+      <p class="lead">A Shiny web app for exploring the <a href="https://www.neonscience.org/" target="_blank" rel="noopener">National Ecological Observatory Network</a>'s breeding-landbird point-count data. It turns six-minute counts at 46 field sites, from arctic tundra to Caribbean dry forest, into maps, community profiles, and per-species cards, with abundance shown honestly as a detection index (birds per count), not a raw population.</p>
 
       <div class="cta-row">
         <a id="launch" class="launch" href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/">
@@ -385,20 +384,19 @@
   <!-- how the field guide reads: point count -> identify -> tally -> compare -->
   <section class="cascade-band">
     <div class="wrap">
-      <span class="kick">What this shows you</span>
-      <h2>How the birds get counted.</h2>
-      <p>It starts with a "point count": one observer stands at a fixed spot and, for six minutes,
-        writes down every bird they see or hear. The tool builds up from there, from a single count to
-        how bird life differs across the country, and it tells you how each number was worked out along
-        the way.</p>
+      <span class="kick">What it does</span>
+      <p>The app opens to a national map of NEON sites coloured by biome. Tap one to dive into its birds, or step back and compare the whole network in climate space. Each site loads instantly from a per-site data bundle that ships with the app (no network round-trip). From there it ranks the most-detected species, estimates how many kinds really use the site (beyond what a handful of counts catch), plots every species by how widespread and how often it is detected, and profiles any single species on a downloadable card.</p>
+      <p>It is built for two audiences: anyone curious about how NEON counts breeding birds, and new field technicians getting to know the species at their site.</p>
+
+      <h2 class="hl-head">Highlights</h2>
       <div class="flow" data-flow>
-        <div class="frung r1"><span class="fmark"></span><span class="ftxt"><b>Count</b> &middot; <span>one observer, six minutes at a fixed spot, every bird seen or heard</span></span></div>
-        <div class="farrow" aria-hidden="true">&darr;</div>
-        <div class="frung r2"><span class="fmark"></span><span class="ftxt"><b>Name it</b> &middot; <span>each bird is named to its kind (species) by song, call, and sight</span></span></div>
-        <div class="farrow" aria-hidden="true">&darr;</div>
-        <div class="frung r3"><span class="fmark"></span><span class="ftxt"><b>Add up</b> &middot; <span>how many kinds live at a site, and how often each one turns up</span></span></div>
-        <div class="farrow" aria-hidden="true">&darr;</div>
-        <div class="frung r4"><span class="fmark"></span><span class="ftxt"><b>Compare</b> &middot; <span>one site against another, and one year against the next</span></span></div>
+        <div class="frung r1"><span class="fmark"></span><span class="ftxt"><b>Select-a-site map</b> &middot; <span>A national map of all 46 bundled sites, coloured by biome, with a one-tap load and an accessible list fallback. The demo opens Harvard Forest (ovenbirds, vireos, and veeries).</span></span></div>
+        <div class="frung r2"><span class="fmark"></span><span class="ftxt"><b>Bird Board</b> &middot; <span>Every species as a dot: how widespread it is (the share of points where it turned up) against its detection index. Tap any dot to pin a card; faint dots have too few detections to place.</span></span></div>
+        <div class="frung r3"><span class="fmark"></span><span class="ftxt"><b>Across the continent</b> &middot; <span>Every NEON site placed in climate space (breeding-season temperature, with precipitation where a gauge exists) against a community metric, with richness rarefied to a common number of counts so it is not just effort. Space-for-time, stated on the chart.</span></span></div>
+        <div class="frung r4"><span class="fmark"></span><span class="ftxt"><b>Community, beyond what a few counts catch</b> &middot; <span>Species accumulation by point-count occasion plus a Chao2 estimate of how many kinds really use the site, since point counts miss the nocturnal, secretive, and rare.</span></span></div>
+        <div class="frung r5"><span class="fmark"></span><span class="ftxt"><b>Honest abundance: a detection index</b> &middot; <span>A loud species and a quiet one at equal density give unequal counts, so abundance is shown as birds per point-count, never a population. Each species' detectability is area-corrected (detections per hectare per distance ring).</span></span></div>
+        <div class="frung r6"><span class="fmark"></span><span class="ftxt"><b>Species profile cards</b> &middot; <span>A downloadable card (PNG + CSV) for any species: detection index, ubiquity, points and grids, area-corrected detectability-by-distance, and yearly counts.</span></span></div>
+        <div class="frung r7"><span class="fmark"></span><span class="ftxt"><b>Overview: the story of a site</b> &middot; <span>The most-detected species (coloured by how they are first found: singing, calling, or seen), a plain-English summary, and a seasonal-context panel placing the count window on the site's green-up and temperature year.</span></span></div>
       </div>
 
       <div class="stats">
@@ -516,7 +514,7 @@
         // force reflow so the animation restarts each cycle
         void el.offsetWidth; el.classList.add("pip-on");
         i++;
-      }, 900);
+      }, 1800);
     })();
   </script>
   <script>
