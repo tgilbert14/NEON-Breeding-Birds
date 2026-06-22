@@ -32,10 +32,26 @@ cat(sprintf("Writing manifest for %d files (%d site bundles)...\n",
             length(appFiles), length(list.files("data/sites", pattern = "\\.rds$"))))
 rsconnect::writeManifest(appDir = ".", appFiles = appFiles)
 
-# quick self-check
-m <- readLines("manifest.json", warn = FALSE)
-pkgs <- gsub('.*"([^"]+)": \\{', "\\1",
-             grep('^\\s*"[A-Za-z0-9.]+": \\{\\s*$', m, value = TRUE))
-cat(sprintf("manifest.json written: %d packages.\n", sum(grepl('"Source"', m))))
-if (any(grepl("neonUtilities", m))) cat("WARNING: neonUtilities leaked into the manifest!\n") else
-  cat("OK: neonUtilities is NOT in the manifest (lean bundle-only build).\n")
+# ---- HARD GATE: a leaked heavy-pull package must never commit silently -------
+# Parse the manifest's actual package KEYS (not a substring scan — the word
+# "arrow" / "data.table" appears inside other packages' Suggests/Imports text and
+# would false-positive). neonUtilities + arrow are the live-fetch / columnar pull
+# packages that have NO business in a bundle-only deploy; their presence is a leak
+# and stop()s with a non-zero exit. data.table is a MANDATORY transitive Import of
+# plotly (plotly DESCRIPTION: Imports ... data.table), so it is allowed ONLY when
+# plotly is also present; data.table without plotly is a genuine leak and fails.
+m    <- jsonlite::fromJSON("manifest.json")
+pkgs <- names(m$packages)
+cat(sprintf("manifest.json written: %d packages.\n", length(pkgs)))
+
+leaked <- intersect(c("neonUtilities", "arrow"), pkgs)
+if ("data.table" %in% pkgs && !("plotly" %in% pkgs))
+  leaked <- c(leaked, "data.table")   # data.table only legitimate via plotly
+
+if (length(leaked)) {
+  stop(sprintf(
+    "LEAN-MANIFEST GATE FAILED: %s leaked into manifest.json. A bundle-only deploy must not carry it. Check the global.R .NEON_PKG split-string guard and the appFiles scope; do NOT commit this manifest.",
+    paste(leaked, collapse = ", ")), call. = FALSE)
+}
+cat("OK: no leaked heavy-pull package (neonUtilities / arrow / stray data.table) in the manifest.\n")
+if ("data.table" %in% pkgs) cat("  (data.table present as plotly's required Import — allowed.)\n")

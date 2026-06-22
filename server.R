@@ -125,9 +125,21 @@ server <- function(input, output, session) {
   output$topBar <- renderPlotly({
     brd <- rv$board; req(brd); brd <- head(brd[order(-brd$index),], 18)
     brd$lab <- factor(brd$vernacular %||% brd$scientificName, levels = rev(brd$vernacular %||% brd$scientificName))
-    plot_ly(brd, x=~index, y=~lab, type="bar", orientation="h", marker=list(color=method_col(brd$method)),
-      text=~paste0(method), hovertemplate="%{y}<br>%{x:.2f} birds/count · %{text}<extra></extra>") %>%
-      plotly_theme(legend=FALSE) %>% plotly::layout(showlegend=FALSE, xaxis=list(title="Detection index (birds / point-count)"), yaxis=list(title=""), margin=list(l=170, t=34),
+    # Colour each bar by its canonical first-detection method, but draw one trace
+    # PER method so the chart carries a LEGEND (the bar colour is meaningless without
+    # one). canon_method collapses compound NEON methods to their breeding signal.
+    brd$cmeth <- canon_method(brd$method)
+    meth_lab <- c(singing="singing", calling="calling", visual="visual", drumming="drumming",
+                  flyover="flyover", other="other", unknown="unknown")
+    ord_m <- intersect(c("singing","calling","visual","drumming","flyover","other","unknown"), unique(brd$cmeth))
+    p <- plot_ly()
+    for (mm in ord_m) { sub <- brd[brd$cmeth == mm, ]
+      p <- p %>% add_trace(data=sub, x=~index, y=~lab, type="bar", orientation="h",
+        name = unname(meth_lab[mm]) %||% mm, marker=list(color=method_col(mm)),
+        text=~paste0(method), hovertemplate="%{y}<br>%{x:.2f} birds/count · %{text}<extra></extra>") }
+    p %>% plotly_theme() %>% plotly::layout(barmode="stack", showlegend=TRUE,
+        legend=list(orientation="h", x=0, y=-0.16, title=list(text="first detected by")),
+        xaxis=list(title="Detection index (birds / point-count)"), yaxis=list(title=""), margin=list(l=170, t=34, b=58),
         annotations=list(list(text=sprintf("at <b>%s</b> · this site only", rv$site %||% "this site"), x=0, y=1.07, xref="paper", yref="paper", showarrow=FALSE, xanchor="left", font=list(color=if(is_dark())"#b3a692" else "#7a6f5d", size=11))))
   })
   output$overviewInsight <- renderUI({
@@ -325,7 +337,12 @@ server <- function(input, output, session) {
   output$spCsv <- downloadHandler(
     filename = function() sprintf("NEON-Birds_%s_%s.csv", gsub("[^A-Za-z]","",substr(rv$sp %||% "species",1,24)), format(Sys.Date(),"%Y%m%d")),
     content = function(file){ sci <- rv$sp; req(sci); d <- species_detail(rv$obs, sci); req(!is.null(d))
-      utils::write.csv(d[, c("scientificName","vernacularName","pointkey","plotID","year","bout","observerDistance","detectionMethod","clusterSize")], file, row.names=FALSE, na="") },
+      # is_flyover / enters_index make the index quarantine EXPLICIT in the export, so a
+      # downstream sum() can't silently recreate the flock-inflated total the app removes:
+      # the breeding detection index is sum(clusterSize[enters_index]) / point-counts.
+      d$is_flyover  <- is_flyover(d$detectionMethod)
+      d$enters_index <- !d$is_flyover
+      utils::write.csv(d[, SPCSV_KEEP, drop=FALSE], file, row.names=FALSE, na="") },
     contentType="text/csv")
   # machine-readable column dictionary for every CSV export (FAIR codebook)
   output$codebookCsv <- downloadHandler(
@@ -381,6 +398,31 @@ server <- function(input, output, session) {
       out <- gs[, c("scientificName","vernacular","birds","detections","method")]
       names(out) <- c("scientificName","vernacularName","total_birds","detections","primary_method")
       utils::write.csv(out, file, row.names=FALSE, na="") },
+    contentType="text/csv")
+
+  # ---- Bird Board table export (the per-species board for THIS site) --------
+  # The flagship Bird Board only saved a PNG; export the underlying frame too so a
+  # reader can re-derive the dots: the detection index AND its parts (total/index/
+  # flyover birds), ubiquity, effort (points/grids), and primary method. Columns
+  # are BOARD_KEEP, which is also what bird_codebook() documents (no drift).
+  output$boardCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_board_%s_%s.csv", rv$site %||% "site", format(Sys.Date(),"%Y%m%d")),
+    content = function(file){ brd <- rv$board; req(!is.null(brd), nrow(brd))
+      out <- brd[order(-brd$index), intersect(BOARD_KEEP, names(brd)), drop=FALSE]
+      utils::write.csv(out, file, row.names=FALSE, na="") },
+    contentType="text/csv")
+
+  # ---- Cross-site gradient table export (the full 46-row frame) -------------
+  # The "Across the continent" scatter only saved a PNG; export every site's row so
+  # the gradient is reproducible: climate (x), the community metrics (y options),
+  # effort, biome, and the rarefaction target t_used. Columns = GRADIENT_KEEP, also
+  # the codebook source. Temperature is exported in °C (storage unit), unit-free.
+  output$gradientCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_cross-site-gradient_%s.csv", format(Sys.Date(),"%Y%m%d")),
+    content = function(file){ g <- GRADIENT
+      if (is.null(g) || !nrow(g)) g <- data.frame(note="Cross-site gradient unavailable (run scripts/build_cross_site.R).")
+      else g <- g[order(g$breeding_temp_c), intersect(GRADIENT_KEEP, names(g)), drop=FALSE]
+      utils::write.csv(g, file, row.names=FALSE, na="") },
     contentType="text/csv")
 
   # ---- Splash: national site picker (the continental story, pre-site) -------
@@ -471,7 +513,8 @@ server <- function(input, output, session) {
     for (bm in unique(g$biome)) { sub <- g[g$biome == bm, ]
       p <- p %>% add_trace(data = sub, x = ~xx, y = ~yy, type = "scatter", mode = "markers", name = unname(BIOME_LAB[bm]),
         customdata = ~tip, text = ~paste0(site, " · ", name),
-        marker = list(color = sub$biome_col[1], size = sub$n_points, sizemode = "area", sizeref = sref, sizemin = 5,
+        marker = list(color = sub$biome_col[1], symbol = unname(BIOME_SYM[bm]) %||% "circle",   # redundant shape channel for CVD
+                      size = sub$n_points, sizemode = "area", sizeref = sref, sizemin = 5,
                       opacity = 0.82, line = list(color = "#fff", width = 0.6)),
         hovertemplate = paste0("%{text}<br>%{x:.1f}", xsuf, " · %{y:.0f}<extra></extra>")) }
     if (!is.null(rv$site)) { ir <- g[g$site == rv$site, ]
@@ -553,13 +596,21 @@ server <- function(input, output, session) {
         p("NEON runs this same protocol at ", tags$b("46 sites"), " from arctic tundra (Utqiaġvik, −2 °C) to Caribbean dry forest (Guánica, 26 °C). The ", tags$b("Across the continent"), " tab places each site by its ", tags$b("breeding-season temperature"), " against its bird community."),
         p("Because sites differ in effort (13–144 points), richness is ", tags$b("rarefied to a common number of point-counts"), " (incidence rarefaction; Colwell et al. 2012). Raw richness would just track effort. It is a ", tags$b("space-for-time"), " comparison: 46 different places observed at once, not one place warming, so it is correlational, confounded by biome and latitude. Precipitation is shown only for the 19 sites with a NEON gauge, never imputed."),
         p("The per-site ", tags$b("season"), " panel places the breeding-count window on the site's green-up and temperature year, context for ", tags$em("when"), " counts happen, not a bird-vs-environment driver model (counts run only once or twice a year). Environment data: air temperature ", tags$code("DP1.00002.001"), ", precipitation ", tags$code("DP1.00044.001"), ", plant phenology ", tags$code("DP1.10055.001"), ".")),
+      div(class="about-card", h4(bs_icon("table"), " Data dictionary & downloads"),
+        p("Every CSV download carries a documented column. The ", tags$b("codebook"), " lists each exported column with its units and how to read missing values, and it covers all the app's exports: the per-species detections (including the ", tags$code("is_flyover"), " / ", tags$code("enters_index"), " columns that make the index quarantine explicit), the Bird Board table, the cross-site gradient table, the per-grid species list, and the QC report flags."),
+        downloadButton("codebookCsvGlobal", "Download the full column codebook (CSV)", class="smt-clear-btn")),
       div(class="about-card", h4(bs_icon("envelope"), " Desert Data Labs"),
         p(bs_icon("envelope"), " ", tags$a(href="mailto:desertdatalabs@gmail.com","desertdatalabs@gmail.com"), " · ",
           tags$a(href="https://data.neonscience.org/data-products/DP1.10003.001", target="_blank", "NEON data product"))))
   })
+  # global codebook (mirror of output$codebookCsv, reachable from About without a species)
+  output$codebookCsvGlobal <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_codebook_%s.csv", format(Sys.Date(),"%Y%m%d")),
+    content = function(file) utils::write.csv(bird_codebook(), file, row.names=FALSE, na=""),
+    contentType="text/csv")
   observeEvent(input$help, showModal(modalDialog(easyClose=TRUE, title=tagList(bs_icon("question-circle"), " How it works"),
     tags$ul(
-      tags$li(HTML("Pick a <b>site</b> (or open the Harvard Forest demo).")),
+      tags$li(HTML("Pick a <b>site</b> (or open the LBJ National Grassland demo).")),
       tags$li(HTML("<b>Community</b> · species richness + a Chao2 estimate of how many species use the site.")),
       tags$li(HTML("<b>Bird Board</b> · every species by ubiquity × detection index; <b>tap one</b> to pin its card, then “Open species profile”.")),
       tags$li(HTML("<b>Species Profile</b> · the detection-decay (how far it's detected), yearly counts, and downloads.")),

@@ -19,7 +19,10 @@ LIVE_FETCH <- (Sys.getenv("BRD_LIVE", "0") != "0") && requireNamespace(.NEON_PKG
 
 SITE_DIR  <- "data/sites"
 DEMO_PATH <- "data-sample/demo.rds"
-DEMO_META <- list(site = "HARV", label = "HARV · Harvard Forest · demo")
+# Demo defaults to CLBJ (LBJ National Grassland, TX oak savanna): the richest site
+# in the set AND one with a STABLE Chao2 (Q2=13), so the first estimate a new user
+# meets is honest, not the old HARV demo's 3x Q2=1 extrapolation (suite data-audit).
+DEMO_META <- list(site = "CLBJ", label = "CLBJ · LBJ National Grassland · demo")
 
 read_bundle <- function(f) {
   if (!file.exists(f)) return(NULL)
@@ -56,7 +59,7 @@ DDL <- list(
   parchment = "#f7f3e9", paper = "#fffdf6", bg = "#f7f3e9",
   ink = "#2b2722", ink2 = "#4a443c", muted = "#7a6f5d", line = "#e3d9c4",
   rust = "#c1502e", rust2 = "#a23f22", goldfinch = "#e8a317", gold_ink = "#9a6b0f",
-  sing = "#1a7f37", call = "#2f7fb5", vis = "#c1502e",            # detection palette (locked)
+  sing = "#1a8a5a", call = "#3a8fd6", vis = "#D55E00",            # detection palette (luminance-separated, CVD-safe; mirrors METHOD_COLS)
   dawn1 = "#f6c89a", dawn2 = "#e8a37a", dawn3 = "#c98ba0", dawn4 = "#8fb0c9",
   # legacy aliases -> Field Guide, so old code paths stay on-theme
   navy = "#2b2722", navy2 = "#4a443c", cardinal = "#c1502e",
@@ -102,7 +105,14 @@ SITE_BIOME <- c(
   CPER="grassland", STER="grassland", OAES="grassland", CLBJ="grassland", YELL="grassland", SJER="grassland",
   GUAN="tropical", LAJA="tropical")
 biome_of  <- function(site) { b <- unname(SITE_BIOME[site]); ifelse(is.na(b), "forest", b) }
-BIOME_COL <- c(forest="#2f7f4f", grassland="#e8a317", desert="#c1502e", tundra="#7fa8c9", tropical="#9c5fb0")
+# Biome hues are LUMINANCE-LADDERED (Okabe-Ito-derived) so the 5 biomes stay
+# distinguishable for colour-vision-deficient readers and in grayscale: relative
+# luminances run desert .10 < forest .19 < tropical .26 < grassland .42 < tundra
+# .51 (min adjacent gap .066). The old set put forest/desert/tropical within .02 L,
+# which washed out under CVD. Each biome also carries a redundant plotly marker
+# SYMBOL (BIOME_SYM) so colour is never the only channel on the gradient scatter.
+BIOME_COL <- c(forest="#1a8a5a", grassland="#E69F00", desert="#9c3a17", tundra="#7fc7ec", tropical="#b07aa1")
+BIOME_SYM <- c(forest="circle", grassland="square", desert="diamond", tundra="triangle-up", tropical="cross")
 BIOME_LAB <- c(forest="Forest", grassland="Grassland / prairie", desert="Desert / shrub",
                tundra="Tundra / alpine", tropical="Tropical dry forest")
 biome_col <- function(b) { out <- unname(BIOME_COL[b]); ifelse(is.na(out), "#9aa6b2", out) }

@@ -287,6 +287,32 @@
     var el = e.target.closest(".smt-open");
     if (el) openChip(el);
   });
+
+  /* Tapping a QC flag fires Shiny.setInputValue('birdQcInspect',…) (inline onclick
+     in server.R), and the server re-renders #birdQcInspector. The uiOutput wrapper
+     is display:contents (no box) so scrolling IT no-ops — poll the actual rendered
+     .qc-inspector child until it has height, then scroll it into view. behavior:
+     "auto" (instant) because the scroll happens inside a nested bslib container
+     where smooth scrollIntoView silently no-ops (and it respects reduced-motion by
+     definition). Same hard-won pattern as the flagship's revealQcCard. */
+  function revealQcInspector() {
+    var tries = 0;
+    (function go() {
+      var n = document.querySelector("#birdQcInspector .qc-inspector");
+      if (n && n.getBoundingClientRect().height > 1) {
+        n.scrollIntoView({ behavior: "auto", block: "nearest" });
+        return;
+      }
+      if (++tries < 50) setTimeout(go, 50);
+    })();
+  }
+  document.addEventListener("click", function (e) {
+    if (e.target.closest(".qc-flag-click")) revealQcInspector();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (e.target.closest && e.target.closest(".qc-flag-click")) revealQcInspector();
+  });
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
     var el = e.target.closest && e.target.closest(".smt-open");
