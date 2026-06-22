@@ -21,10 +21,21 @@ server <- function(input, output, session) {
       annotations=list(list(text=paste0(icon,"<br>",msg), showarrow=FALSE, font=list(color=if(is_dark())"#b3a692" else "#7a6f5d", size=15), align="center"))) %>%
     plotly::config(displayModeBar = FALSE)
 
-  rv <- reactiveValues(obs=NULL, points=NULL, board=NULL, nvis=0, label=NULL, site=NULL, sp=NULL, ctx=NULL, is_demo=FALSE, grid=NULL)
+  rv <- reactiveValues(obs=NULL, points=NULL, board=NULL, nvis=0, label=NULL, site=NULL, sp=NULL, ctx=NULL, is_demo=FALSE, grid=NULL, pendingSite=NULL)
 
   observe({ ch <- bird_state_choices(); updateSelectInput(session, "stateSel", choices = ch, selected = if ("MA" %in% ch) "MA" else NULL) })
-  observeEvent(input$stateSel, updateSelectInput(session, "site", choices = bird_sites_in_state(input$stateSel)), ignoreInit = FALSE)
+  # State cascade. When a map dot or browse-list card was tapped, rv$pendingSite
+  # holds the picked site so the dropdowns snap to THAT site (not site #1 of the
+  # state) and we load it, keeping the sidebar in sync with the map. A plain
+  # state change (user spinning the dropdown) just lists the state's sites.
+  observeEvent(input$stateSel, {
+    sites <- bird_sites_in_state(input$stateSel)
+    pend  <- rv$pendingSite
+    sel   <- if (!is.null(pend) && pend %in% sites) pend else if (length(sites)) sites[[1]] else NULL
+    rv$pendingSite <- NULL
+    updateSelectInput(session, "site", choices = sites, selected = sel)
+    if (!is.null(pend) && identical(sel, pend)) load_site(sel)   # map/browse pick -> load it
+  }, ignoreInit = FALSE, ignoreNULL = TRUE)
   output$siteBio <- renderUI({ req(input$site); b <- site_bio(input$site); if (is.null(b)) return(NULL); div(class="site-bio", bs_icon("info-circle-fill"), span(b)) })
   output$siteCards <- renderUI({
     if (is.null(SITE_INDEX) || !nrow(site_table)) return(NULL)
@@ -57,7 +68,25 @@ server <- function(input, output, session) {
   load_site <- function(site){ if (is.null(site)||site=="") { session$sendCustomMessage("loadDone", list()); return() }
     b <- load_site_bundle(site); if (is.null(b)) { session$sendCustomMessage("loadDone", list()); showNotification("That site isn't bundled in this demo.", type="error"); return() }
     row <- site_table[site_table$site==site,]; ingest(b, sprintf("%s · %s", site, if (nrow(row)) row$name else site)) }
-  observeEvent(input$loadBtn, load_site(input$site)); observeEvent(input$pickSite, load_site(input$pickSite))
+  observeEvent(input$loadBtn, load_site(input$site))
+  # Map dot / browse-list pick. Drive the sidebar selectors so the state + site
+  # dropdowns end up reading the picked site, then load. Same state -> set the
+  # site dropdown and load directly (the cascade won't re-fire on an unchanged
+  # state). Different state -> stash pendingSite and switch stateSel, and the
+  # cascade above lists the new state's sites, selects this one, and loads it.
+  observeEvent(input$pickSite, {
+    removeModal()   # if the pick came from the "About this site" card, close it
+    code <- input$pickSite; if (is.null(code) || !nzchar(code)) { session$sendCustomMessage("loadDone", list()); return() }
+    st <- neon_sites$state[neon_sites$site == code][1]
+    if (is.na(st)) { load_site(code); return() }
+    if (identical(input$stateSel, st)) {
+      updateSelectInput(session, "site", choices = bird_sites_in_state(st), selected = code)
+      load_site(code)
+    } else {
+      rv$pendingSite <- code
+      updateSelectInput(session, "stateSel", selected = st)
+    }
+  })
   observeEvent(input$demoBtn, ingest(load_demo(), DEMO_META$label, is_demo=TRUE)); observeEvent(input$demoBtn2, ingest(load_demo(), DEMO_META$label, is_demo=TRUE))
 
   pick_species <- function(sci, navigate=FALSE){ if (is.null(sci)||is.na(sci)||sci=="") return()
@@ -359,13 +388,52 @@ server <- function(input, output, session) {
     d <- site_table; if (is.null(d) || !nrow(d)) return(leaflet::leaflet() %>% leaflet::addProviderTiles("CartoDB.Positron") %>% leaflet::setView(-96, 40, 3))
     d$biome <- biome_of(d$site); d$bcol <- biome_col(d$biome); d$blab <- unname(BIOME_LAB[d$biome])
     rr <- range(d$n_species, na.rm = TRUE); d$rad <- 6 + 11 * (d$n_species - rr[1]) / max(1, diff(rr))
-    pop <- sprintf("<div style='font-family:Rubik,sans-serif;min-width:170px'><b>%s · %s</b><br><span style='color:#7a6f5d'>%s · %s</span><br><b>%d</b> species · <b>%s</b> birds/count<br><a href='#' style='color:#c1502e;font-weight:700' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;\">\U0001F426 Explore this site &rarr;</a></div>",
-                   d$site, d$name, d$blab, d$state, d$n_species, d$birds_per_count, gsub("'", "", d$name), d$site)
+    pop <- sprintf("<div style='font-family:Rubik,sans-serif;min-width:170px'><b>%s · %s</b><br><span style='color:#7a6f5d'>%s · %s</span><br><b>%d</b> species · <b>%s</b> birds/count<br><a href='#' style='color:#c1502e;font-weight:700' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;\">\U0001F426 Explore this site &rarr;</a><br><a href='#' style='color:#2f7fb5;font-weight:600' onclick=\"Shiny.setInputValue('siteInfo','%s',{priority:'event'});return false;\">About this site</a></div>",
+                   d$site, d$name, d$blab, d$state, d$n_species, d$birds_per_count, gsub("'", "", d$name), d$site, d$site)
     leaflet::leaflet(d) %>% leaflet::addProviderTiles("CartoDB.Positron") %>% leaflet::setView(-96, 41, 3) %>%
       leaflet::addCircleMarkers(lng = ~lng, lat = ~lat, radius = ~rad, fillColor = ~bcol, color = "#fff", weight = 1, fillOpacity = 0.85,
         label = ~lapply(sprintf("<b>%s</b> · %s<br>%s · %d species", site, name, blab, n_species), htmltools::HTML), popup = pop) %>%
       leaflet::addLegend("bottomright", colors = unname(BIOME_COL), labels = unname(BIOME_LAB), title = "Biome", opacity = 0.9)
   })
+
+  # ---- "About this site" instant info card (popup parity with the flagship) -
+  # The picker popup offers two buttons: "Explore this site" (loads the record,
+  # via input$pickSite -> the sync cascade) and "About this site" (this modal, an
+  # instant info card, no bundle load). The modal's footer button reuses the same
+  # pickSite channel so a load from here also keeps the sidebar in sync.
+  site_info_modal <- function(code) {
+    m <- neon_sites[neon_sites$site == code, ]
+    row <- if (!is.null(SITE_INDEX)) site_table[site_table$site == code, ] else NULL
+    if (!nrow(m))
+      return(modalDialog(title = "Site info", easyClose = TRUE, footer = modalButton("Close"),
+                         p("No details are available for this site.")))
+    coords <- if (!is.na(m$lat[1]) && !is.na(m$lng[1])) sprintf("%.3f, %.3f", m$lat[1], m$lng[1]) else "—"
+    stat <- function(v, lab) div(class = "si-stat",
+      div(class = "si-stat-n", if (is.null(v) || is.na(v)) "—" else format(v, big.mark = ",")),
+      div(class = "si-stat-l", lab))
+    modalDialog(
+      title = HTML(sprintf("\U0001F426 %s <span class='si-code'>(%s)</span>", m$name[1], code)),
+      easyClose = TRUE, size = "m",
+      footer = tagList(
+        modalButton("Close"),
+        tags$button(type = "button", class = "btn btn-primary",
+          onclick = sprintf("smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});", gsub("'", "", m$name[1]), code),
+          HTML("Explore this site &rarr;"))),
+      div(class = "site-info",
+        div(class = "si-sec",
+          div(class = "si-h", "Where"),
+          div(class = "si-row", m$state[1], HTML(sprintf(" · NEON %s", m$domain[1]))),
+          if (!is.na(m$bio[1])) div(class = "si-row si-bio", m$bio[1]),
+          div(class = "si-coords", "\U0001F4CD ", coords)),
+        if (!is.null(row) && nrow(row))
+          div(class = "si-sec",
+            div(class = "si-h", "What NEON has counted here"),
+            div(class = "si-stats",
+              stat(row$n_species[1], "species"),
+              stat(row$n_points[1], "count points"),
+              stat(row$birds_per_count[1], "birds / count")))))
+  }
+  observeEvent(input$siteInfo, showModal(site_info_modal(input$siteInfo)))
 
   # ---- Across the continent: cross-site climate gradient (flagship) ---------
   output$climateGradient <- renderPlotly({
