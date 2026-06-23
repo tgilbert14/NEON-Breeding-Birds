@@ -22,7 +22,7 @@ built to the same Desert Data Labs quality bar, in a warm **"Field Guide"** them
 - **Map** — point-count grids, sized by richness.
 
 ## Run it
-R 4.5.x, bundle-only: `shiny::runApp(".", port = 8192)`. Splash leads with a national map picker (46 sites, coloured by biome). Demo = **HARV** (Harvard Forest — ovenbirds, vireos, veeries).
+R 4.5.x, bundle-only: `shiny::runApp(".", port = 8192)`. Splash leads with a national map picker (46 sites, coloured by biome). The default site is **CLBJ** (LBJ National Grassland, Texas oak savanna), the richest site in the set and one with a stable Chao2 estimate, so the first numbers a new user meets are honest.
 
 ## Data
 Per-site `data/sites/<SITE>.rds` = `list(obs, points, meta)`. `obs` = one row per detection

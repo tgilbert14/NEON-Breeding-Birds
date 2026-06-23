@@ -363,8 +363,12 @@ server <- function(input, output, session) {
     p <- plot_ly()
     # one trace per detection method so the legend reads
     for (m in unique(brd$method)) { sub <- brd[brd$method %in% m, ]
-      p <- p %>% add_trace(data=sub, x=~ubiquity, y=~index, type="scatter", mode="markers", name=m %||% "—",
-        customdata=~tip, marker=list(color=sub$col, size=11, opacity=0.82, line=list(color="#fff", width=0.5)),
+      # redundant non-colour channel: each method also gets a distinct marker SYMBOL
+      # (●▲■◆) so the board is legible without relying on hue (CVD-safe). The symbol is
+      # constant per method, so the plotly legend swatch shows symbol + colour paired.
+      p <- p %>% add_trace(data=sub, x=~ubiquity, y=~index, type="scatter", mode="markers",
+        name=sprintf("%s %s", method_glyph(m), m %||% "—"),
+        customdata=~tip, marker=list(color=sub$col, symbol=method_sym(m), size=11, opacity=0.82, line=list(color="#fff", width=0.5)),
         text=~paste0(vernacular %||% scientificName), hovertemplate="%{text}<br>%{x}% of points · %{y:.2f}/count<extra></extra>") }
     mx <- stats::median(brd$ubiquity); my <- stats::median(brd$index[brd$reliable])
     xr <- range(brd$ubiquity); yr <- range(brd$index); px <- diff(xr)*0.02; py <- diff(yr)*0.02

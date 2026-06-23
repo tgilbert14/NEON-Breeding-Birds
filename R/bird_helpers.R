@@ -37,6 +37,19 @@ canon_method <- function(m) {
   ifelse(grepl("flyover", m), "flyover", m))))))
 }
 method_col <- function(m) { m2 <- canon_method(m); m2 <- ifelse(m2 %in% names(METHOD_COLS), m2, "other"); unname(METHOD_COLS[m2]) }
+# Redundant NON-COLOUR channel for detection method: a per-method plotly marker
+# SYMBOL so the Bird Board is readable without relying on hue (the colours alone
+# are deuteranope-confusable). Paired with METHOD_COLS so the legend swatch shows
+# both. Glyphs (●▲■◆) below mirror these for any text/legend key.
+METHOD_SYM <- c(singing = "circle", calling = "triangle-up", visual = "square",
+                drumming = "diamond", "non-vocal" = "diamond", flyover = "x",
+                other = "circle-open", unknown = "circle-open")
+method_sym <- function(m) { m2 <- canon_method(m); m2 <- ifelse(m2 %in% names(METHOD_SYM), m2, "other"); unname(METHOD_SYM[m2]) }
+# Unicode glyph for legend/text use, paired 1:1 with the plotly marker symbol above.
+METHOD_GLYPH <- c(singing = "●", calling = "▲", visual = "■",
+                  drumming = "◆", "non-vocal" = "◆", flyover = "✕",
+                  other = "○", unknown = "○")
+method_glyph <- function(m) { m2 <- canon_method(m); m2 <- ifelse(m2 %in% names(METHOD_GLYPH), m2, "other"); unname(METHOD_GLYPH[m2]) }
 # Flyovers are birds passing overhead, NOT holding a breeding territory at the point
 # (IMBCR/BBS convention excludes them from a breeding-density index). Quarantine them
 # from the detection index so 300–500-bird flyover flocks don't distort it. Kept in the

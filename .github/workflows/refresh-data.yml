@@ -74,7 +74,7 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           packages: >
-            neonUtilities, dplyr, tibble, tidyr, stringr, rsconnect,
+            neonUtilities, dplyr, tibble, tidyr, stringr, rsconnect, jsonlite,
             shiny, bslib, bsicons, plotly, leaflet, DT, shinyjs,
             shinycssloaders, RColorBrewer, htmltools, cpp11
 
@@ -114,13 +114,25 @@ jobs:
           Rscript scripts/refresh_site_climate.R
           Rscript scripts/build_cross_site.R
 
+      # Rebuild the "Search the network" index from the committed bundles so it
+      # never drifts from the data (reads data/sites/*.rds + data/site_index.rds,
+      # no live fetch). Must run AFTER the precompute and BEFORE the commit.
+      - name: Rebuild the search index
+        run: Rscript scripts/build_search_index.R
+
+      # Regenerate the lean manifest from the (about-to-be-committed) app files so
+      # Connect serves the right dependency set; the script's hard gate fails the
+      # build if a heavy-pull package (neonUtilities / arrow) ever leaks in.
+      - name: Regenerate manifest
+        run: Rscript scripts/write_manifest.R
+
       # Push the refreshed data straight to master -> Connect Cloud re-publishes.
       # Skips cleanly when nothing changed.
       - name: Commit & push refreshed data
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/sites data/env data/site_index.rds data/site_climate.rds data/site_month_clim.rds data/cross_site.rds data-sample 2>/dev/null || true
+          git add data/sites data/env data/site_index.rds data/site_climate.rds data/site_month_clim.rds data/cross_site.rds data/search_index.rds manifest.json data-sample 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No data changes — nothing to push."
           else
