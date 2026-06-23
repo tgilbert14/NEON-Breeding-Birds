@@ -87,7 +87,51 @@ server <- function(input, output, session) {
       updateSelectInput(session, "stateSel", selected = st)
     }
   })
-  observeEvent(input$demoBtn, ingest(load_demo(), DEMO_META$label, is_demo=TRUE)); observeEvent(input$demoBtn2, ingest(load_demo(), DEMO_META$label, is_demo=TRUE))
+  # (v2 flow: the LBJ Grassland demo path is gone — users pick a real site on the
+  #  map, the Browse-all-sites list, or the by-name select panel. demoBtn/demoBtn2
+  #  and their observers were removed with it.)
+
+  # "Change site" (in the hero band) -> back to the picker-map landing.
+  observeEvent(input$changeSite, {
+    rv$obs <- NULL; rv$points <- NULL; rv$board <- NULL; rv$label <- NULL; rv$site <- NULL; rv$sp <- NULL; rv$grid <- NULL
+    shinyjs::hide("mainTabsWrap"); shinyjs::hide("spPickerWrap"); shinyjs::show("splash")
+    # the picker map was hidden while a site was loaded; nudge it to recompute its
+    # size now that it's visible again so it never paints blank/half-width on return
+    session$sendCustomMessage("kickMaps", list())
+  })
+
+  # ---- site report card (top-bar / hero "report" download) ----------------
+  # No PDF path exists in this app, so the report card is a well-formed,
+  # FAIR-documented site-summary CSV: a one-row site header block, then one row
+  # per species with its detection index, ubiquity, and detection breakdown.
+  output$reportCsv <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_report_%s_%s.csv",
+      gsub("[^A-Za-z0-9]+", "-", rv$site %||% "site"), format(Sys.Date(), "%Y%m%d")),
+    content = function(file) {
+      brd <- rv$board; sb <- site_birds(rv$obs, rv$points, rv$nvis)
+      if (is.null(brd) || is.null(sb)) { utils::write.csv(data.frame(note = "No site loaded"), file, row.names = FALSE); return() }
+      yrs <- tryCatch(range(rv$obs$year, na.rm = TRUE), error = function(e) c(NA, NA))
+      header <- data.frame(
+        scientificName = c("# SITE", "# years", "# species", "# count points",
+                           "# point-counts run", "# birds per count (detection index)",
+                           "# flyover birds (quarantined)", "# generated", "#"),
+        vernacular = c(rv$label %||% rv$site %||% "",
+                       if (!any(is.na(yrs))) paste0(yrs[1], "-", yrs[2]) else "",
+                       sb$n_species, sb$n_points, sb$n_visits, sb$birds_per_count,
+                       sb$flyover_birds %||% 0, format(Sys.Date()),
+                       "Detection index = breeding birds per 6-min point-count; flyovers excluded."),
+        detections = NA, total_birds = NA, index_birds = NA, flyover_birds = NA,
+        n_points = NA, ubiquity = NA, index = NA, method = NA,
+        stringsAsFactors = FALSE, check.names = FALSE)
+      cols <- c("scientificName", "vernacular", "detections", "total_birds", "index_birds",
+                "flyover_birds", "n_points", "ubiquity", "index", "method")
+      body <- brd[, intersect(cols, names(brd)), drop = FALSE]
+      for (cc in setdiff(cols, names(body))) body[[cc]] <- NA
+      body <- body[, cols, drop = FALSE]
+      out <- rbind(header[, cols, drop = FALSE], body)
+      utils::write.csv(out, file, row.names = FALSE, na = "")
+    },
+    contentType = "text/csv")
 
   pick_species <- function(sci, navigate=FALSE){ if (is.null(sci)||is.na(sci)||sci=="") return()
     if (is.null(rv$board) || !(sci %in% rv$board$scientificName)) return()
@@ -107,7 +151,10 @@ server <- function(input, output, session) {
       div(class="hs-icon", bs_icon(icon)),
       div(div(class="hs-v count-up", `data-target`=v, `data-suffix`=suf, "0"),
           div(class="hs-l", l, if (!is.null(info)) info)))
-    div(class="hero-band", div(class="hero-title", bs_icon("broadcast"), tags$b(rv$label)),
+    div(class="hero-band",
+      div(class="hero-title", bs_icon("broadcast"), tags$b(rv$label),
+        actionLink("changeSite", tagList(bs_icon("arrow-left-circle"), " change site"), class = "hero-change"),
+        downloadLink("reportCsv", tagList(bs_icon("file-earmark-arrow-down"), " report"), class = "hero-report")),
       div(class="hero-grid",
         hero(sb$n_species, "species", icon="feather", tone="navy",
           info=info_pop("Species", p("The number of different bird species ", tags$b("detected"), " here across all years of counts. 'Detected' matters. Shy, rare, or nocturnal birds can be present but missed, so the true total is higher (see the Chao2 estimate)."))),
@@ -610,7 +657,8 @@ server <- function(input, output, session) {
     contentType="text/csv")
   observeEvent(input$help, showModal(modalDialog(easyClose=TRUE, title=tagList(bs_icon("question-circle"), " How it works"),
     tags$ul(
-      tags$li(HTML("Pick a <b>site</b> (or open the LBJ National Grassland demo).")),
+      tags$li(HTML("<b>Pick a site</b> — tap a dot on the map, or choose one by name in the panel below it.")),
+      tags$li(HTML("Use <b>change site</b> in the site banner to come back here and pick a different one.")),
       tags$li(HTML("<b>Community</b> · species richness + a Chao2 estimate of how many species use the site.")),
       tags$li(HTML("<b>Bird Board</b> · every species by ubiquity × detection index; <b>tap one</b> to pin its card, then “Open species profile”.")),
       tags$li(HTML("<b>Species Profile</b> · the detection-decay (how far it's detected), yearly counts, and downloads.")),

@@ -174,7 +174,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // it recomputes its size. Dispatching 'resize' makes every Leaflet map
     // invalidateSize. The server kicks this after re-showing the splash.
     Shiny.addCustomMessageHandler("kickMaps", function () {
-      setTimeout(function () { try { window.dispatchEvent(new Event("resize")); } catch (e) {} }, 90);
+      // Dispatch 'resize' across several frames so Leaflet re-fits the SETTLED
+      // width after "change site" re-shows the splash, instead of painting
+      // half-width off a still-collapsing container.
+      var kick = function () { try { window.dispatchEvent(new Event("resize")); } catch (e) {} };
+      requestAnimationFrame(kick);
+      [80, 250, 500, 900].forEach(function (t) { setTimeout(kick, t); });
     });
   }
 });

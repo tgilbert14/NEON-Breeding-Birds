@@ -450,3 +450,57 @@ body {
   .splash-guide .sg-mascot .mascot-eyes, .splash-guide.wave .sg-mascot { animation:none !important; }
   .mascot-cheer { display:none; }
 }
+
+/* ===========================================================================
+   v2 flow chrome: top bar + relocated select panel + species picker
+   (the sidebar is gone; these carry what it used to hold). Tokens come from
+   bird.css :root so both light and dark mode read correctly.
+   =========================================================================== */
+
+/* ---- slim persistent top bar (theme + temp + help) ---------------------- */
+.top-bar { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; padding:8px 2px 12px; margin:0 0 4px; border-bottom:1px solid var(--line); }
+.top-bar-brand { display:flex; align-items:center; gap:9px; }
+.tb-mark { font-size:24px; line-height:1; }
+.tb-title { font-weight:800; font-size:16px; color:var(--rust); letter-spacing:.3px; }
+.top-bar-actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.tb-temp, .tb-theme { display:flex; align-items:center; gap:7px; }
+.tb-temp-lab, .tb-theme-lab { color:var(--muted); font-size:14px; display:inline-flex; }
+/* keep the temp radios from pushing a giant bottom margin in the bar */
+.tb-temp .shiny-options-group { display:flex; gap:10px; margin:0; }
+.tb-temp .radio, .tb-temp .form-check { margin:0; min-height:0; }
+.tb-temp label { font-size:13px; font-weight:600; color:var(--ink); margin:0; }
+.tb-help { min-height:44px; }
+@media (max-width:600px) {
+  .top-bar { padding:8px 2px 10px; }
+  .top-bar-brand .tb-title { font-size:15px; }
+  .top-bar-actions { gap:10px; }
+}
+
+/* ---- relocated select panel (was the sidebar) --------------------------- */
+.select-panel { background:var(--paper); border:1px solid var(--line); border-radius:14px;
+  padding:16px 18px; margin:14px auto 4px; max-width:920px; box-shadow:0 4px 16px var(--shadow); }
+.sp-head { font-weight:700; color:var(--rust); font-size:13.5px; display:flex; align-items:center;
+  gap:8px; margin-bottom:12px; }
+.sp-row { display:flex; gap:14px; flex-wrap:wrap; }
+.sp-field { flex:1 1 220px; min-width:0; }
+.sp-field label, .sp-field .control-label { color:var(--ink); font-weight:600; font-size:13px; }
+.select-panel .form-control, .select-panel .selectize-input { min-height:44px; }
+.sp-load { margin-top:14px; min-height:48px; font-weight:700; letter-spacing:.3px; }
+@media (max-width:560px) { .sp-row { flex-direction:column; gap:10px; } .sp-field { flex:1 1 auto; } }
+
+/* ---- species-profile picker (was in the sidebar, now a loaded-view strip) */
+.sp-picker-wrap { background:var(--paper); border:1px solid var(--line); border-radius:12px;
+  padding:12px 14px; margin:0 0 14px; box-shadow:0 3px 12px var(--shadow); }
+.spw-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+.spw-sel { flex:1 1 280px; min-width:0; }
+.spw-sel label, .spw-sel .control-label { color:var(--ink); font-weight:600; font-size:13px; }
+.spw-surprise { min-height:44px; white-space:nowrap; }
+@media (max-width:560px) { .spw-row { flex-direction:column; align-items:stretch; } .spw-surprise { width:100%; } }
+
+/* ---- hero band: change-site + report links read as actions, not labels --- */
+.hero-title .hero-change, .hero-title .hero-report { font-size:12.5px; }
+@media (max-width:560px) {
+  .hero-title { flex-wrap:wrap; gap:6px 10px; }
+  .hero-title .hero-change, .hero-title .hero-report { padding-left:0; border-left:0; }
+}
