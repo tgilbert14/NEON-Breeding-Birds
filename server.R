@@ -144,6 +144,104 @@ server <- function(input, output, session) {
   observeEvent(input$goMap, nav_select("tabs","map"))
   observeEvent(input$goClimate, nav_select("tabs","climate"))
 
+  # ---- Search the network -------------------------------------------------
+  # Filters the bundled SEARCH_INDEX in memory (no fetch). The "Go to site"
+  # button in each row reuses the shared pickSite path: it loads that site from
+  # its bundle (instant) and lands the user on the Overview, identical to a map
+  # dot or browse-list pick.
+  go_btn <- function(code, name) sprintf(
+    "<button class='smt-clear-btn search-go' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});\">Go to this site &rarr;</button>",
+    gsub("'", "", name), code)
+  search_dt <- function(df) DT::datatable(df, rownames = FALSE, escape = FALSE,
+    selection = "none", class = "compact stripe hover",
+    options = list(pageLength = 12, dom = "tip", order = list(),
+                   columnDefs = list(list(orderable = FALSE, targets = ncol(df) - 1))))
+
+  # autocomplete: populate server-side from the index (independent of loaded site)
+  updateSelectizeInput(session, "searchSp",
+    choices = c("Pick a species…" = "", SEARCH_SPECIES_CHOICES), selected = "", server = TRUE)
+
+  # (a) FIND A SPECIES — every site where it was detected
+  sp_hits <- reactive({
+    if (is.null(SEARCH_TAXA)) return(NULL)
+    sci <- input$searchSp %||% ""; if (!nzchar(sci)) return(NULL)
+    h <- SEARCH_TAXA[SEARCH_TAXA$scientificName == sci, , drop = FALSE]
+    if (!nrow(h)) return(h)
+    h[order(-h$index), , drop = FALSE]
+  })
+  output$searchSpCaption <- renderUI({
+    if (is.null(SEARCH_TAXA)) return(div(class = "search-empty", "Search index not available."))
+    sci <- input$searchSp %||% ""
+    if (!nzchar(sci)) return(div(class = "search-empty", bs_icon("arrow-up"), " Pick a species to see where it turns up across the 46 sites."))
+    h <- sp_hits()
+    if (is.null(h) || !nrow(h)) return(div(class = "search-empty", bs_icon("emoji-frown"), " Not detected at any bundled site."))
+    vn <- h$vernacular[1] %||% sci
+    tagList(
+      div(class = "search-count", sprintf("%d of %d sites", nrow(h), nrow(SEARCH_SITES %||% h))),
+      div(class = "search-note", bs_icon("info-circle"),
+        sprintf(" %s (%s). The number is the detection index, breeding birds per point-count with flyovers excluded, a within-site index and not an absolute count, so it ranks effort-fairly but is not a true density.", vn, sci)))
+  })
+  output$searchSpTable <- DT::renderDT({
+    h <- sp_hits(); req(!is.null(h)); if (!nrow(h)) return(NULL)
+    yrs <- ifelse(is.finite(h$year_min) & is.finite(h$year_max),
+                  ifelse(h$year_min == h$year_max, as.character(h$year_min),
+                         paste0(h$year_min, "–", h$year_max)), "—")
+    df <- data.frame(Site = h$site, Name = h$name %||% h$site, State = h$state %||% "",
+                     `Detection index` = h$index, Detections = h$detections, Years = yrs,
+                     ` ` = mapply(go_btn, h$site, h$name %||% h$site),
+                     check.names = FALSE, stringsAsFactors = FALSE)
+    search_dt(df)
+  })
+
+  # (b) THRESHOLD QUERY
+  thresh_hits <- reactive({
+    kind <- input$threshKind %||% "wide"
+    if (kind == "wide") {
+      if (is.null(SEARCH_TAXA)) return(NULL)
+      n <- input$threshN %||% 20
+      tab <- SEARCH_TAXA[!duplicated(SEARCH_TAXA$scientificName),
+                         c("scientificName", "vernacular", "n_sites"), drop = FALSE]
+      tab <- tab[tab$n_sites > n, , drop = FALSE]
+      tab[order(-tab$n_sites, tab$vernacular), , drop = FALSE]
+    } else {
+      if (is.null(SEARCH_SITES)) return(NULL)
+      x <- input$threshX %||% 100
+      s <- SEARCH_SITES[!is.na(SEARCH_SITES$n_species) & SEARCH_SITES$n_species > x, , drop = FALSE]
+      s[order(-s$n_species), , drop = FALSE]
+    }
+  })
+  output$searchThreshCaption <- renderUI({
+    kind <- input$threshKind %||% "wide"; h <- thresh_hits()
+    if (kind == "wide") {
+      total <- if (!is.null(SEARCH_TAXA)) length(unique(SEARCH_TAXA$scientificName)) else 0L
+      if (is.null(h) || !nrow(h)) return(div(class = "search-empty", bs_icon("emoji-frown"), " No species pass that threshold. Lower the site count."))
+      tagList(div(class = "search-count", sprintf("%d of %d species", nrow(h), total)),
+        div(class = "search-note", bs_icon("info-circle"),
+          sprintf(" Species detected at more than %d of the 46 sites. Detection here means recorded on a point count (flyovers excluded), not absence-confirmed anywhere else.", input$threshN %||% 20)))
+    } else {
+      total <- if (!is.null(SEARCH_SITES)) nrow(SEARCH_SITES) else 0L
+      if (is.null(h) || !nrow(h)) return(div(class = "search-empty", bs_icon("emoji-frown"), " No sites pass that threshold. Lower the richness cutoff."))
+      tagList(div(class = "search-count", sprintf("%d of %d sites", nrow(h), total)),
+        div(class = "search-note", bs_icon("info-circle"),
+          sprintf(" Sites with more than %d species detected. Observed richness depends on survey effort, so this is space-for-time and not effort-corrected; compare it with the rarefied richness on Across the continent.", input$threshX %||% 100)))
+    }
+  })
+  output$searchThreshTable <- DT::renderDT({
+    kind <- input$threshKind %||% "wide"; h <- thresh_hits(); req(!is.null(h)); if (!nrow(h)) return(NULL)
+    if (kind == "wide") {
+      df <- data.frame(Species = h$vernacular, `Scientific name` = h$scientificName,
+                       Sites = h$n_sites, check.names = FALSE, stringsAsFactors = FALSE)
+      return(DT::datatable(df, rownames = FALSE, selection = "none",
+        class = "compact stripe hover", options = list(pageLength = 12, dom = "tip")))
+    }
+    df <- data.frame(Site = h$site, Name = h$name %||% h$site, State = h$state %||% "",
+                     Species = h$n_species, Points = h$n_points,
+                     `Birds/count` = h$birds_per_count, Top = h$top_species,
+                     ` ` = mapply(go_btn, h$site, h$name %||% h$site),
+                     check.names = FALSE, stringsAsFactors = FALSE)
+    search_dt(df)
+  })
+
   # ---- hero ----
   output$heroStats <- renderUI({
     sb <- site_birds(rv$obs, rv$points, rv$nvis); if (is.null(sb)) return(NULL)

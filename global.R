@@ -36,6 +36,21 @@ load_demo <- function() { b <- load_site_bundle(DEMO_META$site); if (!is.null(b)
 
 SITE_INDEX <- tryCatch(readRDS("data/site_index.rds"), error = function(e) NULL)
 BUNDLED <- if (!is.null(SITE_INDEX)) SITE_INDEX$site else character(0)
+
+# ---- network search index (built by scripts/build_search_index.R) -----------
+# One small .rds loaded ONCE at boot: $taxa = tidy (species x site) occurrence
+# table with the per-site detection index + year span; $sites = per-site
+# headline metrics (mirrors site_index). The Search tab filters these in memory,
+# so the network search is instant with no live fetch. NULL-safe.
+SEARCH_INDEX <- tryCatch(readRDS("data/search_index.rds"), error = function(e) NULL)
+SEARCH_TAXA  <- if (!is.null(SEARCH_INDEX)) SEARCH_INDEX$taxa  else NULL
+SEARCH_SITES <- if (!is.null(SEARCH_INDEX)) SEARCH_INDEX$sites else NULL
+# autocomplete choices: "Common Name · Scientific name" -> scientificName
+SEARCH_SPECIES_CHOICES <- if (!is.null(SEARCH_TAXA)) {
+  u <- SEARCH_TAXA[!duplicated(SEARCH_TAXA$scientificName), c("scientificName", "vernacular")]
+  u <- u[order(u$vernacular), ]
+  setNames(u$scientificName, sprintf("%s · %s", u$vernacular, u$scientificName))
+} else character(0)
 site_table <- if (length(BUNDLED)) {
   m <- neon_sites[match(BUNDLED, neon_sites$site), ]
   cbind(m, SITE_INDEX[match(m$site, SITE_INDEX$site), c("n_species", "n_points", "n_visits", "birds_per_count", "top_species")])

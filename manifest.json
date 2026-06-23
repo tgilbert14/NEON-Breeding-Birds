@@ -3216,6 +3216,9 @@
     "data/env/YELL.rds": {
       "checksum": "09eaf8b677d24ddcc48b6fa0e23e6040"
     },
+    "data/search_index.rds": {
+      "checksum": "22ec03abd697c72887fd54047c27cd07"
+    },
     "data/site_climate.rds": {
       "checksum": "9197de5f1644db1205efd273d032a50d"
     },
@@ -3364,7 +3367,7 @@
       "checksum": "79c0066b3f7647892e0b17cfa69eaf2e"
     },
     "global.R": {
-      "checksum": "5b6e546256ec39e5dab02331c7c62051"
+      "checksum": "bd375175c96242c45b4530eac233570d"
     },
     "R/bird_helpers.R": {
       "checksum": "c0013bd99faa32d59cc84832fcad2c54"
@@ -3373,16 +3376,16 @@
       "checksum": "876fb1ddf81b732313aa763ce1fa6023"
     },
     "server.R": {
-      "checksum": "d70ed1b5a94bf1b21ef7e97fd255ebae"
+      "checksum": "8da81f97edeb31a312d0ef24f6bbfebc"
     },
     "ui.R": {
-      "checksum": "f6f3f62a3a80838a36dcafe0a6c786e3"
+      "checksum": "8538702eebde1f412b3279dc52c24f85"
     },
     "www/app.js": {
-      "checksum": "1840d68f4822918c8f208a25e71bb7ff"
+      "checksum": "a24a0bf07773a3f6afe4d16b47be4fd4"
     },
     "www/bird.css": {
-      "checksum": "5a8ec300f5e4c499de8024802cc93131"
+      "checksum": "81ce12924cc8491303830588ffd8abdf"
     },
     "www/pincards.js": {
       "checksum": "b89f15694261a4d17a440121d8026c37"
