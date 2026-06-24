@@ -32,6 +32,27 @@ cat(sprintf("Writing manifest for %d files (%d site bundles)...\n",
             length(appFiles), length(list.files("data/sites", pattern = "\\.rds$"))))
 rsconnect::writeManifest(appDir = ".", appFiles = appFiles)
 
+# ---- pin terra to the last release before the GDAL-3.8 multidim code (1.8-54) ----
+# terra >= 1.8-54 ships gdal_multidimensional.cpp using a GDAL 3.8 call unguarded in
+# releases, so it FAILS to compile against Connect Cloud's GDAL 3.4.1. Connect compiles
+# from source regardless of repo. 1.8-50 is the last release before 1.8-54: it compiles
+# on 3.4.1 and still satisfies raster's terra (>= 1.8-5). terra/raster are install-only
+# (leaflet -> raster -> terra; app never calls terra) -> zero runtime impact. Also pin
+# the repo to the RSPM jammy binary mirror for suite consistency.
+local({
+  mm <- jsonlite::fromJSON("manifest.json", simplifyVector = FALSE)
+  if (!is.null(mm$packages$terra)) {
+    mm$packages$terra$description$Version <- "1.8-50"
+    if (!is.null(mm$packages$terra$description$RemoteSha)) mm$packages$terra$description$RemoteSha <- "1.8-50"
+    jsonlite::write_json(mm, "manifest.json", auto_unbox = TRUE, pretty = TRUE, null = "null")
+  }
+  mtxt <- readLines("manifest.json", warn = FALSE)
+  mtxt <- gsub("https://cloud.r-project.org", "https://packagemanager.posit.co/cran/__linux__/jammy/latest", mtxt, fixed = TRUE)
+  mtxt <- gsub("https://packagemanager.posit.co/cran/latest", "https://packagemanager.posit.co/cran/__linux__/jammy/latest", mtxt, fixed = TRUE)
+  writeLines(mtxt, "manifest.json")
+  cat("Pinned terra to 1.8-50 + RSPM jammy repo.\n")
+})
+
 # ---- HARD GATE: a leaked heavy-pull package must never commit silently -------
 # Parse the manifest's actual package KEYS (not a substring scan — the word
 # "arrow" / "data.table" appears inside other packages' Suggests/Imports text and
