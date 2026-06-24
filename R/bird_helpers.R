@@ -414,11 +414,18 @@ bird_codebook <- function() {
   if (length(missing))
     stop(sprintf("bird_codebook(): %d exported column(s) have no BIRD_COL_DICT entry: %s",
                  length(missing), paste(missing, collapse = ", ")), call. = FALSE)
-  data.frame(
+  cb <- data.frame(
     column      = cols,
     units       = vapply(cols, function(c) BIRD_COL_DICT[[c]][1], character(1)),
     description = vapply(cols, function(c) BIRD_COL_DICT[[c]][2], character(1)),
     row.names   = NULL, stringsAsFactors = FALSE)
+  # Provenance / license row (NEON CC BY 4.0), first so it's visible on open.
+  lic <- data.frame(
+    column      = "_source",
+    units       = "license",
+    description = "Source: NEON DP1.10003.001, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); aggregated and derived by this app.",
+    stringsAsFactors = FALSE)
+  rbind(lic, cb)
 }
 
 # per-POINT (grid) summary for the map: richness + birds/visit per point

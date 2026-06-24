@@ -748,6 +748,11 @@ server <- function(input, output, session) {
       div(class="about-card", h4(bs_icon("table"), " Data dictionary & downloads"),
         p("Every CSV download carries a documented column. The ", tags$b("codebook"), " lists each exported column with its units and how to read missing values, and it covers all the app's exports: the per-species detections (including the ", tags$code("is_flyover"), " / ", tags$code("enters_index"), " columns that make the index quarantine explicit), the Bird Board table, the cross-site gradient table, the per-grid species list, and the QC report flags."),
         downloadButton("codebookCsvGlobal", "Download the full column codebook (CSV)", class="smt-clear-btn")),
+      div(class="about-card", h4(bs_icon("award"), " Data attribution & license"),
+        p(class="caveat",
+          "Built with data from the National Ecological Observatory Network (NEON), a U.S. National Science Foundation program operated by Battelle. NEON data are provided under a Creative Commons Attribution 4.0 International (CC BY 4.0) license (",
+          tags$a(href="https://creativecommons.org/licenses/by/4.0/", target="_blank", "creativecommons.org/licenses/by/4.0"),
+          "). This app aggregates and derives summary metrics from the raw NEON data products; the underlying measurements are unaltered. It is an independent, unofficial tool and is not endorsed by NEON, Battelle, or the NSF.")),
       div(class="about-card", h4(bs_icon("envelope"), " Desert Data Labs"),
         p(bs_icon("envelope"), " ", tags$a(href="mailto:desertdatalabs@gmail.com","desertdatalabs@gmail.com"), " · ",
           tags$a(href="https://data.neonscience.org/data-products/DP1.10003.001", target="_blank", "NEON data product"))))
