@@ -13,9 +13,11 @@ name: Refresh NEON data bundle
 #     wasteful; tick `refetch_birds` in the Actions tab when NEON publishes a new
 #     season. (Mirrors the mammal app's flow, adapted to the bird cadence.)
 #
-# REQUIRES one optional repo secret (Settings → Secrets and variables → Actions):
-#   NEON_TOKEN   a free NEON API token (raises the anonymous rate limit). The
-#                pulls work without it, just slower.
+# REQUIRES one repo secret (Settings → Secrets and variables → Actions):
+#   NEON_TOKEN   a free NEON API token from your NEON "My Account" page. From
+#                2026-06-30 NEON REQUIRES a token for downloads (before that it only
+#                raised the rate limit). Without it the monthly re-pull fails after
+#                that date; the deployed app keeps serving its last committed bundle.
 
 on:
   schedule:
