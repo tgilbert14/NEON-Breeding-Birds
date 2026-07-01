@@ -83,10 +83,23 @@ DDL <- list(
 # Body stays Rubik (sans); Fraunces serif display headings are applied in bird.css
 # (NOT via heading_font here — avoids a double @font-face import that would break
 # html-to-image's already-loaded-font path). See www/bird.css.
+# Rubik is named as a PLAIN CSS font-family here (a bslib font_collection of bare
+# strings), NOT font_google("Rubik"). font_google() defaults to local = TRUE, which
+# makes bslib DOWNLOAD the font from Google and compile it into the theme AT APP
+# STARTUP. On Connect Cloud that live fetch runs on every cold start against an empty
+# cache; when Google Fonts is slow/unreachable the Sass compile blocks/fails during
+# boot -> black screen / "start-up error" (republish only re-primes the cache until the
+# next recycle). Naming the family as a string does ZERO network at boot; the real
+# Rubik glyphs are still delivered client-side by the <link> in ui.R (display=swap),
+# with a system-sans fallback. Fraunces serif display headings are applied in
+# www/bird.css (already fallback-stacked: Fraunces, Georgia, "Times New Roman", serif).
+# See docs/neonize-playbook.md §4.
+rubik_stack <- bslib::font_collection(
+  "Rubik", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif")
 app_theme <- bs_theme(version = 5, bg = "#fffdf6", fg = DDL$ink,
   primary = DDL$rust, secondary = DDL$goldfinch, success = DDL$sing, info = DDL$call,
   warning = DDL$goldfinch, danger = DDL$rust2,
-  base_font = font_google("Rubik"), heading_font = font_google("Rubik"), "border-radius" = "10px")
+  base_font = rubik_stack, heading_font = rubik_stack, "border-radius" = "10px")
 
 asset_url <- function(path) { f <- file.path("www", path)
   v <- if (file.exists(f)) as.integer(as.numeric(file.mtime(f))) else 0L; sprintf("%s?v=%s", path, v) }
