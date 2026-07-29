@@ -1,568 +1,353 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>NEON Bird Explorer · the Explorer Suite by Desert Data Labs</title>
-  <meta name="description"
-    content="Explore the birds counted at 46 NEON research sites each breeding season. See how many species live at a site, which are common, and how bird life changes from the arctic to the desert." />
-  <meta name="theme-color" content="#1c1408" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON Breeding Bird Explorer — Who’s singing where?</title>
+  <meta name="description" content="Follow the birds NEON hears and sees across 47 breeding-season field sites.">
+  <meta name="theme-color" content="#152c46">
+  <link rel="canonical" href="https://tgilbert14.github.io/NEON-Breeding-Birds/">
+  <link rel="preload" as="image" href="assets/birds-living-poster-v1.webp"
+    imagesrcset="assets/birds-living-poster-v1-840.webp 840w, assets/birds-living-poster-v1.webp 1536w"
+    imagesizes="(max-width: 700px) 100vw, 58vw" fetchpriority="high">
 
-  <!-- Open Graph / social card. Absolute URLs = the GitHub Pages domain for this repo. -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://tgilbert14.github.io/NEON-Breeding-Birds/" />
-  <meta property="og:title" content="NEON Bird Explorer · Desert Data Labs" />
-  <meta property="og:description"
-    content="Explore the birds counted at 46 NEON research sites each breeding season. See which species live where, and how bird life changes from arctic tundra to Caribbean dry forest." />
-  <meta property="og:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="NEON Bird Explorer · Desert Data Labs" />
-  <meta name="twitter:description"
-    content="Explore the birds counted at 46 NEON research sites each breeding season. See which species live where, and how bird life changes across the country." />
-  <meta name="twitter:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image.png" />
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Desert Data Labs">
+  <meta property="og:title" content="NEON Breeding Bird Explorer — Who’s singing where?">
+  <meta property="og:description" content="Follow the birds NEON hears and sees across 47 breeding-season field sites.">
+  <meta property="og:url" content="https://tgilbert14.github.io/NEON-Breeding-Birds/">
+  <meta property="og:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image-v2.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Screenprint illustration of a singing bird and a field observer conducting a dawn point count.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="NEON Breeding Bird Explorer — Who’s singing where?">
+  <meta name="twitter:description" content="Follow the birds NEON hears and sees across 47 breeding-season field sites.">
+  <meta name="twitter:image" content="https://tgilbert14.github.io/NEON-Breeding-Birds/og-image-v2.png">
+  <meta name="twitter:image:alt" content="Screenprint illustration of a singing bird and a field observer conducting a dawn point count.">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-
-  <!-- promote to JS layout before paint so there is no flash of the fallback list -->
-  <script>document.documentElement.className += ' js';</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "NEON Breeding Bird Explorer",
+    "url": "https://tgilbert14.github.io/NEON-Breeding-Birds/",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "description": "An unofficial explorer for NEON breeding-landbird point counts across 47 field sites.",
+    "creator": {"@type": "Organization", "name": "Desert Data Labs"},
+    "isBasedOn": "https://data.neonscience.org/data-products/DP1.10003.001"
+  }
+  </script>
 
   <style>
     :root {
-      --bg-0:#120d06; --bg-1:#1c1408; --bg-2:#2a1f10;
-      --teal:#f5b13f; --teal-rgb:245,177,63; --bright:#ffd98a;
-      --coral:#e0714a; --coral-rgb:224,113,74;
-      --gold:#ffd98a; --gold-rgb:255,217,138;
-      --ink:#f5ead2; --dim:#c9b591; --line:rgba(255,255,255,.12); --card:rgba(255,255,255,.045);
-      /* field-guide reading layer hues (warm amber -> rust ladder) */
-      --clim:#ffd98a; --phen:#f5b13f; --prod:#e8924a; --cons:#e0714a;
+      --night: #152c46;
+      --night-2: #0c2035;
+      --sky: #8fc6e7;
+      --dawn: #f2b64b;
+      --coral: #e6744d;
+      --paper: #fff5dc;
+      --paper-2: #f5e8c8;
+      --line: rgba(255, 245, 220, .29);
+      --ink: #13283f;
     }
-    * { box-sizing: border-box }
-    html,body { margin:0 }
+    * { box-sizing: border-box; }
+    html { color-scheme: dark; scroll-behavior: smooth; }
     body {
-      font-family: Rubik, system-ui, sans-serif; color: var(--ink); background: var(--bg-0);
-      -webkit-font-smoothing: antialiased; line-height: 1.55; overflow-x:hidden;
+      min-width: 0;
+      margin: 0;
+      color: var(--paper);
+      background: var(--night);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
     }
-    h1,h2,h3 { font-family: Rubik, sans-serif; line-height: 1.12; margin:0; font-weight:800 }
-    a { color: var(--bright); text-decoration:none }
-    .wrap { max-width: 1060px; margin: 0 auto; padding: 0 22px; position:relative; z-index:2 }
-
-    /* ---------- field-guide-dusk / circuit sky ---------- */
-    .sky { position: fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
-      background:
-        radial-gradient(120% 90% at 50% -8%, var(--bg-2), transparent 58%),
-        radial-gradient(140% 120% at 50% 120%, #3a2912 0%, var(--bg-1) 45%, var(--bg-0) 100%); }
-    .sky::before { content:""; position:absolute; inset:-50%; opacity:.45;
-      background-repeat:repeat; background-size:240px 240px;
-      background-image:
-        radial-gradient(1.4px 1.4px at 30px 40px, rgba(255,255,255,.5), transparent),
-        radial-gradient(1.2px 1.2px at 150px 90px, rgba(255,221,160,.5), transparent),
-        radial-gradient(1.5px 1.5px at 90px 170px, rgba(245,177,63,.45), transparent);
-      animation: drift 140s linear infinite; }
-    @keyframes drift { to { transform: translateY(240px) } }
-
-    /* ---------- hero ---------- */
-    .hero { position:relative; z-index:2; padding: 46px 0 6px }
-    .brand { display:inline-flex; align-items:center; gap:10px; }
-    .brand svg { width:26px; height:26px; overflow:visible }
-    .brand .stroke { stroke:var(--teal); stroke-width:7; fill:none; stroke-linecap:round }
-    .brand .pip { fill:var(--bright) }
-    .brand b { font-weight:700; font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; color:var(--dim) }
-    .eyebrow { margin-top:18px; font-family: ui-monospace,Menlo,Consolas,monospace; font-size:.72rem;
-      letter-spacing:.26em; text-transform:uppercase; color:var(--teal); }
-    .hero h1 { font-size: clamp(2.2rem, 6vw, 3.6rem); margin:.5rem 0 .6rem; letter-spacing:-.02em;
-      background:linear-gradient(100deg,#fff 10%, var(--bright) 45%, var(--coral) 95%);
-      -webkit-background-clip:text; background-clip:text; color:transparent; }
-    .lead { font-size: clamp(1.05rem,2.2vw,1.24rem); max-width:60ch; margin:0 0 24px; color:var(--ink) }
-    .lead b { color:var(--bright); font-weight:600 }
-
-    /* ---------- standout launch button (the one thing to click) ---------- */
-    .cta-row { display:flex; flex-wrap:wrap; gap:14px; align-items:center }
-    .launch {
-      position:relative; display:inline-flex; align-items:center; gap:11px;
-      font-weight:800; font-size:1.06rem; padding:15px 28px; border-radius:14px;
-      color:#1a1003; border:1px solid rgba(255,255,255,.5); overflow:hidden; isolation:isolate;
-      background:linear-gradient(100deg, var(--bright), var(--teal) 45%, #ffc96a 80%, var(--bright));
-      background-size:220% 100%;
-      box-shadow:0 10px 34px rgba(var(--teal-rgb),.5), 0 0 0 6px rgba(var(--teal-rgb),.08);
-      transition: transform .16s ease, box-shadow .25s ease;
-      animation: ctaFlow 7s linear infinite;
+    a { color: inherit; }
+    .skip {
+      position: fixed;
+      z-index: 30;
+      top: 12px;
+      left: 12px;
+      padding: 10px 14px;
+      border: 2px solid var(--paper);
+      border-radius: 999px;
+      color: var(--night);
+      background: var(--paper);
+      font-weight: 800;
+      transform: translateY(-160%);
     }
-    @keyframes ctaFlow { to { background-position:220% 0 } }
-    .launch::after { content:""; position:absolute; inset:0; z-index:-1; mix-blend-mode:soft-light;
-      background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%);
-      transform:translateX(-120%); transition:transform .6s ease; }
-    .launch:hover { transform: translateY(-2px) scale(1.015);
-      box-shadow:0 16px 46px rgba(var(--teal-rgb),.65), 0 0 0 6px rgba(var(--teal-rgb),.12) }
-    .launch:hover::after { transform:translateX(120%) }
-    .launch .arrow { font-size:1.1em; transition:transform .2s ease }
-    .launch:hover .arrow { transform:translateX(4px) }
-    .ghost { display:inline-flex; align-items:center; gap:8px; padding:14px 22px; border-radius:14px;
-      color:#fff; border:1.5px solid var(--line); font-weight:600; transition:background .2s, border-color .2s }
-    .ghost:hover { background:rgba(255,255,255,.07); border-color:rgba(var(--teal-rgb),.5) }
-    .warm { font-size:.82rem; color:var(--dim); margin-top:14px; min-height:1.2em }
-
-    /* ---------- the constellation (suite hub + signature motion) ---------- */
-    .constel-sec { position:relative; z-index:2; padding: 26px 0 8px }
-    .constel { position:relative; width:100%; max-width:680px; margin:0 auto;
-      aspect-ratio:1/1; max-height:74vh; }
-    .ctraces { position:absolute; inset:0; width:100%; height:100%; overflow:visible; z-index:1; pointer-events:none }
-    .ctraces line { stroke:rgba(var(--teal-rgb),.5); stroke-width:1.4; stroke-linecap:round;
-      stroke-dasharray:5 9; opacity:0; transition:opacity .5s ease; }
-    .constel.lit .ctraces line { opacity:.6; animation: cascadeFlow 1.5s linear infinite; }
-    @keyframes cascadeFlow { to { stroke-dashoffset:-28 } }    /* energy flows outward from the core */
-
-    /* core = the launch */
-    .ccore {
-      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-      z-index:4; width:var(--core,150px); height:var(--core,150px); --core:clamp(120px,21vmin,168px);
-      display:grid; place-items:center; border-radius:50%; text-align:center; color:#1a1003; cursor:pointer;
-      background:radial-gradient(circle at 42% 36%, #fff5e0 0%, var(--bright) 30%, var(--teal) 64%, #8a5a14 100%);
-      border:2px solid rgba(255,255,255,.65);
-      box-shadow:0 0 0 7px rgba(var(--teal-rgb),.10), 0 0 46px 6px rgba(var(--teal-rgb),.5), inset 0 0 30px rgba(255,255,255,.4);
-      animation: corePulse 3.6s ease-in-out infinite;
+    .skip:focus { transform: translateY(0); }
+    :focus-visible { outline: 3px solid var(--dawn); outline-offset: 4px; }
+    .poster {
+      position: relative;
+      min-height: 100svh;
+      overflow: hidden;
+      isolation: isolate;
+      background: var(--night);
     }
-    @keyframes corePulse {
-      0%,100% { box-shadow:0 0 0 7px rgba(var(--teal-rgb),.10), 0 0 46px 6px rgba(var(--teal-rgb),.5), inset 0 0 30px rgba(255,255,255,.4) }
-      50% { box-shadow:0 0 0 12px rgba(var(--teal-rgb),.04), 0 0 66px 12px rgba(var(--teal-rgb),.62), inset 0 0 34px rgba(255,255,255,.5) }
+    .poster::after {
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      content: "";
+      pointer-events: none;
+      opacity: .13;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='3' stitchTiles='stitchTiles'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.24'/%3E%3C/svg%3E");
+      mix-blend-mode: soft-light;
     }
-    .ccore:hover,.ccore:focus-visible { outline:none; transform:translate(-50%,-50%) scale(1.05) }
-    .ccore .clabel { font-weight:800; font-size:clamp(.86rem,2vw,1.02rem); line-height:1.1; padding:0 .5rem }
-    .ccore .csub { display:block; font-weight:700; font-size:.64em; letter-spacing:.14em; text-transform:uppercase;
-      color:#6e4710; margin-top:.25rem }
+    .topline {
+      position: relative;
+      z-index: 5;
+      width: min(1440px, calc(100% - 48px));
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin: 0 auto;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand, .driver-route {
+      font-size: .72rem;
+      font-weight: 850;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .brand { display: inline-flex; align-items: center; }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      margin-right: 10px;
+      border: 2px solid var(--dawn);
+      border-radius: 50%;
+      color: var(--dawn);
+      font-family: Georgia, serif;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .driver-route { text-decoration: none; }
+    .driver-route strong { color: var(--sky); }
+    .driver-route span { margin-left: 5px; color: var(--coral); }
+    .driver-route:hover strong { color: var(--paper); }
+    .poster-grid {
+      width: min(1440px, calc(100% - 48px));
+      min-height: calc(100svh - 76px);
+      display: grid;
+      grid-template-columns: minmax(390px, .88fr) minmax(520px, 1.12fr);
+      align-items: stretch;
+      margin: 0 auto;
+    }
+    .poster-copy {
+      position: relative;
+      z-index: 3;
+      align-self: center;
+      max-width: 660px;
+      padding: 58px 18px 76px 0;
+    }
+    .eyebrow {
+      margin: 0 0 20px;
+      color: var(--sky);
+      font-size: .74rem;
+      font-weight: 850;
+      letter-spacing: .17em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 690px;
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(4.6rem, 7.1vw, 8.4rem);
+      font-weight: 700;
+      letter-spacing: -.065em;
+      line-height: .82;
+    }
+    h1 span, h1 em { display: block; }
+    h1 em { color: var(--dawn); font-style: normal; }
+    .promise {
+      max-width: 560px;
+      margin: 31px 0 0;
+      color: var(--paper-2);
+      font-size: clamp(1.06rem, 1.35vw, 1.28rem);
+    }
+    .poster-actions { margin-top: 34px; }
+    .button {
+      min-height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 21px;
+      border: 2px solid var(--dawn);
+      border-radius: 999px;
+      color: var(--ink);
+      background: var(--dawn);
+      box-shadow: 0 12px 34px rgba(5, 19, 32, .27);
+      font-weight: 850;
+      text-decoration: none;
+      transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    .button:hover { border-color: var(--paper); background: var(--paper); transform: translateY(-2px); }
+    .poster-art {
+      position: relative;
+      align-self: stretch;
+      min-height: 600px;
+      margin: 0 -4vw 0 -8vw;
+    }
+    .poster-art::before {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      content: "";
+      pointer-events: none;
+      background: linear-gradient(90deg, var(--night) 0%, rgba(21, 44, 70, .78) 12%, transparent 42%);
+    }
+    .poster-art picture { width: 100%; height: 100%; display: block; }
+    .poster-art img {
+      width: 100%;
+      height: 100%;
+      min-height: calc(100svh - 76px);
+      display: block;
+      object-fit: cover;
+      object-position: 69% center;
+    }
+    .art-note {
+      position: absolute;
+      z-index: 3;
+      right: 4vw;
+      bottom: 22px;
+      margin: 0;
+      padding: 5px 10px;
+      border: 1px solid rgba(255, 245, 220, .62);
+      border-radius: 999px;
+      color: var(--paper);
+      background: rgba(12, 32, 53, .9);
+      font-size: .68rem;
+      letter-spacing: .035em;
+    }
+    .compact-footer {
+      border-top: 1px solid var(--line);
+      color: var(--paper-2);
+      background: var(--night-2);
+      font-size: .82rem;
+    }
+    .footer-inner {
+      width: min(1180px, calc(100% - 48px));
+      display: grid;
+      grid-template-columns: 1.25fr .9fr auto;
+      align-items: start;
+      gap: 30px;
+      margin: 0 auto;
+      padding: 22px 0 24px;
+    }
+    .scope { margin: 0; }
+    .honesty summary {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      color: var(--paper);
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .honesty p { max-width: 720px; margin: 7px 0 0; }
+    .footer-links { display: flex; gap: 16px; padding-top: 12px; white-space: nowrap; }
+    .footer-links a { font-weight: 800; text-underline-offset: 3px; }
 
-    /* explorer nodes */
-    .cnode { position:absolute; left:0; top:0; z-index:3;
-      transform:translate(calc(var(--x,0px) - 50%), calc(var(--y,0px) - 50%)); }
-    html.js .cnode { opacity:0 }
-    .constel.lit .cnode { opacity:1 }
-    .cnode-orb { display:grid; place-items:center; width:var(--ns,72px); height:var(--ns,72px); border-radius:50%;
-      color:var(--ink); text-align:center; padding:6px;
-      background:radial-gradient(circle at 38% 32%, rgba(255,255,255,.5), rgba(var(--h,245 177 63),.0) 60%), rgba(34,24,10,.85);
-      border:1.5px solid rgba(var(--hc,var(--teal-rgb)),.6);
-      box-shadow:0 0 16px rgba(var(--hc,var(--teal-rgb)),.35), inset 0 0 12px rgba(255,255,255,.12);
-      transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s ease, border-color .2s ease; }
-    .constel.lit .cnode-orb { animation: bob 6s ease-in-out infinite; animation-delay: calc(var(--i,0) * -.5s) }
-    @keyframes bob { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-6px) } }
-    .cnode:hover, .cnode:focus-visible { outline:none; z-index:9 }
-    .cnode:hover .cnode-orb, .cnode:focus-visible .cnode-orb {
-      transform:scale(1.16); border-color:#fff;
-      box-shadow:0 0 28px rgba(var(--hc,var(--teal-rgb)),.7), inset 0 0 16px rgba(255,255,255,.22) }
-    .cnode-dot { width:9px; height:9px; border-radius:50%; background:rgb(var(--hc,var(--teal-rgb)));
-      box-shadow:0 0 10px rgb(var(--hc,var(--teal-rgb))) }
-    .cnode-lab { font-size:.68rem; font-weight:700; line-height:1.05; margin-top:4px }
-    .cnode-dot.has-critter { width:40px; height:40px; border-radius:0; background:none; box-shadow:none; }
-    .cnode-dot.has-critter .mascot { width:100%; height:100%; display:block; filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)); transition:transform .25s ease; }
-    .cnode:hover .cnode-dot.has-critter .mascot, .cnode:focus-visible .cnode-dot.has-critter .mascot { transform:scale(1.18) rotate(-4deg); }
-    html:not(.js) .cnode-dot.has-critter { width:28px; height:28px; }
-
-    /* ---------- the "how it reads" band (what the field guide does) ---------- */
-    .cascade-band { position:relative; z-index:2; margin: 30px 0 6px; padding:26px 0 }
-    .kick { font-family: ui-monospace,Menlo,Consolas,monospace; font-size:.72rem; letter-spacing:.22em;
-      text-transform:uppercase; color:var(--dim) }
-    .cascade-band h2 { font-size:clamp(1.4rem,3.4vw,1.9rem); margin:.4rem 0 4px;
-      background:linear-gradient(100deg,#fff, var(--bright)); -webkit-background-clip:text; background-clip:text; color:transparent }
-    .cascade-band > .wrap > p { color:var(--dim); margin:0 0 20px; max-width:64ch }
-    .flow { display:grid; gap:0 }
-    .frung { position:relative; display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px;
-      background:var(--card); border:1px solid var(--line); border-left:4px solid var(--lc); overflow:hidden }
-    .frung + .frung { margin-top:10px }
-    .frung::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.0;
-      background:linear-gradient(100deg, transparent, rgba(var(--lrgb),.16), transparent); }
-    .frung.pip-on::before { animation: pip 3.2s ease-in-out; }     /* energy pulse sweeps each rung in turn (slowed) */
-    @keyframes pip { 0%{opacity:0; transform:translateX(-30%)} 40%{opacity:1} 100%{opacity:0; transform:translateX(30%)} }
-    .frung .fmark { width:34px; height:34px; flex:0 0 auto; border-radius:9px; position:relative;
-      background:rgba(var(--lrgb),.16); border:1px solid rgba(var(--lrgb),.5) }
-    .frung .fmark::after { content:""; position:absolute; inset:0; margin:auto; width:12px; height:12px; border-radius:50%;
-      background:var(--lc); box-shadow:0 0 12px var(--lc) }
-    .frung .ftxt b { font-weight:800; font-size:1rem } .frung .ftxt span { color:var(--dim); font-size:.86rem }
-    .frung.r1 { --lc:#ffd98a; --lrgb:255,217,138 }
-    .frung.r2 { --lc:#f5b13f; --lrgb:245,177,63 }
-    .frung.r3 { --lc:#e8924a; --lrgb:232,146,74 }
-    .frung.r4 { --lc:#e0714a; --lrgb:224,113,74 }
-    .frung.r5 { --lc:#f5b13f; --lrgb:245,177,63 }
-    .frung.r6 { --lc:#ffd98a; --lrgb:255,217,138 }
-    .frung.r7 { --lc:#e0714a; --lrgb:224,113,74 }
-    .cascade-band .hl-head { margin-top:30px }
-    .lead a { color:var(--bright); text-decoration:underline; text-underline-offset:2px; text-decoration-thickness:1px }
-    .farrow { color:rgba(255,255,255,.32); text-align:center; margin:2px 0 2px 17px; font-size:1.05rem }
-
-    /* ---------- stats + about ---------- */
-    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:26px 0 0; position:relative; z-index:2 }
-    .stat { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 14px; text-align:center }
-    .stat .n { font-weight:800; font-size:1.5rem; color:var(--bright) } .stat .l { font-size:.78rem; color:var(--dim) }
-    details.more { margin:30px 0 0; border:1px solid var(--line); border-radius:14px; background:var(--card); overflow:hidden }
-    details.more > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between;
-      gap:1rem; padding:1rem 1.3rem; font-weight:700; color:var(--bright) }
-    details.more > summary::-webkit-details-marker { display:none }
-    details.more > summary::after { content:"+"; color:var(--coral); font-weight:800; font-size:1.2rem }
-    details.more[open] > summary::after { content:"\2212" }
-    details.more[open] { border-color:rgba(var(--teal-rgb),.4) }
-    details.more .mbody { padding:0 1.3rem 1.2rem; color:var(--dim) }
-    details.more .mbody b { color:var(--ink) }
-
-    footer { position:relative; z-index:2; border-top:1px solid var(--line); margin-top:34px; padding:26px 0 54px;
-      color:var(--dim); font-size:.9rem }
-    .cta-foot { display:inline-block; margin-bottom:10px; font-weight:700; color:var(--coral) }
-    footer a { color:var(--bright) }
-
-    @media (max-width:560px){ .stats { grid-template-columns:repeat(2,1fr) } .frung { margin-left:0 !important } }
-
-    /* ---------- no-JS fallback: a plain reachable grid of the suite ---------- */
-    html:not(.js) .ctraces, html:not(.js) .ccore .csub { display:none }
-    html:not(.js) .constel { aspect-ratio:auto; max-width:100%; display:grid;
-      grid-template-columns:repeat(2,1fr); gap:12px; padding:8px 0 }
-    html:not(.js) .ccore { position:static; transform:none; width:auto; height:auto; border-radius:14px;
-      grid-column:1/-1; padding:18px; animation:none }
-    html:not(.js) .cnode { position:static; transform:none; opacity:1 }
-    html:not(.js) .cnode-orb { width:auto; height:auto; flex-direction:row; gap:10px; border-radius:14px;
-      padding:14px 16px; justify-content:flex-start; animation:none }
-    html:not(.js) .cnode-lab { font-size:.95rem; margin-top:0 }
-
-    /* ---------- digital field-guide bird (top-right hero accent) ---------- */
-    .flybird { position:absolute; top:-6px; right:-6px; width:clamp(150px,23vw,290px);
-      z-index:-1; pointer-events:none; animation: cbBob 4.6s ease-in-out infinite; }
-    .flybird svg { width:100%; height:auto; overflow:visible; display:block }
-    .flybird .halo { transform-box:fill-box; transform-origin:center; animation: cbHalo 5s ease-in-out infinite }
-    .flybird .bird { transform-box:fill-box; transform-origin:50% 70%;
-      filter:drop-shadow(0 7px 14px rgba(20,12,6,.4)) drop-shadow(0 0 13px rgba(245,177,63,.42));
-      animation: cbSquish 4.6s ease-in-out infinite }
-    .flybird .eyes { transform-box:fill-box; transform-origin:center; animation: cbBlink 5.4s ease-in-out infinite }
-    .flybird .wing-l { transform-box:fill-box; transform-origin:72% 14%; animation: cbFlutL 3.3s ease-in-out infinite }
-    .flybird .wing-r { transform-box:fill-box; transform-origin:28% 14%; animation: cbFlutR 3.3s ease-in-out infinite }
-    .flybird .spark { transform-box:fill-box; transform-origin:center; animation: cbTwinkle 3.2s ease-in-out infinite }
-    .flybird .s2 { animation-delay:-1.1s } .flybird .s3 { animation-delay:-2.2s } .flybird .s4 { animation-delay:-.6s }
-    @keyframes cbBob { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-8px) } }
-    @keyframes cbSquish { 0%,100%{ transform:scale(1,1) } 50%{ transform:scale(1.02,.98) } }
-    @keyframes cbHalo { 0%,100%{ opacity:.4; transform:scale(1) } 50%{ opacity:.7; transform:scale(1.06) } }
-    @keyframes cbBlink { 0%,88%,100%{ transform:scaleY(1) } 93%{ transform:scaleY(.08) } }
-    @keyframes cbFlutL { 0%,100%{ transform:rotate(0deg) } 50%{ transform:rotate(-10deg) } }
-    @keyframes cbFlutR { 0%,100%{ transform:rotate(0deg) } 50%{ transform:rotate(10deg) } }
-    @keyframes cbTwinkle { 0%,100%{ opacity:.25; transform:scale(.7) } 50%{ opacity:1; transform:scale(1.2) } }
-    @media (max-width:760px){ .flybird{ width:150px; top:-2px; right:-8px; opacity:.7 } }
-    @media (max-width:430px){ .flybird{ display:none } }
-
-    /* interactive: pointer-follow, 3D tilt, bashful tap-reaction */
-    .flybird { pointer-events:auto; cursor:pointer }
-    .flybird .tiltwrap { transition: transform .14s ease-out; transform-style:preserve-3d; will-change:transform }
-    .flybird .eyes > circle { transition: transform .12s ease-out; transform: translate(var(--lx,0px), var(--ly,0px)) }
-    .flybird.react .eyes { animation: cbShy .62s ease }
-    .flybird.react .bird { animation: cbDuck .62s ease }
-    .flybird.react .spark { animation: cbFlare .62s ease }
-    @keyframes cbShy { 0%,100%{ transform:scaleY(1) } 16%,74%{ transform:scaleY(.1) } }
-    @keyframes cbDuck { 0%,100%{ transform:scale(1,1) } 26%{ transform:translateY(4px) scale(1.07,.88) } 60%{ transform:scale(.97,1.04) } }
-    @keyframes cbFlare { 0%,100%{ opacity:.5; transform:scale(1) } 40%{ opacity:1; transform:scale(2) } }
-
-    @media (prefers-reduced-motion: reduce){
-      .sky::before, .launch, .ccore, .constel.lit .cnode-orb, .constel.lit .ctraces line, .frung.pip-on::before { animation:none !important }
-      .flybird, .flybird .halo, .flybird .bird, .flybird .eyes, .flybird .wing-l, .flybird .wing-r, .flybird .spark { animation:none !important }
-      .flybird .tiltwrap, .flybird .eyes > circle { transition:none !important; transform:none !important }
-      .launch::after { display:none }
+    @media (max-width: 900px) {
+      .poster-grid { grid-template-columns: 1fr; }
+      .poster-copy { padding: 52px 0 30px; }
+      .poster-art { min-height: 48svh; margin: 0 -24px; }
+      .poster-art img { min-height: 48svh; }
+      .footer-inner { grid-template-columns: 1fr 1fr; }
+      .footer-links { grid-column: 1 / -1; padding-top: 0; }
+    }
+    @media (max-width: 700px) {
+      .topline { width: calc(100% - 32px); min-height: 66px; }
+      .brand { font-size: .64rem; letter-spacing: .1em; }
+      .brand-mark { width: 25px; height: 25px; margin-right: 7px; }
+      .driver-route { max-width: 148px; font-size: .64rem; line-height: 1.25; text-align: right; }
+      .poster-grid { width: 100%; min-height: auto; display: flex; flex-direction: column; }
+      .poster-art { order: 1; width: 100%; height: 42svh; min-height: 300px; margin: 0; }
+      .poster-art::before { background: none; }
+      .poster-art img { height: 42svh; min-height: 300px; object-position: 69% 50%; }
+      .art-note { right: 16px; bottom: 8px; left: 16px; width: fit-content; max-width: calc(100% - 32px); font-size: .6rem; line-height: 1.25; }
+      .poster-copy { order: 2; width: calc(100% - 32px); align-self: center; padding: 26px 0 38px; }
+      .eyebrow { margin-bottom: 13px; font-size: .64rem; }
+      h1 { font-size: clamp(3.5rem, 18vw, 5.2rem); line-height: .84; }
+      .promise { margin-top: 22px; font-size: 1rem; }
+      .poster-actions { margin-top: 25px; }
+      .button { width: 100%; }
+      .footer-inner { width: calc(100% - 32px); display: block; }
+      .honesty { margin-top: 12px; }
+      .footer-links { flex-wrap: wrap; margin-top: 8px; white-space: normal; }
+    }
+    @media (max-width: 420px) and (max-height: 860px) {
+      .poster-art, .poster-art img { height: 34svh; min-height: 34svh; }
+      .poster-copy { padding-top: 22px; }
+      h1 { font-size: clamp(3rem, 16.2vw, 3.7rem); }
+    }
+    @media (max-width: 340px) {
+      .brand { font-size: .58rem; }
+      .driver-route { max-width: 126px; font-size: .58rem; }
+      h1 { font-size: 3.05rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .button { transition: none; }
+      .button:hover { transform: none; }
+    }
+    @media (forced-colors: active) {
+      .poster, .button, .driver-route, .skip, .art-note { border: 2px solid ButtonText; }
+      .button, .driver-route, .skip { forced-color-adjust: auto; }
     }
   </style>
 </head>
+<body data-release-marker="breeding-birds-poster-v1">
+  <a class="skip" href="#main">Skip to the poster</a>
+  <main id="main" class="poster" tabindex="-1" aria-labelledby="poster-title">
+    <header class="topline">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">⌁</span>Desert Data Labs</div>
+      <a class="driver-route" href="https://tgilbert14.github.io/NEON-Driver-Cascade/"
+        aria-label="Explore the NEON Driver Response Atlas"><strong>NEON Explorer Suite</strong><span>→ Driver</span></a>
+    </header>
 
-<body>
-  <div class="sky" aria-hidden="true"></div>
-
-  <header class="hero">
-    <div class="wrap">
-      <div class="flybird" aria-hidden="true">
-        <div class="tiltwrap">
-        <svg viewBox="0 0 300 250" role="img" aria-label="A cute round goldfinch">
-          <defs>
-            <radialGradient id="cbHalo" cx="50%" cy="48%" r="55%">
-              <stop offset="0%" stop-color="#f5b13f" stop-opacity=".5" />
-              <stop offset="46%" stop-color="#e0714a" stop-opacity=".2" />
-              <stop offset="100%" stop-color="#e0714a" stop-opacity="0" />
-            </radialGradient>
-            <radialGradient id="cbBody" cx="40%" cy="30%" r="72%">
-              <stop offset="0%" stop-color="#fff0c4" />
-              <stop offset="52%" stop-color="#ffce5a" />
-              <stop offset="100%" stop-color="#e8a23c" />
-            </radialGradient>
-            <radialGradient id="cbBelly" cx="50%" cy="34%" r="70%">
-              <stop offset="0%" stop-color="#fff8e8" />
-              <stop offset="100%" stop-color="#ffe6ad" />
-            </radialGradient>
-            <linearGradient id="cbWing" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#eaa050" />
-              <stop offset="100%" stop-color="#c85a38" />
-            </linearGradient>
-          </defs>
-          <circle class="halo" cx="150" cy="126" r="104" fill="url(#cbHalo)" />
-          <g class="bird">
-            <g fill="#f0b94a">
-              <path d="M132,74 L137,50 L147,72 Z" />
-              <path d="M148,72 L152,44 L160,72 Z" />
-              <path d="M160,74 L170,52 L165,76 Z" />
-            </g>
-            <g fill="url(#cbWing)">
-              <path d="M182,176 Q214,182 234,198 Q210,202 178,192 Z" />
-              <path d="M180,186 Q210,196 228,208 Q204,210 174,198 Z" opacity=".92" />
-            </g>
-            <g stroke="#e0a040" stroke-width="3.4" stroke-linecap="round" fill="none">
-              <path d="M138,184 L136,206" /><path d="M136,206 l-7,7" /><path d="M136,206 l1,9" /><path d="M136,206 l7,7" />
-              <path d="M164,184 L166,206" /><path d="M166,206 l-7,7" /><path d="M166,206 l-1,9" /><path d="M166,206 l7,7" />
-            </g>
-            <ellipse cx="150" cy="130" rx="62" ry="66" fill="url(#cbBody)" />
-            <ellipse cx="150" cy="152" rx="40" ry="44" fill="url(#cbBelly)" />
-            <path class="wing wing-l" d="M104,102 Q76,120 86,162 Q106,154 118,116 Q114,106 104,102 Z" fill="url(#cbWing)" />
-            <path class="wing wing-r" d="M196,102 Q224,120 214,162 Q194,154 182,116 Q186,106 196,102 Z" fill="url(#cbWing)" />
-            <g fill="#f0897e" opacity=".34">
-              <ellipse cx="119" cy="128" rx="11" ry="7.5" />
-              <ellipse cx="181" cy="128" rx="11" ry="7.5" />
-            </g>
-            <path d="M141,120 L159,120 L150,134 Z" fill="#f0993a" />
-            <path d="M144,127 L156,127 L150,133 Z" fill="#d9772a" />
-            <g class="eyes">
-              <circle cx="128" cy="107" r="13.5" fill="#2a160a" />
-              <circle cx="172" cy="107" r="13.5" fill="#2a160a" />
-              <circle cx="123" cy="101" r="4.8" fill="#ffffff" />
-              <circle cx="167" cy="101" r="4.8" fill="#ffffff" />
-              <circle cx="133" cy="112" r="2.1" fill="#ffffff" opacity=".75" />
-              <circle cx="177" cy="112" r="2.1" fill="#ffffff" opacity=".75" />
-            </g>
-          </g>
-          <g fill="#fff3d6">
-            <circle class="spark s1" cx="58" cy="74" r="3.2" />
-            <circle class="spark s2" cx="244" cy="86" r="2.6" />
-            <circle class="spark s3" cx="214" cy="44" r="2.2" />
-            <circle class="spark s4" cx="86" cy="186" r="2.2" />
-            <circle class="spark s2" cx="240" cy="160" r="2.4" />
-          </g>
-        </svg>
+    <div class="poster-grid">
+      <div class="poster-copy">
+        <p class="eyebrow">NEON Breeding Bird Explorer · unofficial</p>
+        <h1 id="poster-title"><span>Who’s singing</span><em>where?</em></h1>
+        <p class="promise">Follow the birds NEON hears and sees across 47 breeding-season field sites.</p>
+        <div class="poster-actions">
+          <a class="button" href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/">Choose a field site <span aria-hidden="true">→</span></a>
         </div>
       </div>
-      <span class="brand">
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <path class="stroke" d="M50 14 L64 30 L50 46 L36 30 Z" />
-          <line class="stroke" x1="50" y1="46" x2="50" y2="86" />
-          <line class="stroke" x1="34" y1="86" x2="66" y2="86" />
-          <circle class="pip" cx="50" cy="62" r="7.5" />
-        </svg>
-        <b>Desert Data Labs</b>
-      </span>
 
-      <div class="eyebrow">The NEON Explorer Suite · Birds</div>
-      <h1>NEON Birds</h1>
-      <p class="lead">A Shiny web app for exploring the <a href="https://www.neonscience.org/" target="_blank" rel="noopener">National Ecological Observatory Network</a>'s breeding-landbird point-count data. It turns six-minute counts at 46 field sites, from arctic tundra to Caribbean dry forest, into maps, community profiles, and per-species cards, with abundance shown honestly as a detection index (birds per count), not a raw population.</p>
-
-      <div class="cta-row">
-        <a id="launch" class="launch" href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/">
-          Open the Bird Explorer <span class="arrow" aria-hidden="true">&rarr;</span>
-        </a>
-        <a class="ghost" href="https://github.com/tgilbert14/NEON-Breeding-Birds" target="_blank" rel="noopener">View on GitHub</a>
-      </div>
-      <div class="warm" id="warm"></div>
+      <figure class="poster-art">
+        <picture>
+          <source type="image/webp"
+            srcset="assets/birds-living-poster-v1-840.webp 840w, assets/birds-living-poster-v1.webp 1536w"
+            sizes="(max-width: 700px) 100vw, 58vw">
+          <img src="assets/birds-living-poster-v1.png" width="1536" height="1024"
+            fetchpriority="high" decoding="async"
+            alt="Screenprint illustration of a singing bird above a field observer conducting a dawn point count.">
+        </picture>
+        <figcaption class="art-note">Generated editorial illustration · not field documentation or measured data</figcaption>
+      </figure>
     </div>
-  </header>
+  </main>
 
-  <!-- the suite, as a living constellation. The core launches this app; each node opens an explorer. -->
-  <section class="constel-sec" aria-label="The NEON Explorer Suite">
-    <div class="wrap">
-      <div class="constel is-noscript" data-constel style="--n:9;">
-        <svg class="ctraces" viewBox="-340 -340 680 680" aria-hidden="true"><g data-traces></g></svg>
-
-        <a class="ccore" data-core href="https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/" aria-label="Launch the NEON Birds app">
-          <span class="clabel">Birds<span class="csub">launch &rarr;</span></span>
-        </a>
-
-        <a class="cnode" style="--i:0; --hc:45,212,191" href="https://tgilbert14.github.io/NEON-Driver-Cascade/" aria-label="NEON Driver Cascade"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120" aria-hidden="true"><path d="M60,20 L92,60 L60,100 L28,60 Z" fill="none" stroke="#2dd4bf" stroke-width="7" stroke-linejoin="round"/><circle cx="60" cy="46" r="7" fill="#5eead4"/><circle cx="60" cy="64" r="5.5" fill="#2dd4bf"/><circle cx="60" cy="80" r="4" fill="#fb8a7e"/></svg></span><span class="cnode-lab">Driver Cascade</span></span></a>
-        <a class="cnode" style="--i:1; --hc:56,168,232" href="https://tgilbert14.github.io/NEON-Small-Mammal-Tracker-App/" aria-label="NEON Small Mammal Tracker"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><g class="mascot-ear-l"><circle cx="42" cy="34" r="14" fill="#5aa0d8"/><circle cx="43" cy="36" r="8" fill="#ffd24a"/></g><g class="mascot-ear-r"><circle cx="78" cy="34" r="14" fill="#5aa0d8"/><circle cx="77" cy="36" r="8" fill="#ffd24a"/></g><path d="M88,82 Q110,94 113,72" fill="none" stroke="#5a93c8" stroke-width="4" stroke-linecap="round"/><ellipse cx="60" cy="66" rx="32" ry="33" fill="#5aa0d8"/><ellipse cx="60" cy="76" rx="20" ry="22" fill="#eaf2ff"/><path d="M55,70 Q60,68 65,70 Q62,77 60,77 Q58,77 55,70 Z" fill="#fb8a7e"/><g class="mascot-eyes"><circle cx="50" cy="60" r="6.5" fill="#0a1a2e"/><circle cx="70" cy="60" r="6.5" fill="#0a1a2e"/><circle cx="48" cy="57.5" r="2.4" fill="#fff"/><circle cx="68" cy="57.5" r="2.4" fill="#fff"/></g></svg></span><span class="cnode-lab">Small Mammals</span></span></a>
-        <a class="cnode" style="--i:2; --hc:54,217,138" href="https://tgilbert14.github.io/NEON-Ground-Beetle-Tracker/" aria-label="NEON Ground Beetle Tracker"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><g class="mascot-ear-l"><path d="M50,40 Q40,22 32,16" fill="none" stroke="#d98a3c" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="16" r="4" fill="#e8a24a"/></g><g class="mascot-ear-r"><path d="M70,40 Q80,22 88,16" fill="none" stroke="#d98a3c" stroke-width="3" stroke-linecap="round"/><circle cx="88" cy="16" r="4" fill="#e8a24a"/></g><g stroke="#c47a2c" stroke-width="3" stroke-linecap="round"><path d="M30,62 L16,62"/><path d="M30,78 L18,88"/><path d="M90,62 L104,62"/><path d="M90,78 L102,88"/></g><ellipse cx="60" cy="64" rx="31" ry="34" fill="#36d98a"/><path d="M60,32 L60,96" stroke="#176b46" stroke-width="2" opacity=".5"/><ellipse cx="60" cy="34" rx="14" ry="10" fill="#176b46"/><g class="mascot-eyes"><circle cx="50" cy="58" r="6.5" fill="#0c2a1c"/><circle cx="70" cy="58" r="6.5" fill="#0c2a1c"/><circle cx="48" cy="55.5" r="2.4" fill="#fff"/><circle cx="68" cy="55.5" r="2.4" fill="#fff"/></g></svg></span><span class="cnode-lab">Ground Beetles</span></span></a>
-        <a class="cnode" style="--i:3; --hc:95,209,106" href="https://tgilbert14.github.io/NEON-Plant-Diversity/" aria-label="NEON Plant Diversity"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><path d="M60,60 L60,30" stroke="#4aa050" stroke-width="4" stroke-linecap="round"/><g class="mascot-ear-l"><path d="M60,36 C40,24 24,30 22,46 C40,52 56,46 60,36 Z" fill="#5fd16a"/></g><g class="mascot-ear-r"><path d="M60,36 C80,24 96,30 98,46 C80,52 64,46 60,36 Z" fill="#5fd16a"/></g><ellipse cx="60" cy="76" rx="28" ry="26" fill="#d8cf9e"/><g class="mascot-eyes"><circle cx="51" cy="72" r="6" fill="#3a2a12"/><circle cx="69" cy="72" r="6" fill="#3a2a12"/><circle cx="49" cy="69.5" r="2.2" fill="#fff"/><circle cx="67" cy="69.5" r="2.2" fill="#fff"/></g></svg></span><span class="cnode-lab">Plant Diversity</span></span></a>
-        <a class="cnode" style="--i:4; --hc:106,191,90" href="https://tgilbert14.github.io/NEON-Plant-Phenology-Explorer/" aria-label="NEON Plant Phenology"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><path d="M60,98 L60,64" stroke="#5a9a3a" stroke-width="4" stroke-linecap="round"/><g class="mascot-ear-l"><path d="M52,40 C34,30 22,40 26,54 C42,54 52,48 52,40 Z" fill="#e6a92e"/></g><g class="mascot-ear-r"><path d="M68,40 C86,30 98,40 94,54 C78,54 68,48 68,40 Z" fill="#e6a92e"/></g><path d="M60,30 C48,30 44,46 52,58 L68,58 C76,46 72,30 60,30 Z" fill="#9bd24a"/><ellipse cx="60" cy="68" rx="26" ry="26" fill="#8cbf52"/><g class="mascot-eyes"><circle cx="51" cy="66" r="6" fill="#243a16"/><circle cx="69" cy="66" r="6" fill="#243a16"/><circle cx="49" cy="63.5" r="2.2" fill="#fff"/><circle cx="67" cy="63.5" r="2.2" fill="#fff"/></g></svg></span><span class="cnode-lab">Plant Phenology</span></span></a>
-        <a class="cnode" style="--i:5; --hc:78,184,106" href="https://tgilbert14.github.io/NEON-Vegetation-Structure-Explorer/" aria-label="NEON Vegetation Structure"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><rect x="54" y="80" width="12" height="26" rx="3" fill="#8a5a2b"/><g class="mascot-ear-l"><circle cx="40" cy="44" r="15" fill="#4eb86a"/></g><g class="mascot-ear-r"><circle cx="80" cy="44" r="15" fill="#4eb86a"/></g><ellipse cx="60" cy="58" rx="34" ry="30" fill="#4eb86a"/><circle cx="42" cy="66" r="3" fill="#ffd24a"/><circle cx="80" cy="50" r="2.6" fill="#ffd24a"/><g class="mascot-eyes"><circle cx="51" cy="56" r="6.5" fill="#11331f"/><circle cx="69" cy="56" r="6.5" fill="#11331f"/><circle cx="49" cy="53.5" r="2.4" fill="#fff"/><circle cx="69" cy="53.5" r="2.4" fill="#fff"/></g></svg></span><span class="cnode-lab">Veg Structure</span></span></a>
-        <a class="cnode" style="--i:6; --hc:52,198,216" href="https://tgilbert14.github.io/NEON-WaterChemistry-Analyte-Viewer-App/" aria-label="NEON Water Chemistry"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><path d="M60,16 C36,52 28,72 60,98 C92,72 84,52 60,16 Z" fill="#46c6da"/><ellipse cx="48" cy="54" rx="6" ry="11" fill="#fff" opacity=".4" transform="rotate(-18 48 54)"/><g class="mascot-eyes"><circle cx="50" cy="64" r="6.5" fill="#0a2230"/><circle cx="70" cy="64" r="6.5" fill="#0a2230"/><circle cx="48" cy="61.5" r="2.4" fill="#fff"/><circle cx="68" cy="61.5" r="2.4" fill="#fff"/></g></svg></span><span class="cnode-lab">Water Chemistry</span></span></a>
-        <a class="cnode" style="--i:7; --hc:184,242,74" href="https://tgilbert14.github.io/NEON-Mosquito-Pulse/" aria-label="NEON Mosquito Pulse"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><g stroke="#b8f24a" stroke-width="3" stroke-linecap="round" fill="none"><path d="M52,40 Q46,26 50,18"/><path d="M68,40 Q74,26 70,18"/></g><g class="mascot-ear-l"><path d="M34,52 Q14,50 18,74 Q40,72 48,58 Z" fill="#b8f24a" fill-opacity=".9"/></g><g class="mascot-ear-r"><path d="M86,52 Q106,50 102,74 Q80,72 72,58 Z" fill="#b8f24a" fill-opacity=".9"/></g><ellipse cx="60" cy="64" rx="30" ry="33" fill="#7c52e0"/><ellipse cx="60" cy="74" rx="17" ry="19" fill="#cdb6ff"/><path d="M54,74 L66,74 L60,90 Z" fill="#ffc24a"/><g class="mascot-eyes"><circle cx="50" cy="58" r="7" fill="#1a1030"/><circle cx="70" cy="58" r="7" fill="#1a1030"/><circle cx="48" cy="55.5" r="2.5" fill="#fff"/><circle cx="68" cy="55.5" r="2.5" fill="#fff"/></g></svg></span><span class="cnode-lab">Mosquitoes</span></span></a>
-        <a class="cnode" style="--i:8; --hc:43,183,196" href="https://tgilbert14.github.io/NEON-My-Little-Inverts/" aria-label="NEON My Little Inverts"><span class="cnode-orb"><span class="cnode-dot has-critter" aria-hidden="true"><svg class="mascot" viewBox="0 0 120 120"><g stroke="#2bb7c4" stroke-width="3" stroke-linecap="round" fill="none"><path d="M50,38 Q44,24 48,16"/><path d="M70,38 Q76,24 72,16"/></g><g class="mascot-ear-l"><path d="M34,52 Q14,48 16,70 Q38,70 46,58 Z" fill="#7fe7ef" fill-opacity=".85"/></g><g class="mascot-ear-r"><path d="M86,52 Q106,48 104,70 Q82,70 74,58 Z" fill="#7fe7ef" fill-opacity=".85"/></g><g stroke="#0a6f7a" stroke-width="3" stroke-linecap="round" fill="none"><path d="M48,96 Q40,108 30,112"/><path d="M60,98 L60,114"/><path d="M72,96 Q80,108 90,112"/></g><ellipse cx="60" cy="64" rx="30" ry="34" fill="#2bb7c4"/><ellipse cx="60" cy="74" rx="17" ry="22" fill="#9beef5"/><g class="mascot-eyes"><circle cx="50" cy="58" r="6.5" fill="#0b2a30"/><circle cx="70" cy="58" r="6.5" fill="#0b2a30"/><circle cx="48" cy="55.5" r="2.4" fill="#fff"/><circle cx="68" cy="55.5" r="2.4" fill="#fff"/></g></svg></span><span class="cnode-lab">Little Inverts</span></span></a>
-      </div>
-    </div>
-  </section>
-
-  <!-- how the field guide reads: point count -> identify -> tally -> compare -->
-  <section class="cascade-band">
-    <div class="wrap">
-      <span class="kick">What it does</span>
-      <p>The app opens to a national map of NEON sites coloured by biome. Tap one to dive into its birds, or step back and compare the whole network in climate space. Each site loads instantly from a per-site data bundle that ships with the app (no network round-trip). From there it ranks the most-detected species, estimates how many kinds really use the site (beyond what a handful of counts catch), plots every species by how widespread and how often it is detected, and profiles any single species on a downloadable card.</p>
-      <p>It is built for two audiences: anyone curious about how NEON counts breeding birds, and new field technicians getting to know the species at their site.</p>
-
-      <h2 class="hl-head">Highlights</h2>
-      <div class="flow" data-flow>
-        <div class="frung r1"><span class="fmark"></span><span class="ftxt"><b>Select-a-site map</b> &middot; <span>A national map of all 46 bundled sites, coloured by biome, with a one-tap load and an accessible list fallback. The app opens on LBJ National Grassland in Texas (painted buntings, dickcissels, and northern bobwhites).</span></span></div>
-        <div class="frung r2"><span class="fmark"></span><span class="ftxt"><b>Bird Board</b> &middot; <span>Every species as a dot: how widespread it is (the share of points where it turned up) against its detection index. Tap any dot to pin a card; faint dots have too few detections to place.</span></span></div>
-        <div class="frung r3"><span class="fmark"></span><span class="ftxt"><b>Across the continent</b> &middot; <span>Every NEON site placed in climate space (breeding-season temperature, with precipitation where a gauge exists) against a community metric, with richness rarefied to a common number of counts so it is not just effort. Space-for-time, stated on the chart.</span></span></div>
-        <div class="frung r4"><span class="fmark"></span><span class="ftxt"><b>Community, beyond what a few counts catch</b> &middot; <span>Species accumulation by point-count occasion plus a Chao2 estimate of how many kinds really use the site, since point counts miss the nocturnal, secretive, and rare.</span></span></div>
-        <div class="frung r5"><span class="fmark"></span><span class="ftxt"><b>Honest abundance: a detection index</b> &middot; <span>A loud species and a quiet one at equal density give unequal counts, so abundance is shown as birds per point-count, never a population. Each species' detectability is area-corrected (detections per hectare per distance ring).</span></span></div>
-        <div class="frung r6"><span class="fmark"></span><span class="ftxt"><b>Species profile cards</b> &middot; <span>A downloadable card (PNG + CSV) for any species: detection index, ubiquity, points and grids, area-corrected detectability-by-distance, and yearly counts.</span></span></div>
-        <div class="frung r7"><span class="fmark"></span><span class="ftxt"><b>Overview: the story of a site</b> &middot; <span>The most-detected species (coloured by how they are first found: singing, calling, or seen), a plain-English summary, and a seasonal-context panel placing the count window on the site's green-up and temperature year.</span></span></div>
-      </div>
-
-      <div class="stats">
-        <div class="stat"><div class="n">46</div><div class="l">research sites</div></div>
-        <div class="stat"><div class="n">555</div><div class="l">kinds of bird</div></div>
-        <div class="stat"><div class="n">6 min</div><div class="l">per bird count</div></div>
-        <div class="stat"><div class="n">every year</div><div class="l">same way, same spots</div></div>
-      </div>
-
-      <details class="more">
-        <summary>How we keep it honest</summary>
-        <div class="mbody">
-          Every chart says how its numbers were made. When we show how common a bird is, that is a
-          <b>detection rate</b> (birds heard or seen per six-minute count), not a true headcount, because
-          a loud bird gets noticed more often than a quiet one even when there are the same number of each.
-          A steadier measure is how often a bird shows up at all (the share of spots where it was found),
-          and the tool leans on that. Counts of how many kinds live at a site are adjusted so sites with
-          more visits are not credited with extra birds just for being visited more (raw counts climb with
-          effort, so we level the effort before comparing). When we compare sites across the country, we are
-          comparing 46 different places watched at the same time, not one place warming up over the years,
-          so the patterns are a starting point for questions, not proof of cause. Rainfall is shown only at
-          sites with an actual gauge, never guessed. <b>This is a tool for learning and exploring. It is
-          not affiliated with NEON, Battelle, or the NSF.</b>
-        </div>
+  <footer class="compact-footer">
+    <div class="footer-inner">
+      <p class="scope">Public NEON <strong>DP1.10003.001</strong> · RELEASE-2026 · six-minute breeding-landbird point counts · 47 bundled field sites · independent, educational explorer.</p>
+      <details class="honesty">
+        <summary>What the counts can—and cannot—say</summary>
+        <p>Six-minute point counts record birds detected by sound or sight at sampled points. Birds per count is a detection index—not population size—and a non-detection is not proof of absence. Use effort-rarefied richness for site comparisons; climate patterns are space-for-time descriptions, not causes or forecasts.</p>
       </details>
-    </div>
-  </section>
-
-  <footer>
-    <div class="wrap">
-      <a class="cta-foot" href="mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer">Get in touch with Desert Data Labs →</a><br>
-      Built on the NEON <a href="https://data.neonscience.org/data-products/DP1.10003.001" target="_blank"
-        rel="noopener">Breeding Landbird Point Counts</a> product by <b>Desert Data Labs</b> &middot; Tucson, AZ.
-      Data: National Ecological Observatory Network (operated by Battelle, funded by NSF). Educational tools,
-      not affiliated with NEON, Battelle, or the NSF.
-      <br>NEON data are provided under a <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">Creative Commons Attribution 4.0 International (CC BY 4.0)</a> license. This app aggregates and derives summary metrics from the raw NEON data products; the underlying measurements are unaltered. It is an independent, unofficial tool and is not endorsed by NEON, Battelle, or the NSF.
+      <nav class="footer-links" aria-label="Source and feedback">
+        <a href="https://data.neonscience.org/data-products/DP1.10003.001" target="_blank" rel="noopener">Source</a>
+        <a href="mailto:desertdatalabs@gmail.com?subject=NEON%20Breeding%20Bird%20Explorer">Feedback</a>
+      </nav>
     </div>
   </footer>
-
-  <script>
-    // ---- this app (Connect Cloud share URL); pre-warm on load ----
-    var APP_URL = "https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/";
-    (function () {
-      var launch = document.getElementById("launch");
-      var warm = document.getElementById("warm");
-      if (launch) launch.href = APP_URL;
-      try {
-        if (warm) warm.textContent = "Warming up the app…";
-        var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
-        var killer = ctrl ? setTimeout(function () { ctrl.abort(); }, 8000) : null;
-        fetch(APP_URL, { mode: "no-cors", cache: "no-store", signal: ctrl ? ctrl.signal : undefined })
-          .then(function () { if (warm) warm.textContent = "The app is ready."; })
-          .catch(function () { if (warm) warm.textContent = ""; })
-          .finally(function () { if (killer) clearTimeout(killer); });
-      } catch (e) {}
-    })();
-
-    // ---- the constellation: lay the 7 explorers on a ring, draw energy traces ----
-    (function () {
-      var root = document.querySelector("[data-constel]");
-      if (!root) return;
-      var nodes = Array.prototype.slice.call(root.querySelectorAll(".cnode"));
-      var tracesG = root.querySelector("[data-traces]");
-      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      root.classList.remove("is-noscript");
-
-      var n = nodes.length, TR = 300; // trace viewBox radius
-      // build a trace from center to each node
-      if (tracesG) {
-        var frag = document.createDocumentFragment();
-        for (var i = 0; i < n; i++) {
-          var th = (i * (360 / n) - 90) * Math.PI / 180;
-          var ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
-          ln.setAttribute("x1", "0"); ln.setAttribute("y1", "0");
-          ln.setAttribute("x2", (Math.cos(th) * TR).toFixed(1));
-          ln.setAttribute("y2", (Math.sin(th) * TR).toFixed(1));
-          frag.appendChild(ln);
-        }
-        tracesG.appendChild(frag);
-      }
-
-      function place(landed) {
-        var r = root.getBoundingClientRect();
-        var cx = r.width / 2, cy = r.height / 2;
-        var unit = Math.min(r.width, r.height);
-        var rad = unit * 0.40, ns = Math.max(58, unit * 0.135);
-        nodes.forEach(function (nd, i) {
-          nd.style.setProperty("--ns", ns.toFixed(0) + "px");
-          var th = (i * (360 / n) - 90) * Math.PI / 180;
-          var f = landed ? 1 : 0.18;            // start near the core, fly out on land
-          nd.style.setProperty("--x", (cx + Math.cos(th) * rad * f).toFixed(1) + "px");
-          nd.style.setProperty("--y", (cy + Math.sin(th) * rad * f).toFixed(1) + "px");
-        });
-      }
-
-      place(false);
-      // light it up (fly the nodes out + start the energy flow) after a beat
-      function lite() { place(true); root.classList.add("lit"); }
-      if (reduce) { lite(); }
-      else { requestAnimationFrame(function () { requestAnimationFrame(lite); }); setTimeout(lite, 400); }
-
-      var rt;
-      window.addEventListener("resize", function () {
-        clearTimeout(rt); rt = setTimeout(function () { place(root.classList.contains("lit")); }, 120);
-      }, { passive: true });
-    })();
-
-    // ---- the reading flow: pulse each rung in turn (the count cascading down) ----
-    (function () {
-      var rungs = Array.prototype.slice.call(document.querySelectorAll("[data-flow] .frung"));
-      if (!rungs.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      var i = 0;
-      setInterval(function () {
-        rungs.forEach(function (r) { r.classList.remove("pip-on"); });
-        var el = rungs[i % rungs.length];
-        // force reflow so the animation restarts each cycle
-        void el.offsetWidth; el.classList.add("pip-on");
-        i++;
-      }, 1800);
-    })();
-  </script>
-  <script>
-  (function(){
-    var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var fb = document.querySelector('.flybird');
-    if(fb){
-      var tilt = fb.querySelector('.tiltwrap');
-      if(!reduce){
-        window.addEventListener('pointermove', function(e){
-          var r = fb.getBoundingClientRect();
-          var cx = r.left + r.width/2, cy = r.top + r.height*0.42;
-          var dx = Math.max(-1,Math.min(1,(e.clientX-cx)/240));
-          var dy = Math.max(-1,Math.min(1,(e.clientY-cy)/240));
-          if(tilt) tilt.style.transform = 'perspective(640px) rotateY('+(dx*9).toFixed(1)+'deg) rotateX('+(-dy*7).toFixed(1)+'deg)';
-          fb.style.setProperty('--lx',(dx*2.6).toFixed(1)+'px');
-          fb.style.setProperty('--ly',(dy*2.1).toFixed(1)+'px');
-        }, {passive:true});
-      }
-      fb.addEventListener('pointerdown', function(){
-        fb.classList.remove('react'); void fb.offsetWidth; fb.classList.add('react');
-        setTimeout(function(){ fb.classList.remove('react'); }, 680);
-      });
-    }
-    var nums = document.querySelectorAll('.stat .n');
-    if(nums.length && 'IntersectionObserver' in window){
-      var run = function(el){
-        var raw0 = el.textContent.trim(), pre='';
-        if(raw0.charAt(0)==='~'||raw0.charAt(0)==='≈'){ pre=raw0.charAt(0); raw0=raw0.slice(1); }
-        var i=0, np='';
-        while(i<raw0.length){ var c=raw0.charAt(i); if((c>='0'&&c<='9')||c===','||c==='.'){ np+=c; i++; } else break; }
-        if(!np || reduce) return;
-        var rest = raw0.slice(i), full = el.textContent.trim();
-        var target = parseFloat(np.replace(/,/g,'')); if(!isFinite(target)) return;
-        var hasComma = np.indexOf(',')>=0, dec=(np.split('.')[1]||'').length;
-        var dur=950, t0=performance.now();
-        function fmt(v){ var s = dec? v.toFixed(dec) : (hasComma? Math.round(v).toLocaleString() : String(Math.round(v))); return pre+s+rest; }
-        function tick(now){ var t=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-t,3); el.textContent=fmt(target*e); if(t<1) requestAnimationFrame(tick); else el.textContent=full; }
-        el.textContent=fmt(0); requestAnimationFrame(tick);
-      };
-      var io = new IntersectionObserver(function(es){ es.forEach(function(en){ if(en.isIntersecting){ io.unobserve(en.target); run(en.target); } }); }, {threshold:.5});
-      nums.forEach(function(n){ io.observe(n); });
-    }
-  })();
-  </script>
 </body>
-
 </html>

@@ -1,0 +1,184 @@
+name: Validate Breeding Birds
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: breeding-birds-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RSPM: https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-15
+  RENV_CONFIG_REPOS_OVERRIDE: https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-15
+  OPENBLAS_CORETYPE: Haswell
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  BRD_LIVE: "0"
+
+jobs:
+  contracts:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 55
+    steps:
+      - name: Checkout immutable revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up pinned R
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          r-version: "4.5.2"
+          use-public-rspm: false
+
+      - name: Bootstrap checksum-pinned pak
+        run: bash scripts/install_pinned_pak.sh
+
+      - name: Install runtime and verification dependencies
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          packages: >
+            shiny, bslib, bsicons, dplyr, tidyr, stringr, tibble,
+            plotly@4.12.0, leaflet, DT, shinyjs, shinycssloaders, RColorBrewer,
+            htmltools, jsonlite, digest, rsconnect, cpp11,
+            url::https://cran.r-project.org/src/contrib/Archive/terra/terra_1.8-50.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/sf_1.1-1.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/s2_1.1.11.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/units_1.0-1.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/wk_0.9.5.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/classInt_0.4-11.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/raster_3.6-32.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/sp_2.2-1.tar.gz
+          pak-version: none
+          dependencies: '"hard"'
+          cache-version: breeding-birds-geo-closure-pak-0.11.1-v2
+          install-pandoc: "false"
+          install-quarto: "false"
+
+      - name: Reverify reviewed pak bootstrap
+        run: |
+          Rscript --vanilla -e 'lib <- normalizePath(Sys.getenv("R_LIB_FOR_PAK"), mustWork = TRUE); actual <- as.character(packageVersion("pak", lib.loc = lib)); stopifnot(identical(actual, "0.11.1"), identical(normalizePath(find.package("pak"), mustWork = TRUE), normalizePath(file.path(lib, "pak"), mustWork = TRUE)))'
+
+      - name: Verify deterministic numeric runtime
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ctypes
+          lib = ctypes.CDLL("libopenblas.so.0")
+          lib.openblas_get_corename.restype = ctypes.c_char_p
+          core = lib.openblas_get_corename().decode("ascii")
+          threads = lib.openblas_get_num_threads()
+          print(f"OpenBLAS core={core} threads={threads}")
+          if core.lower() != "haswell" or threads != 1:
+              raise SystemExit("unexpected OpenBLAS runtime")
+          PY
+
+      - name: Parse source and verify static contracts
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'for (f in c("global.R","ui.R","server.R",list.files("R",pattern="[.]R$",full.names=TRUE),list.files("scripts",pattern="[.]R$",full.names=TRUE))) parse(f)'
+          node --check www/app.js
+          node --check www/pincards.js
+          bash -n scripts/install_pinned_pak.sh
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const files = ["www/app.js", "www/pincards.js"];
+          const pattern = /Shiny\.addCustomMessageHandler\(\s*["'][^"']+["']\s*,\s*function\s*\(([^)]*)\)/g;
+          let seen = 0;
+          const invalid = [];
+          for (const file of files) {
+            const source = fs.readFileSync(file, "utf8");
+            for (const match of source.matchAll(pattern)) {
+              seen += 1;
+              const params = match[1].split(",").map((value) => value.trim()).filter(Boolean);
+              if (params.length !== 1) invalid.push(file + ": " + match[0]);
+            }
+          }
+          if (!seen) throw new Error("no Shiny custom message handlers found");
+          if (invalid.length) throw new Error("handlers must accept exactly one payload argument:\n" + invalid.join("\n"));
+          const cover = fs.readFileSync("docs/index.html", "utf8");
+          const ui = fs.readFileSync("ui.R", "utf8");
+          if (!cover.includes('data-release-marker="breeding-birds-poster-v1"')) {
+            throw new Error("Pages semantic marker is missing");
+          }
+          if (!ui.includes("breeding-birds-release-2026-v1")) {
+            throw new Error("Connect semantic marker is missing");
+          }
+          const combined = cover + "\n" + ui;
+          if (/\b46\b.{0,35}\bsites?\b/i.test(combined) || /\b19\b.{0,35}\bsites?\b/i.test(combined)) {
+            throw new Error("stale pre-release 46-site or 19-site scope remains");
+          }
+          if (!/\b47\b.{0,35}\bsites?\b/i.test(cover) || !/\b47\b.{0,35}\bsites?\b/i.test(ui)) {
+            throw new Error("Pages and app must both state the 47-site release scope");
+          }
+          if (/<script[^>]+src=["']https?:|<img[^>]+src=["']https?:|<link[^>]+rel=["']stylesheet["'][^>]+href=["']https?:/i.test(cover)) {
+            throw new Error("Pages has a remote runtime asset");
+          }
+          if (/tags\$(?:script|link|img)\([^\n]*https?:/i.test(ui)) {
+            throw new Error("app has a remote startup asset");
+          }
+          console.log("OK: " + seen + " message handlers and both static release markers passed.");
+          NODE
+          if [[ -f scripts/check_cover.mjs ]]; then node scripts/check_cover.mjs; fi
+          bash -n scripts/post_deploy_smoke.sh
+
+      - name: Run scientific helper contracts
+        run: |
+          Rscript --vanilla scripts/test_helpers.R
+          Rscript --vanilla scripts/test_bird_evidence_privacy.R
+          Rscript --vanilla scripts/test_env_helpers.R
+          Rscript --vanilla scripts/test_verify_env_candidate.R
+          Rscript --vanilla scripts/test_release_stamp.R
+
+      - name: Verify committed exact deploy-payload stamp
+        run: |
+          BIRD_RELEASE_STAMP_MODE=verify BIRD_WRITE_PAGES_RELEASE=1 \
+            Rscript --vanilla scripts/write_release_stamp.R
+
+      - name: Require independent bundle verifier
+        run: |
+          test -f scripts/verify_bundle.R || {
+            echo "::error title=Missing release gate::scripts/verify_bundle.R is required"
+            exit 1
+          }
+          Rscript --vanilla scripts/verify_bundle.R
+
+      - name: Generate manifest in pinned runtime
+        id: manifest
+        run: BIRD_MANIFEST_PHASE=final Rscript --vanilla scripts/write_manifest.R
+
+      - name: Reverify release identity against generated manifest contract
+        run: |
+          BIRD_RELEASE_STAMP_MODE=verify BIRD_WRITE_PAGES_RELEASE=1 \
+            Rscript --vanilla scripts/write_release_stamp.R
+
+      - name: Verify exact manifest
+        run: Rscript --vanilla scripts/verify_manifest.R
+
+      - name: Source complete app offline
+        run: Rscript --vanilla -e 'Sys.setenv(BRD_LIVE="0"); source("global.R"); source("ui.R"); candidate <- source("server.R")$value; stopifnot(inherits(ui,"shiny.tag.list") || inherits(ui,"shiny.tag"), is.function(candidate))'
+
+      - name: Render a bundled site through the Shiny server
+        run: Rscript --vanilla scripts/test_server_runtime.R
+
+      - name: Upload unvalidated manifest for diagnosis
+        if: failure() && steps.manifest.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: breeding-birds-manifest-UNVALIDATED-${{ github.sha }}
+          path: manifest.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Require committed generated bytes to match
+        run: |
+          git diff --exit-code -- manifest.json data data-sample docs/release.json
+          git diff --check

@@ -1,6 +1,43 @@
 /* =========================================================================
-   app.js — count-up stat counters + celebratory confetti
+   app.js — stat counters, loading state, popovers, and widget resizing
    ========================================================================= */
+
+// Tiny local toast surface used by pin-card exports. The former SweetAlert CDN
+// dependency made a cold app render depend on the public network; this preserves
+// the progress/success/error feedback with a small accessible DOM primitive.
+(function installLocalToast() {
+  if (window.Swal) return;
+  var toast = null;
+  var toastTimer = null;
+
+  function closeToast() {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+    toast = null;
+  }
+
+  window.Swal = {
+    close: closeToast,
+    showLoading: function () {
+      if (toast) toast.classList.add("is-loading");
+    },
+    fire: function (options) {
+      var opts = options || {};
+      closeToast();
+      toast = document.createElement("div");
+      toast.className = "brd-toast" + (opts.icon ? " is-" + opts.icon : "");
+      toast.setAttribute("role", opts.icon === "error" ? "alert" : "status");
+      toast.setAttribute("aria-live", opts.icon === "error" ? "assertive" : "polite");
+      toast.setAttribute("aria-atomic", "true");
+      toast.textContent = String(opts.title || "Working…");
+      document.body.appendChild(toast);
+      if (typeof opts.didOpen === "function") opts.didOpen(toast);
+      if (Number(opts.timer) > 0) toastTimer = setTimeout(closeToast, Number(opts.timer));
+      return Promise.resolve({ isDismissed: false });
+    }
+  };
+})();
 
 // When a tab becomes visible, nudge a resize so widgets that rendered while the
 // tab was hidden (Leaflet maps, plotly charts) re-fit to their real size — the
@@ -49,53 +86,24 @@ document.addEventListener("DOMContentLoaded", function () {
   runCounters();
 });
 
-// ---- confetti on legendary / epic finds ----------------------------------
-function rodentConfetti(big) {
-  if (typeof confetti !== "function") return;
-  // Field Guide palette (rust / goldfinch / singing-green / calling-blue / ink).
-  const colors = ["#c1502e", "#e8a317", "#1a7f37", "#2f7fb5", "#2b2722"];
-  const burst = (opts) => confetti(Object.assign({ colors, disableForReducedMotion: true }, opts));
-  burst({ particleCount: big ? 140 : 70, spread: big ? 100 : 70, origin: { y: 0.3 }, startVelocity: 42 });
-  if (big) {
-    setTimeout(() => burst({ particleCount: 80, angle: 60, spread: 70, origin: { x: 0 } }), 180);
-    setTimeout(() => burst({ particleCount: 80, angle: 120, spread: 70, origin: { x: 1 } }), 320);
-  }
-  mascotCheer(big);
-}
-
-// ---- mascot celebration: a little bird hops up + fades on a legendary/epic find
-function mascotCheer(big) {
-  try {
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    var src = document.querySelector("#loadOverlay .mascot");
-    if (!src) return;
-    var wrap = document.createElement("div");
-    wrap.className = "mascot-cheer";
-    wrap.appendChild(src.cloneNode(true));
-    document.body.appendChild(wrap);
-    setTimeout(function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 1700);
-  } catch (e) {}
-}
-
-// ---- first-visit: the splash mascot waves hello once (localStorage-gated) ----
-document.addEventListener("DOMContentLoaded", function () {
-  try {
-    if (localStorage.getItem("smtMascotSeen") === "1") return;
-    var g = document.querySelector(".splash-guide");
-    if (g) {
-      g.classList.add("wave");
-      localStorage.setItem("smtMascotSeen", "1");
-      setTimeout(function () { g.classList.remove("wave"); }, 3300);
-    }
-  } catch (e) {}
-});
-
 // ---- loading overlay (opaque, indeterminate) -----------------------------
 // A site load is one synchronous blocking call whose duration we can't know,
 // so we show an INDETERMINATE animated bar (no fake %) on an OPAQUE backdrop —
 // it just spins until the server signals it's done. No number to "stall" at,
 // and you don't see half-rendered data through it.
 var smtSafetyTimer = null;
+var smtLoadReturnFocus = null;
+var smtDefaultLoadNote = "Building the species board, detection profiles, and maps.";
+function smtSetAppLoading(isLoading) {
+  var main = document.getElementById("appMain");
+  var topBar = document.querySelector(".top-bar");
+  [main, topBar].forEach(function (node) {
+    if (!node) return;
+    node.inert = isLoading;
+  });
+  if (main) main.setAttribute("aria-busy", isLoading ? "true" : "false");
+  document.body.classList.toggle("brd-loading", isLoading);
+}
 function smtLoadStart(label) {
   var ov = document.getElementById("loadOverlay");
   if (!ov) return;
@@ -111,20 +119,47 @@ function smtLoadStart(label) {
     if (sel && sel.options && sel.selectedIndex >= 0) siteText = sel.options[sel.selectedIndex].text;
   }
   var siteEl = document.getElementById("loadSite");
+  var note = document.getElementById("loadNote");
   if (siteEl) siteEl.textContent = siteText;
+  if (note) note.textContent = smtDefaultLoadNote;
+  if (ov.getAttribute("aria-hidden") !== "false") {
+    smtLoadReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  if (!ov.dataset.focusGuard) {
+    ov.addEventListener("keydown", function (event) {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        ov.focus({ preventScroll: true });
+      }
+    });
+    ov.dataset.focusGuard = "1";
+  }
+  smtSetAppLoading(true);
+  ov.setAttribute("aria-hidden", "false");
+  ov.setAttribute("aria-busy", "true");
   ov.style.display = "flex";
+  window.setTimeout(function () { try { ov.focus({ preventScroll: true }); } catch (e) {} }, 0);
   if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }  // tactile "got it"
   clearTimeout(smtSafetyTimer);
   smtSafetyTimer = setTimeout(function () {  // safety net so it can never stick
-    var note = document.querySelector(".load-note");
-    if (note) note.textContent = "Still working — a large site or a slow NEON Portal can take a bit. You can close this and try again.";
+    var lateNote = document.getElementById("loadNote");
+    if (lateNote) lateNote.textContent = "Still opening the bundled site data. The loading screen will clear automatically.";
     setTimeout(smtLoadDone, 5000);
   }, 90000);
 }
 function smtLoadDone() {
   clearTimeout(smtSafetyTimer);
   var ov = document.getElementById("loadOverlay");
-  if (ov) ov.style.display = "none";
+  if (ov) {
+    ov.style.display = "none";
+    ov.setAttribute("aria-hidden", "true");
+    ov.setAttribute("aria-busy", "false");
+  }
+  smtSetAppLoading(false);
+  if (smtLoadReturnFocus && document.contains(smtLoadReturnFocus)) {
+    try { smtLoadReturnFocus.focus({ preventScroll: true }); } catch (e) {}
+  }
+  smtLoadReturnFocus = null;
 }
 
 // (The site report card is now a server-side PDF streamed by a Shiny
@@ -156,14 +191,11 @@ document.addEventListener("keydown", function (e) {
 // ---- Shiny custom message handlers ---------------------------------------
 document.addEventListener("DOMContentLoaded", function () {
   if (window.Shiny) {
-    Shiny.addCustomMessageHandler("countUp", function () {
+    Shiny.addCustomMessageHandler("countUp", function (_payload) {
       // small delay so the freshly-rendered DOM is in place
       setTimeout(runCounters, 60);
     });
-    Shiny.addCustomMessageHandler("confetti", function (msg) {
-      rodentConfetti(msg && msg.big);
-    });
-    Shiny.addCustomMessageHandler("loadDone", function () { smtLoadDone(); });
+    Shiny.addCustomMessageHandler("loadDone", function (_payload) { smtLoadDone(); });
     // server-triggered overlay (e.g. a click on the national picker map, which
     // has no inline onclick to call smtLoadStart directly)
     Shiny.addCustomMessageHandler("smtLoadStart", function (msg) {
@@ -173,7 +205,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // tab, or the picker map re-shown after "change site") can paint blank until
     // it recomputes its size. Dispatching 'resize' makes every Leaflet map
     // invalidateSize. The server kicks this after re-showing the splash.
-    Shiny.addCustomMessageHandler("kickMaps", function () {
+    Shiny.addCustomMessageHandler("kickMaps", function (_payload) {
       // Dispatch 'resize' across several frames so Leaflet re-fits the SETTLED
       // width after "change site" re-shows the splash, instead of painting
       // half-width off a still-collapsing container.
@@ -182,9 +214,4 @@ document.addEventListener("DOMContentLoaded", function () {
       [80, 250, 500, 900].forEach(function (t) { setTimeout(kick, t); });
     });
   }
-});
-
-// Re-fit any Leaflet map the moment its tab becomes visible (hidden-init blank fix).
-document.addEventListener("shown.bs.tab", function () {
-  setTimeout(function () { try { window.dispatchEvent(new Event("resize")); } catch (e) {} }, 60);
 });

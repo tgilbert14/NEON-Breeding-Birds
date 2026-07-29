@@ -1,144 +1,391 @@
-name: Refresh NEON data bundle
+name: Propose immutable NEON breeding-bird refresh
 
-# Keeps the bundled "database" current and lets Posit Connect Cloud auto-redeploy.
-# Connect Cloud watches this repo and re-publishes on every push to `master`, so
-# this workflow's job is simply to refresh the committed data and push it.
-#
-# CADENCE — tuned to how each product updates:
-#   • MONTHLY (first Saturday night, Arizona time): a light ENV top-up
-#     (precip/temperature/phenology, last ~14 months) + a rebuild of the climate
-#     precompute tables. Fast (~10-20 min) and low-risk — it never drops sites.
-#   • ON DEMAND: the full 46-site BIRD re-pull (DP1.10003.001). Breeding-bird
-#     point counts are published ~annually on a lag, so a monthly re-pull is
-#     wasteful; tick `refetch_birds` in the Actions tab when NEON publishes a new
-#     season. (Mirrors the mammal app's flow, adapted to the bird cadence.)
-#
-# REQUIRES one repo secret (Settings → Secrets and variables → Actions):
-#   NEON_TOKEN   a free NEON API token from your NEON "My Account" page. From
-#                2026-06-30 NEON REQUIRES a token for downloads (before that it only
-#                raised the rate limit). Without it the monthly re-pull fails after
-#                that date; the deployed app keeps serving its last committed bundle.
+# Producer -> independent validator -> restricted publisher. Network bytes are
+# written only to empty staging, then handed to a clean checkout. Only the final
+# job can write, and it can publish a review branch — never master.
 
 on:
   schedule:
-    # Every Sunday 06:00 UTC == Saturday 23:00 America/Phoenix (Arizona, no DST).
-    # Cron can't say "first Saturday", so we fire every Saturday and gate below.
-    - cron: "0 6 * * 0"
+    # Monthly at 23:00 on the first day in America/Phoenix (Arizona has no DST).
+    - cron: "0 6 2 * *"
   workflow_dispatch:
-    inputs:
-      refetch_birds:
-        description: "Also re-pull all 46 bird sites (DP1.10003.001) — slow, do this when NEON publishes a new season"
-        type: boolean
-        default: false
-      skip_download:
-        description: "Skip the environmental re-pull; just rebuild the precompute from committed bundles and redeploy (fast test)"
-        type: boolean
-        default: false
 
 permissions:
-  contents: write          # push the refreshed data bundle to master
+  contents: read
+
+concurrency:
+  group: breeding-birds-release-refresh
+  cancel-in-progress: false
+
+env:
+  RSPM: https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-15
+  RENV_CONFIG_REPOS_OVERRIDE: https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-15
+  OPENBLAS_CORETYPE: Haswell
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  BRD_LIVE: "0"
+  BIRD_RELEASE: RELEASE-2026
 
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    outputs:
-      run: ${{ steps.check.outputs.run }}
-    steps:
-      - id: check
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual run — proceeding."; echo "run=true" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          dow=$(TZ='America/Phoenix' date +%u)    # 6 = Saturday
-          day=$(TZ='America/Phoenix' date +%-d)   # day of month
-          if [ "$dow" = "6" ] && [ "$day" -le 7 ]; then
-            echo "First Saturday in Arizona (day $day) — proceeding."
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "Not the first Saturday (dow=$dow day=$day) — skipping."
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  refresh:
-    needs: gate
-    if: needs.gate.outputs.run == 'true'
-    runs-on: ubuntu-latest
+  produce_candidate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 300
     env:
       NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: r-lib/actions/setup-r@v2
+      - name: Checkout immutable producer revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          use-public-rspm: true
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Install R packages
-        uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Set job-local producer paths
+        run: |
+          echo "BIRD_RAW_DIR=$RUNNER_TEMP/bird-raw" >> "$GITHUB_ENV"
+          echo "BIRD_RECEIPT=$RUNNER_TEMP/bird-source-receipt.json" >> "$GITHUB_ENV"
+          echo "BIRD_OUTPUT_ROOT=$RUNNER_TEMP/bird-candidate" >> "$GITHUB_ENV"
+          echo "BIRD_ENV_RECEIPT=$RUNNER_TEMP/bird-candidate/data/environment_source_receipt.json" >> "$GITHUB_ENV"
+          echo "BIRD_ENV_EVIDENCE_DIR=$RUNNER_TEMP/environment-evidence" >> "$GITHUB_ENV"
+
+      - name: Set up pinned R
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          r-version: "4.5.2"
+          use-public-rspm: false
+
+      - name: Bootstrap checksum-pinned pak
+        run: bash scripts/install_pinned_pak.sh
+
+      - name: Install producer dependencies
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          packages: neonUtilities, dplyr, tidyr, stringr, tibble, jsonlite, digest
+          pak-version: none
+          dependencies: '"hard"'
+          cache-version: breeding-birds-producer-pak-0.11.1-v2
+          install-pandoc: "false"
+          install-quarto: "false"
+
+      - name: Reverify reviewed pak bootstrap
+        run: |
+          Rscript --vanilla -e 'lib <- normalizePath(Sys.getenv("R_LIB_FOR_PAK"), mustWork = TRUE); actual <- as.character(packageVersion("pak", lib.loc = lib)); stopifnot(identical(actual, "0.11.1"), identical(normalizePath(find.package("pak"), mustWork = TRUE), normalizePath(file.path(lib, "pak"), mustWork = TRUE)))'
+
+      - name: Run opportunity fixtures before network fetch
+        run: |
+          Rscript --vanilla scripts/test_helpers.R
+          Rscript --vanilla scripts/test_bird_evidence_privacy.R
+
+      - name: Require release token
+        run: |
+          if [[ -z "${NEON_TOKEN:-}" ]]; then
+            echo "::error title=Missing NEON token::A full 47-site release fetch requires NEON_TOKEN."
+            exit 1
+          fi
+
+      - name: Fetch and bundle exact release in empty staging
+        run: |
+          set -euo pipefail
+          mkdir -p "$BIRD_RAW_DIR" "$BIRD_OUTPUT_ROOT"
+          Rscript --vanilla scripts/fetch_bird_all.R
+          Rscript --vanilla scripts/bundle_bird_data.R
+          Rscript --vanilla scripts/sanitize_bird_evidence.R
+          Rscript --vanilla scripts/scan_bird_evidence.R
+          Rscript --vanilla scripts/refresh_env_data.R
+
+      - name: Package exact source candidate
+        run: |
+          set -euo pipefail
+          export BIRD_CANDIDATE_ROOT="$BIRD_OUTPUT_ROOT"
+          Rscript --vanilla -e 'source("R/site_metadata.R"); root <- Sys.getenv("BIRD_CANDIDATE_ROOT"); expected <- sort(as.character(neon_sites$site)); stopifnot(length(expected) == 47L, "PUUM" %in% expected); for (rel in c("data/sites", "data/env")) { dir <- file.path(root, rel); got <- sort(sub("[.]rds$", "", basename(list.files(dir, pattern="[.]rds$")))); stopifnot(identical(got, expected)) }; required <- c("data/site_index.rds", "data/source_receipt.json", "data/environment_source_receipt.json", "data/bundle_schema.json", "data-sample/demo.rds"); for (rel in required) { path <- file.path(root, rel); stopifnot(file.exists(path), file.info(path)$size > 0) }'
+          git diff --check
+          tar -C "$BIRD_OUTPUT_ROOT" -czf "$RUNNER_TEMP/breeding-birds-produced-2026.tgz" data data-sample
+          tar -C "$BIRD_RAW_DIR" -czf "$RUNNER_TEMP/breeding-birds-raw-evidence-2026.tgz" .
+          tar -C "$BIRD_ENV_EVIDENCE_DIR" -czf "$RUNNER_TEMP/breeding-birds-env-evidence-2026.tgz" .
+
+      - name: Upload immutable producer candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: breeding-birds-produced-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/breeding-birds-produced-2026.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload immutable raw validation evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: breeding-birds-raw-evidence-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/breeding-birds-raw-evidence-2026.tgz
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload immutable environmental validation evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: breeding-birds-env-evidence-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/breeding-birds-env-evidence-2026.tgz
+          if-no-files-found: error
+          retention-days: 3
+
+  validate_candidate:
+    needs: produce_candidate
+    if: needs.produce_candidate.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout immutable validator revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set job-local validator paths
+        run: |
+          echo "BIRD_RAW_DIR=$RUNNER_TEMP/raw-evidence" >> "$GITHUB_ENV"
+          echo "BIRD_ENV_EVIDENCE_DIR=$RUNNER_TEMP/environment-evidence" >> "$GITHUB_ENV"
+
+      - name: Set up pinned R
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          r-version: "4.5.2"
+          use-public-rspm: false
+
+      - name: Bootstrap checksum-pinned pak
+        run: bash scripts/install_pinned_pak.sh
+
+      - name: Install validator and runtime dependencies
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
           packages: >
-            neonUtilities, dplyr, tibble, tidyr, stringr, rsconnect, jsonlite,
-            shiny, bslib, bsicons, plotly, leaflet, DT, shinyjs,
-            shinycssloaders, RColorBrewer, htmltools, cpp11
+            shiny, bslib, bsicons, dplyr, tidyr, stringr, tibble,
+            plotly@4.12.0, leaflet, DT, shinyjs, shinycssloaders, RColorBrewer,
+            htmltools, jsonlite, digest, rsconnect, cpp11,
+            url::https://cran.r-project.org/src/contrib/Archive/terra/terra_1.8-50.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/sf_1.1-1.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/s2_1.1.11.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/units_1.0-1.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/wk_0.9.5.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/classInt_0.4-11.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/raster_3.6-32.tar.gz,
+            url::https://packagemanager.posit.co/cran/2026-07-15/src/contrib/sp_2.2-1.tar.gz
+          pak-version: none
+          dependencies: '"hard"'
+          cache-version: breeding-birds-validator-geo-pak-0.11.1-v2
+          install-pandoc: "false"
+          install-quarto: "false"
 
-      # Heavy, ON-DEMAND: re-pull all 46 bird sites and re-bundle. Guarded so a
-      # partial pull can't silently shrink the app — only re-bundles when ≥40
-      # sites were fetched (else the committed bundles are kept).
-      - name: Re-pull bird sites (on demand)
-        if: ${{ github.event.inputs.refetch_birds == 'true' }}
-        timeout-minutes: 240
+      - name: Reverify reviewed pak bootstrap
         run: |
-          Rscript scripts/fetch_bird_all.R
-          n=$(ls ../bird-data-fetch/*_raw.rds 2>/dev/null | wc -l)
-          echo "fetched $n raw site files"
-          if [ "$n" -ge 40 ]; then
-            Rscript scripts/bundle_bird_data.R
-          else
-            echo "Only $n sites fetched (<40) — keeping the committed bundles, skipping re-bundle."
-          fi
+          Rscript --vanilla -e 'lib <- normalizePath(Sys.getenv("R_LIB_FOR_PAK"), mustWork = TRUE); actual <- as.character(packageVersion("pak", lib.loc = lib)); stopifnot(identical(actual, "0.11.1"), identical(normalizePath(find.package("pak"), mustWork = TRUE), normalizePath(file.path(lib, "pak"), mustWork = TRUE)))'
 
-      # MONTHLY: light environmental top-up — re-pull only the last ~14 months of
-      # precip/temperature/phenology and merge into the committed history. Time-
-      # boxed + non-fatal so it can never stall or block the push below.
-      - name: Top up the environmental overlays (recent months)
-        if: ${{ github.event.inputs.skip_download != 'true' }}
-        continue-on-error: true
-        timeout-minutes: 50
+      - name: Verify deterministic numeric runtime
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ctypes
+          lib = ctypes.CDLL("libopenblas.so.0")
+          lib.openblas_get_corename.restype = ctypes.c_char_p
+          core = lib.openblas_get_corename().decode("ascii")
+          threads = lib.openblas_get_num_threads()
+          print(f"OpenBLAS core={core} threads={threads}")
+          if core.lower() != "haswell" or threads != 1:
+              raise SystemExit("unexpected OpenBLAS runtime")
+          PY
+
+      - name: Download immutable producer candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: breeding-birds-produced-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/candidate
+
+      - name: Download immutable raw evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: breeding-birds-raw-evidence-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/raw-artifact
+
+      - name: Download immutable environmental evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: breeding-birds-env-evidence-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/env-artifact
+
+      - name: Materialize candidate in clean validator checkout
+        run: |
+          set -euo pipefail
+          find data data-sample -mindepth 1 -delete
+          tar -xzf "$RUNNER_TEMP/candidate/breeding-birds-produced-2026.tgz"
+          mkdir -p "$BIRD_RAW_DIR" "$BIRD_ENV_EVIDENCE_DIR"
+          tar -C "$BIRD_RAW_DIR" -xzf "$RUNNER_TEMP/raw-artifact/breeding-birds-raw-evidence-2026.tgz"
+          tar -C "$BIRD_ENV_EVIDENCE_DIR" -xzf "$RUNNER_TEMP/env-artifact/breeding-birds-env-evidence-2026.tgz"
+
+      - name: Independently reconcile raw visits and detections
+        run: |
+          set -euo pipefail
+          test -f scripts/verify_raw_candidate.R || {
+            echo "::error title=Missing raw release oracle::scripts/verify_raw_candidate.R is required"
+            exit 1
+          }
+          Rscript --vanilla scripts/verify_raw_candidate.R
+
+      - name: Independently reconstruct environmental context
+        run: |
+          set -euo pipefail
+          test -f scripts/verify_env_candidate.R || {
+            echo "::error title=Missing environment oracle::scripts/verify_env_candidate.R is required"
+            exit 1
+          }
+          Rscript --vanilla scripts/verify_env_candidate.R
+
+      - name: Independently rebuild every derived index
+        run: |
+          set -euo pipefail
+          rebuild() {
+            Rscript --vanilla scripts/build_site_index.R
+            Rscript --vanilla scripts/refresh_site_climate.R
+            Rscript --vanilla scripts/build_cross_site.R
+            Rscript --vanilla scripts/build_search_index.R
+          }
+          derived=(
+            data/site_index.rds data/site_climate.rds data/site_month_clim.rds
+            data/cross_site.rds data/search_index.rds
+          )
+          rebuild
+          for path in "${derived[@]}"; do test -s "$path"; done
+          sha256sum "${derived[@]}" > "$RUNNER_TEMP/breeding-birds-derived.sha256"
+          rebuild
+          sha256sum --check "$RUNNER_TEMP/breeding-birds-derived.sha256"
+
+      - name: Generate and independently verify exact candidate
+        run: |
+          set -euo pipefail
+          test -f scripts/verify_bundle.R || {
+            echo "::error title=Missing release gate::scripts/verify_bundle.R is required"
+            exit 1
+          }
+          BIRD_MANIFEST_PHASE=prestamp Rscript --vanilla scripts/write_manifest.R
+          BIRD_RELEASE_STAMP_MODE=write BIRD_WRITE_PAGES_RELEASE=1 \
+            Rscript --vanilla scripts/write_release_stamp.R
+          BIRD_MANIFEST_PHASE=final Rscript --vanilla scripts/write_manifest.R
+          BIRD_RELEASE_STAMP_MODE=verify BIRD_WRITE_PAGES_RELEASE=1 \
+            Rscript --vanilla scripts/write_release_stamp.R
+          Rscript --vanilla scripts/test_helpers.R
+          Rscript --vanilla scripts/test_bird_evidence_privacy.R
+          Rscript --vanilla scripts/test_env_helpers.R
+          Rscript --vanilla scripts/test_verify_env_candidate.R
+          Rscript --vanilla scripts/test_release_stamp.R
+          Rscript --vanilla scripts/verify_bundle.R
+          Rscript --vanilla scripts/verify_manifest.R
+          Rscript --vanilla -e 'Sys.setenv(BRD_LIVE="0"); source("global.R"); source("ui.R"); candidate <- source("server.R")$value; stopifnot(inherits(ui,"shiny.tag.list") || inherits(ui,"shiny.tag"), is.function(candidate))'
+          Rscript --vanilla scripts/test_server_runtime.R
+          node --check www/app.js
+          node --check www/pincards.js
+          bash -n scripts/post_deploy_smoke.sh
+          git diff --check
+
+      - name: Package immutable validated candidate
+        run: tar -czf "$RUNNER_TEMP/breeding-birds-release-2026.tgz" data data-sample docs/release.json manifest.json
+
+      - name: Upload validated candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: breeding-birds-release-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/breeding-birds-release-2026.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish_candidate:
+    needs: validate_candidate
+    if: needs.validate_candidate.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout validated producer revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Download exact validated artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: breeding-birds-release-2026-${{ github.sha }}
+          path: ${{ runner.temp }}/candidate
+
+      - name: Publish review branch, never master
         env:
-          SMT_ENV_RECENT_MONTHS: "14"
-        run: Rscript scripts/refresh_env_data.R
-
-      # Rebuild the precompute tables the app loads at boot (climate normals,
-      # monthly climatology, effort-rarefied cross-site metrics). CI-safe: when
-      # the raw bird files aren't present (env-only run) it preserves the realized
-      # count window from the committed table.
-      - name: Rebuild climate + cross-site precompute
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Rscript scripts/refresh_site_climate.R
-          Rscript scripts/build_cross_site.R
-
-      # Rebuild the "Search the network" index from the committed bundles so it
-      # never drifts from the data (reads data/sites/*.rds + data/site_index.rds,
-      # no live fetch). Must run AFTER the precompute and BEFORE the commit.
-      - name: Rebuild the search index
-        run: Rscript scripts/build_search_index.R
-
-      # Regenerate the lean manifest from the (about-to-be-committed) app files so
-      # Connect serves the right dependency set; the script's hard gate fails the
-      # build if a heavy-pull package (neonUtilities / arrow) ever leaks in.
-      - name: Regenerate manifest
-        run: Rscript scripts/write_manifest.R
-
-      # Push the refreshed data straight to master -> Connect Cloud re-publishes.
-      # Skips cleanly when nothing changed.
-      - name: Commit & push refreshed data
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/sites data/env data/site_index.rds data/site_climate.rds data/site_month_clim.rds data/cross_site.rds data/search_index.rds manifest.json data-sample 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo "No data changes — nothing to push."
-          else
-            git commit -m "data: monthly NEON refresh (env top-up + climate precompute)"
-            git push origin HEAD:master
-            echo "Pushed refreshed data — Connect Cloud will re-publish."
+          set -euo pipefail
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor origin/master "$GITHUB_SHA"; then
+            echo "Producer revision does not contain current master; refusing stale publication."
+            exit 1
           fi
+          find data data-sample -mindepth 1 -delete
+          tar -xzf "$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz"
+          branch="automation/breeding-birds-release-2026"
+          remote_head=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
+          git switch -C "$branch"
+          git config user.name "neon-data-bot"
+          git config user.email "neon-data-bot@users.noreply.github.com"
+          git add -A -- data data-sample docs/release.json manifest.json
+          if git diff --cached --quiet -- data data-sample docs/release.json manifest.json; then
+            echo "No validated candidate change, including untracked scoped files."
+            exit 0
+          fi
+          git commit -m "data: propose validated breeding-bird RELEASE-2026 [bot]" \
+            -m "Exact 47-site opportunity-complete candidate produced from ${GITHUB_SHA}."
+          published_commit=$(git rev-parse HEAD)
+          if [[ "$(git rev-parse HEAD^)" != "$GITHUB_SHA" ]]; then
+            echo "Candidate promotion commit is not a direct child of the validated producer revision."
+            exit 1
+          fi
+          if [[ -n "$remote_head" ]]; then
+            git push --force-with-lease="refs/heads/$branch:$remote_head" \
+              origin "$branch:refs/heads/$branch"
+          else
+            git push origin "$branch:refs/heads/$branch"
+          fi
+          pushed_commit=""
+          for attempt in 1 2 3 4 5; do
+            pushed_commit=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
+            [[ "$pushed_commit" == "$published_commit" ]] && break
+            sleep 2
+          done
+          if [[ "$pushed_commit" != "$published_commit" ]]; then
+            echo "Published branch does not resolve to the validated candidate commit."
+            exit 1
+          fi
+
+          pr_count=$(gh pr list --head "$branch" --base master --state open \
+            --json url --jq 'length')
+          if (( pr_count > 1 )); then
+            echo "More than one open master PR exists for $branch; refusing ambiguous publication."
+            exit 1
+          fi
+          if (( pr_count == 0 )); then
+            echo "::notice title=Validated review branch ready::Open a reviewer-authenticated PR from $branch to master after reviewing run ${GITHUB_RUN_ID}; that PR event is the exact-head CI trigger."
+            exit 0
+          fi
+
+          pr_record=""
+          for attempt in 1 2 3 4 5; do
+            pr_record=$(gh pr list --head "$branch" --base master --state open \
+              --json url,baseRefName,headRefName,headRefOid \
+              --jq 'if length == 1 then .[0] | [.url,.baseRefName,.headRefName,.headRefOid] | @tsv else "" end')
+            [[ "$pr_record" == *$'\t'"$published_commit" ]] && break
+            sleep 2
+          done
+          IFS=$'\t' read -r pr_url pr_base pr_head pr_oid <<< "$pr_record"
+          if [[ -z "$pr_record" || "$pr_base" != master || "$pr_head" != "$branch" || \
+                "$pr_oid" != "$published_commit" ]]; then
+            echo "Open PR identity does not match master <- $branch at $published_commit."
+            exit 1
+          fi
+          gh pr comment "$pr_url" \
+            --body "Updated from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. GitHub will hold the pull_request synchronize checks triggered by this automation update for approval; a repository write user must select **Approve workflows to run**. Do not merge until checks are green on exact head ${published_commit}."
+          echo "::notice title=Approve exact-head PR checks::Existing PR updated to $published_commit. A repository write user must select Approve workflows to run, then verify green checks on that exact head."

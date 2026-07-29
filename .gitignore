@@ -14,3 +14,4 @@ Thumbs.db
 
 # transient fetch staging
 /bird-data-fetch/
+/build/
