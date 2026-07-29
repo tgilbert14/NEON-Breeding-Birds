@@ -160,9 +160,13 @@ for (site in sites) {
   )
 }
 
-fetched_sites <- sort(vapply(records, `[[`, character(1), "site"))
+fetched_sites <- bird_receipt_record_sites(records)
 if (!length(args) && !identical(fetched_sites, expected_sites)) {
-  stop("Fetched roster does not exactly match the 47-site release roster.", call. = FALSE)
+  stop(sprintf(
+    "Fetched roster does not exactly match the 47-site release roster (missing: %s; unexpected: %s).",
+    paste(setdiff(expected_sites, fetched_sites), collapse = ", "),
+    paste(setdiff(fetched_sites, expected_sites), collapse = ", ")
+  ), call. = FALSE)
 }
 
 receipt <- list(

@@ -94,6 +94,19 @@ stopifnot(
             bird_evidence_projection_sha256(source_with_end_date))
 )
 
+# Named producer record lists must yield an unnamed canonical roster. R's
+# vapply() otherwise preserves the list names, making identical() reject the
+# same site values solely because one vector carries a names attribute.
+named_records <- setNames(
+  list(list(site = "PUUM"), list(site = "ABBY")),
+  c("producer-slot-b", "producer-slot-a")
+)
+record_sites <- bird_receipt_record_sites(named_records)
+stopifnot(
+  identical(record_sites, c("ABBY", "PUUM")),
+  is.null(names(record_sites))
+)
+
 private_change <- example
 private_change$brd_personnel$email[[1]] <- "another.private@example.org"
 stopifnot(

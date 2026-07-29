@@ -142,6 +142,34 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   --check` passed. The next authoritative evidence is a fresh pinned R 4.5.2
   workflow run on the corrected exact head.
 
+### 2026-07-28 official roster checkpoint
+
+- Schema correction commit `3f9340963fd930a67069d39b5461f73cd6c16ffd`
+  was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
+  `30411979380` on that exact branch/head.
+- The producer again passed pinned setup, checksum-pinned bootstrap and
+  dependencies, 128 science fixtures, schema-v2 privacy fixtures, and token
+  presence. It then fetched and stacked the required bird tables for all 47 sites,
+  including PUUM, before failing closed at the final roster identity check.
+- No candidate or evidence artifact was packaged, the validator and publisher
+  skipped, and neither the review branch nor production changed.
+- Cause: the producer records list is deliberately named by site. Base R `vapply()`
+  preserved those list names on the extracted site vector, while the canonical
+  expected roster was unnamed; `identical()` therefore rejected equal values solely
+  because of the names attribute.
+- The shared receipt helper now extracts record sites with `USE.NAMES = FALSE`,
+  trims each scalar code, and radix-sorts the unnamed result. The producer also
+  reports explicit missing and unexpected codes if a real value mismatch occurs.
+  A regression constructs named producer slots unrelated to site order and requires
+  the canonical result to be both value-identical and unnamed.
+- The schema-v2 47-site end-to-end rehearsal at
+  `/private/tmp/birds-schema-v2-e2e.HzKx17` passed producer projection, bundling,
+  sanitization, the PII scanner, the independent raw oracle, two-build derived-byte
+  determinism, release-stamp write/verify, and the full bundle oracle. It retained
+  typed-`NA` public `visits.endDate` fields. The named-record regression, all 128
+  science helpers, affected-file parsing, and `git diff --check` passed locally.
+  An independent attribute audit found no analogous producer-side roster trap.
+
 ### Required closeout
 
 1. Run the refresh with `NEON_TOKEN` to build all 47 sites from the exact release in

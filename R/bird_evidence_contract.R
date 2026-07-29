@@ -182,6 +182,18 @@ bird_assert_receipt_evidence_contract <- function(receipt) {
   invisible(TRUE)
 }
 
+bird_receipt_record_sites <- function(records) {
+  if (!is.list(records))
+    bird_evidence_fail("Bird source receipt records must be a list.")
+  sites <- vapply(records, function(record) {
+    site <- as.character(record$site)
+    if (length(site) != 1L || is.na(site) || !nzchar(trimws(site)))
+      bird_evidence_fail("Bird source receipt record has an invalid site code.")
+    trimws(site)
+  }, character(1), USE.NAMES = FALSE)
+  sort(sites, method = "radix")
+}
+
 bird_receipt_records <- function(receipt) {
   records <- receipt$files
   if (!is.data.frame(records))
