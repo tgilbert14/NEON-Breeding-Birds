@@ -32,6 +32,7 @@ jobs:
     timeout-minutes: 300
     env:
       NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
+      BIRD_ENV_BATCH_SIZE: "4"
     steps:
       - name: Checkout immutable producer revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -75,6 +76,7 @@ jobs:
         run: |
           Rscript --vanilla scripts/test_helpers.R
           Rscript --vanilla scripts/test_bird_evidence_privacy.R
+          Rscript --vanilla scripts/test_env_batching.R
 
       - name: Require release token
         run: |
@@ -91,12 +93,27 @@ jobs:
           Rscript --vanilla scripts/bundle_bird_data.R
           Rscript --vanilla scripts/sanitize_bird_evidence.R
           Rscript --vanilla scripts/scan_bird_evidence.R
-          Rscript --vanilla scripts/refresh_env_data.R
+          env_private="$RUNNER_TEMP/bird-environment-private"
+          mkdir -m 700 "$env_private"
+          cleanup_environment_private() {
+            if [[ -d "$env_private" ]]; then
+              find "$env_private" -mindepth 1 -delete
+              rmdir "$env_private"
+            fi
+          }
+          trap cleanup_environment_private EXIT
+          df -h "$RUNNER_TEMP"
+          /usr/bin/time -v -o "$RUNNER_TEMP/environment-refresh-time.txt" \
+            env TMPDIR="$env_private" Rscript --vanilla scripts/refresh_env_data.R
+          cat "$RUNNER_TEMP/environment-refresh-time.txt"
+          cleanup_environment_private
+          trap - EXIT
 
       - name: Package exact source candidate
         run: |
           set -euo pipefail
           export BIRD_CANDIDATE_ROOT="$BIRD_OUTPUT_ROOT"
+          test ! -e "$RUNNER_TEMP/bird-environment-private"
           Rscript --vanilla -e 'source("R/site_metadata.R"); root <- Sys.getenv("BIRD_CANDIDATE_ROOT"); expected <- sort(as.character(neon_sites$site)); stopifnot(length(expected) == 47L, "PUUM" %in% expected); for (rel in c("data/sites", "data/env")) { dir <- file.path(root, rel); got <- sort(sub("[.]rds$", "", basename(list.files(dir, pattern="[.]rds$")))); stopifnot(identical(got, expected)) }; required <- c("data/site_index.rds", "data/source_receipt.json", "data/environment_source_receipt.json", "data/bundle_schema.json", "data-sample/demo.rds"); for (rel in required) { path <- file.path(root, rel); stopifnot(file.exists(path), file.info(path)$size > 0) }'
           git diff --check
           tar -C "$BIRD_OUTPUT_ROOT" -czf "$RUNNER_TEMP/breeding-birds-produced-2026.tgz" data data-sample
@@ -273,6 +290,8 @@ jobs:
           Rscript --vanilla scripts/test_helpers.R
           Rscript --vanilla scripts/test_bird_evidence_privacy.R
           Rscript --vanilla scripts/test_env_helpers.R
+          Rscript --vanilla scripts/test_env_batching.R
+          Rscript --vanilla scripts/test_env_batch_producer_parity.R
           Rscript --vanilla scripts/test_verify_env_candidate.R
           Rscript --vanilla scripts/test_release_stamp.R
           Rscript --vanilla scripts/verify_bundle.R

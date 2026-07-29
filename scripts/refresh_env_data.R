@@ -34,8 +34,9 @@
 # ===========================================================================
 
 options(timeout = 3600)
+.env_producer_library <- identical(Sys.getenv("BIRD_ENV_PRODUCER_LIBRARY", ""), "1")
 suppressMessages({
-  library(neonUtilities)
+  if (!.env_producer_library) library(neonUtilities)
   library(dplyr)
   library(tibble)
   library(jsonlite)
@@ -50,22 +51,25 @@ ENV_EVIDENCE_DIR <- Sys.getenv(
   file.path(ROOT, "validation-evidence", "environment")
 )
 .neon_token <- trimws(Sys.getenv("NEON_TOKEN", ""))
-if (!nzchar(.neon_token))
+if (!.env_producer_library && !nzchar(.neon_token))
   stop("NEON_TOKEN is required for an environmental release build.", call. = FALSE)
 
 source("R/site_metadata.R")  # canonical site list
 source("R/env_helpers.R")
+source("scripts/lib/env_batch_helpers.R")
 
 out_dir <- file.path(ROOT, "data", "env")
-if (dir.exists(out_dir) && length(list.files(out_dir, all.files = TRUE, no.. = TRUE)))
-  stop("Staged environment directory must be empty: ", out_dir, call. = FALSE)
-if (dir.exists(ENV_EVIDENCE_DIR) &&
-    length(list.files(ENV_EVIDENCE_DIR, all.files = TRUE, no.. = TRUE)))
-  stop("Staged environmental evidence directory must be empty: ",
-       ENV_EVIDENCE_DIR, call. = FALSE)
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-dir.create(ENV_EVIDENCE_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(dirname(ENV_RECEIPT), recursive = TRUE, showWarnings = FALSE)
+if (!.env_producer_library) {
+  if (dir.exists(out_dir) && length(list.files(out_dir, all.files = TRUE, no.. = TRUE)))
+    stop("Staged environment directory must be empty: ", out_dir, call. = FALSE)
+  if (dir.exists(ENV_EVIDENCE_DIR) &&
+      length(list.files(ENV_EVIDENCE_DIR, all.files = TRUE, no.. = TRUE)))
+    stop("Staged environmental evidence directory must be empty: ",
+         ENV_EVIDENCE_DIR, call. = FALSE)
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(ENV_EVIDENCE_DIR, recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(ENV_RECEIPT), recursive = TRUE, showWarnings = FALSE)
+}
 
 start_d <- "2013-01"
 end_d   <- "2024-12"
@@ -316,20 +320,39 @@ pheno_share <- function(pht, name_rx) {
   as.data.frame(mo)
 }
 
-safe_load <- function(dpID, site, timeIndex = NULL) {
+load_environment_batch <- function(dpID, site, timeIndex = NULL) {
   # timeIndex (e.g. 30) restricts a sensor product to ONE averaging interval,
   # so we don't download the high-volume 1-min tables we'd only discard.
+  site <- env_batch_validate_sites(site, paste(dpID, "fetch"))
   args <- list(dpID = dpID, site = site, release = RELEASE,
                startdate = start_d, enddate = end_d,
                package = "basic", check.size = FALSE, token = .neon_token)
   if (!is.null(timeIndex)) args$timeIndex <- timeIndex
-  tryCatch(do.call(loadByProduct, args),
-    error = function(e) { cat(sprintf("      ! %s: %s\n", dpID, conditionMessage(e))); NULL })
+  result <- tryCatch(
+    do.call(loadByProduct, args),
+    error = function(error) stop(
+      dpID, " batch fetch failed for ", paste(site, collapse = ", "), ": ",
+      conditionMessage(error), call. = FALSE
+    )
+  )
+  # Official loadByProduct() returns invisible NULL only after a successful
+  # query downloads no files. Convert that explicit state to allowlisted local
+  # metadata so it remains distinct from an exception and can become an empty
+  # shard only for the optional precipitation product.
+  if (is.null(result)) result <- list(validation_no_files = data.frame(
+    dpID = dpID,
+    requested_sites = paste(site, collapse = ","),
+    status = "successful loadByProduct query returned no files",
+    stringsAsFactors = FALSE
+  ))
+  result
 }
 
 # ---- per-site build -------------------------------------------------------
 
-build_site_env <- function(site) {
+build_site_env <- function(site, product_loader) {
+  if (!is.function(product_loader))
+    stop("build_site_env requires one site-isolated product loader.", call. = FALSE)
   # full monthly skeleton across the whole window
   months <- format(seq(as.Date(paste0(start_d, "-01")),
                        as.Date(paste0(end_d, "-01")), by = "month"), "%Y-%m")
@@ -337,7 +360,7 @@ build_site_env <- function(site) {
                         date = as.Date(paste0(months, "-01")))
 
   # 1) precipitation — weighing gauge, DAILY table, monthly SUM (mm)
-  pr <- safe_load("DP1.00044.001", site)
+  pr <- product_loader("DP1.00044.001", site)
   # NEON publishes precip as WEIPRE_* (weighing gauge), PRIPRE_* (primary) or
   # SECPRE_* (secondary tipping bucket); prefer the DAILY table, fall back to
   # 60/30-min. Sum to a monthly total (mm). Some arid sites (e.g. JORN) have no
@@ -364,7 +387,7 @@ build_site_env <- function(site) {
 
   # 2) air temperature — single aspirated, 30-min ONLY (timeIndex=30 skips the
   #    high-volume 1-min table we'd discard anyway); keep one tower level
-  at <- safe_load("DP1.00002.001", site, timeIndex = 30)
+  at <- product_loader("DP1.00002.001", site, timeIndex = 30)
   att_raw <- pick_table(at, "SAAT_30min|saat.*30")
   if (is.null(att_raw) || !nrow(att_raw)) stop(site, " has no RELEASE-2026 air-temperature support.")
   at_canonical <- canonical_stream_input(
@@ -398,7 +421,7 @@ build_site_env <- function(site) {
   #    Arid sites (SRER/JORN) have NO Fruits but rich flowers + green-up, so this
   #    gives them a real phenology signal the old fruit-only build missed. Each
   #    layer also gets a <col>_n companion (distinct individuals behind the share).
-  ph  <- safe_load("DP1.10055.001", site)
+  ph  <- product_loader("DP1.10055.001", site)
   pht_raw <- pick_table(ph, "phe_statusintensity")
   if (is.null(pht_raw) || !nrow(pht_raw)) stop(site, " has no RELEASE-2026 plant-phenology support.")
   ph_canonical <- canonical_pheno_input(pht_raw, paste(site, "plant phenology"))
@@ -493,15 +516,84 @@ build_site_env <- function(site) {
 
 # ---- run ------------------------------------------------------------------
 
+run_environment_refresh <- function() {
 cat(sprintf("Refreshing environmental overlays for %d sites (%s → %s) into %s/\n\n",
             length(sites), start_d, end_d, out_dir))
 
+  batch_size <- env_batch_chunk_size(site_count = length(sites))
+  chunks <- env_batch_chunks(sites, batch_size)
+  product_specs <- list(
+    precipitation = list(
+      id = "DP1.00044.001", time_index = NULL, allow_unsupported = TRUE,
+      required_table_pattern = paste(
+        "(WEIPRE|PRIPRE|SECPRE)_daily|wss_daily_precip|.*daily.*[Pp]recip",
+        "(WEIPRE|PRIPRE|SECPRE)_(60|30)min|.*[Pp]recip",
+        sep = "|"
+      )
+    ),
+    air_temperature = list(
+      id = "DP1.00002.001", time_index = 30, allow_unsupported = FALSE,
+      required_table_pattern = "SAAT_30min|saat.*30"
+    ),
+    plant_phenology = list(
+      id = "DP1.10055.001", time_index = NULL, allow_unsupported = FALSE,
+      required_table_pattern = "phe_statusintensity"
+    )
+  )
+  private_parent <- normalizePath(tempdir(), winslash = "/", mustWork = TRUE)
+  shard_root <- env_batch_create_private_root(
+    tempfile("bird-environment-shards-", tmpdir = private_parent),
+    allowed_parent = private_parent,
+    forbidden_paths = c(ROOT, ENV_EVIDENCE_DIR, Sys.getenv("BIRD_RAW_DIR", ""))
+  )
+  on.exit(env_batch_remove_root(shard_root), add = TRUE)
+  cat(sprintf("Using %d deterministic chunks of at most %d sites.\n\n",
+              length(chunks), batch_size))
+
 records <- vector("list", length(sites)); names(records) <- sites
-for (s in sites) {
+for (chunk_index in seq_along(chunks)) {
+  chunk_sites <- chunks[[chunk_index]]
+  cat(sprintf("Chunk %d/%d: %s\n", chunk_index, length(chunks),
+              paste(chunk_sites, collapse = ", ")))
+  for (product_name in names(product_specs)) {
+    spec <- product_specs[[product_name]]
+    cat(sprintf("  fetching %-18s for %d sites…\n", product_name, length(chunk_sites)))
+    batch_result <- load_environment_batch(
+      spec$id, chunk_sites, timeIndex = spec$time_index
+    )
+    env_batch_write_product(
+      result = batch_result,
+      requested_sites = chunk_sites,
+      shard_root = shard_root,
+      product_id = spec$id,
+      required_table_pattern = spec$required_table_pattern,
+      allow_unsupported = spec$allow_unsupported,
+      label = paste(RELEASE, product_name)
+    )
+    rm(batch_result)
+    invisible(gc(verbose = FALSE))
+  }
+
+  product_loader <- local({
+    private_root <- shard_root
+    specs <- product_specs
+    function(dpID, site, timeIndex = NULL) {
+      matches <- vapply(specs, function(spec) identical(spec$id, dpID), logical(1))
+      if (sum(matches) != 1L)
+        stop("Unknown environmental product requested by site builder: ", dpID,
+             call. = FALSE)
+      spec <- specs[[which(matches)]]
+      if (!identical(timeIndex, spec$time_index))
+        stop("Unexpected timeIndex for ", dpID, " site shard.", call. = FALSE)
+      env_batch_read_product(private_root, site, dpID)
+    }
+  })
+
+  for (s in chunk_sites) {
   f <- file.path(out_dir, paste0(s, ".rds"))
   evidence_file <- file.path(ENV_EVIDENCE_DIR, paste0(s, ".rds"))
   cat(sprintf("• %-5s building from %s…\n", s, RELEASE))
-  env <- build_site_env(s)
+  env <- build_site_env(s, product_loader)
   support <- attr(env, "support")
   evidence <- attr(env, "validation_evidence")
   if (is.null(env) || !nrow(env)) stop("No environmental context rows produced for ", s, call. = FALSE)
@@ -530,7 +622,19 @@ for (s in sites) {
   )
   cat(sprintf("    saved %s: %d months, %.1f KB public + %.1f MB validation evidence\n",
               s, nrow(env), file.size(f) / 1e3, file.size(evidence_file) / 1e6))
+  env_batch_remove_site(shard_root, s)
+  rm(env, evidence, support)
+  invisible(gc(verbose = FALSE))
+  }
 }
+
+private_entries <- setdiff(
+  list.files(shard_root, all.files = TRUE, no.. = TRUE),
+  basename(env_batch_root_marker(shard_root))
+)
+if (length(private_entries))
+  stop("Unconsumed private environmental shards remain: ",
+       paste(private_entries, collapse = ", "), call. = FALSE)
 
 env_files <- list.files(out_dir, pattern = "^[A-Z]{4}[.]rds$")
 evidence_files <- list.files(ENV_EVIDENCE_DIR, pattern = "^[A-Z]{4}[.]rds$")
@@ -578,3 +682,6 @@ cat(sprintf(paste0(
 ), temp_n, precip_n, pheno_n,
 sum(vapply(records, function(record) as.numeric(record$evidence_bytes), numeric(1))) / 1e6,
 ENV_RECEIPT))
+}
+
+if (!.env_producer_library) run_environment_refresh()

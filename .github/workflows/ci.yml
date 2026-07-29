@@ -84,7 +84,7 @@ jobs:
       - name: Parse source and verify static contracts
         run: |
           set -euo pipefail
-          Rscript --vanilla -e 'for (f in c("global.R","ui.R","server.R",list.files("R",pattern="[.]R$",full.names=TRUE),list.files("scripts",pattern="[.]R$",full.names=TRUE))) parse(f)'
+          Rscript --vanilla -e 'for (f in c("global.R","ui.R","server.R",list.files("R",pattern="[.]R$",full.names=TRUE),list.files("scripts",pattern="[.]R$",full.names=TRUE,recursive=TRUE))) parse(f)'
           node --check www/app.js
           node --check www/pincards.js
           bash -n scripts/install_pinned_pak.sh
@@ -135,6 +135,8 @@ jobs:
           Rscript --vanilla scripts/test_helpers.R
           Rscript --vanilla scripts/test_bird_evidence_privacy.R
           Rscript --vanilla scripts/test_env_helpers.R
+          Rscript --vanilla scripts/test_env_batching.R
+          Rscript --vanilla scripts/test_env_batch_producer_parity.R
           Rscript --vanilla scripts/test_verify_env_candidate.R
           Rscript --vanilla scripts/test_release_stamp.R
 
