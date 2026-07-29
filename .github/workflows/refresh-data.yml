@@ -29,7 +29,7 @@ env:
 jobs:
   produce_candidate:
     runs-on: ubuntu-22.04
-    timeout-minutes: 300
+    timeout-minutes: 360
     env:
       NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
       BIRD_ENV_BATCH_SIZE: "4"
