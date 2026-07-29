@@ -22,6 +22,21 @@ are air temperature `DP1.00002.001` / `10.48443/p69b-5e50`, precipitation
 never imputed. Environmental relationships are descriptive space-for-time
 associations, not causal effects, forecasts, or bird measurements.
 
+Environmental retrieval may use deterministic chunks of at most four canonical
+sites as a transport optimization only. Each complete `loadByProduct()` response
+is checked for exact requested-site scope and required table support, then split
+before scientific table or stream selection into private site/product shards.
+Unknown metadata, foreign sites, ambiguous columns, missing required source-table
+support, and path or ownership violations fail closed. Shards are mode 0600 under
+a marked mode-0700 job-local root, are re-audited at read time, are removed
+immediately after site consumption, and never cross the job boundary. A present
+source stream can still lack a coverage-qualified value for one realized month;
+that scientific support boundary follows the explicit no-imputation rule below.
+The exact public bundles, validation evidence, support counts, and receipt must be
+byte-identical to direct site-local retrieval; full 47-site direct/chunked parity
+is a required producer regression. Chunking changes neither environmental meaning
+nor the independent validation contract.
+
 ## Survey and opportunity grains
 
 `brd_perpoint` is the authority for sampling effort. One physical visit is keyed
@@ -144,8 +159,20 @@ The bird analysis window and environmental source record have different roles.
 Valid bird counts from 2017–2024 determine the distinct calendar months used for
 `breeding_temp_c`. For each realized month, the app first requires a
 coverage-qualified RELEASE-2026 calendar-month temperature climatology, then gives
-each realized month equal weight. Every realized count month must be supported or
-the comparison fails closed.
+each realized month equal weight. If even one realized count month lacks that
+support, `breeding_temp_c` is `NA`: the site and all bird evidence remain in the
+47-site release, but the site is omitted from the temperature gradient and the
+display states the reduced denominator. `n_realized_months` and
+`n_supported_realized_months` preserve the exact boundary. Missing temperature is
+never imputed, and a partial realized window is never relabeled as a breeding-season
+mean.
+
+In the exact RELEASE-2026 record, BARR and TOOL each have valid June and July bird
+counts but a coverage-qualified climatology for only July (`1/2` realized months).
+They remain in every 47-site bird, Search-site, and cross-site export roster with
+`breeding_temp_c = NA`; the finite-temperature gradient therefore reports 45 of 47
+sites. The Search taxon-site frame remains evidence from all 47 bird sites rather
+than a climate-complete subset.
 
 `precip_annual_mm` is the mean of complete 12-month calendar-year totals in the
 pinned RELEASE-2026 environmental record. It is not restricted to bird detections,
@@ -204,9 +231,70 @@ all distance states and 0–200 m truncation accounting, empty incidence columns
 bias-corrected Chao2 point/variance fixtures, the `Q2 == 0` coverage branch,
 2017–2024 cross-site exclusion, positive + supported-zero count conservation,
 `U_incidence` / `Q1_incidence` / `Q2_incidence` re-derivation, common rarefaction
-support, window-specific context fields, realized-month climate support, site-wide
-row conservation, and export/codebook parity. Release validation also checks every
-real bundle, exact 47-site roster, release/DOI/schema identities, conservation
-identities, semantic markers, independent manifest equality, exact cross-job
-evidence tables and columns, projection digests, prohibited-field scans, and
-email-like-value scans.
+support, complete and incomplete realized-month climate states, site-wide row
+conservation, 45/47 finite-temperature support, and export/codebook parity. Release
+validation also checks every real bundle, exact 47-site roster,
+release/DOI/schema identities, conservation identities, semantic markers,
+independent manifest equality, exact cross-job evidence tables and columns,
+projection digests, prohibited-field scans, and email-like-value scans.
+
+## Official evidence state through Run 13
+
+Runs 8–10 failed closed before any cross-job artifact; Runs 11 and 12 were
+operator cancellations and uploaded no artifacts. Run 13
+([30424003027](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30424003027),
+exact head `7bd89bea6d14146e8b3320df40123a9be40029d0`) completed its producer but
+failed in the clean validator. The producer uploaded three unvalidated artifacts;
+their exact names, IDs, API sizes, GitHub archive digests, and inner archive digests
+are recorded in `docs/BUILD-TEST-HANDOFF.md`.
+
+The Run 13 source receipt contains all 47 sites, 27,076 `brd_perpoint` rows, and
+373,518 `brd_countdata` rows; its SHA-256 is
+`55f30d251428cb932ce4fb474bd394ed5a14f3f7c0d077bfb6b7fa9193db88bc`.
+The environmental receipt records source support of temperature 47/47,
+precipitation 20/47, and phenology 47/47; its SHA-256 is
+`03f4bc77a8cea49cc5160e250aff50ffb717093fe1b5dd02b73006e9da85662e`.
+The clean validator independently accepted every bird bundle and every
+environmental evidence bundle before the then-current derived rule stopped at
+`BARR has temperature support for only 1 of 2 realized bird-count months`.
+Publisher job `90543288734` skipped; no validated artifact, release stamp,
+manifest identity, review-branch update, or scientific release resulted.
+
+A local exact-gate audit applied finalized contract head
+`2da56ee499c10064b47b468bd23330fba6b35892` to the preserved Run 13 evidence.
+The full independent bundle verifier passed 47 sites, 26,365 valid physical counts
+(117 supported-zero counts), and 24,509 supported point-years (79 supported-zero
+point-years). Two derived rebuilds were byte-identical: `site_index.rds`
+`9bb00144d14d027d090945a5c2bbcbf248616fd34040000ace711f76b10abeb2`,
+`site_climate.rds`
+`25695dc7930a8a021aab74d0eb89c755914d8b59cabdfcac32aab832131020db`,
+`site_month_clim.rds`
+`73de810e7d0348b2b4942582479c5196e488a5ca5ed562ecc2285fd40a81cda2`,
+`cross_site.rds`
+`d23fd9d12e802d54fc59d79d9e525c53ce7199ee2dd52aa2685a20ba779a4cf2`,
+and `search_index.rds`
+`0e0b615abef69440e81e3e360e4931c9f281851d820421ecccb059ec1e52d4a9`.
+The local audit retained 47 bird, Search-site, climate, cross-site, and export rows;
+Search contains 3,632 taxon-site rows across 530 taxa and all 47 sites. This is
+repair evidence, not an official release receipt.
+
+## Run 14 pending release attestation
+
+Run 14
+([30454799557](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30454799557))
+was dispatched on exact head `2da56ee499c10064b47b468bd23330fba6b35892` and
+was still in progress at this documentation cut. Only final receipts from that
+exact run may replace the following placeholders:
+
+- **PENDING JOB RECEIPTS:** final workflow conclusion/times and exact producer,
+  validator, and publisher job IDs, times, and conclusions.
+- **PENDING ARTIFACT RECEIPTS:** exact produced/raw/environmental/validated artifact
+  names, IDs, sizes, GitHub and inner archive SHA-256 values, or explicit skipped
+  status.
+- **PENDING SCIENCE/RELEASE RECEIPTS:** independently validated counts and support,
+  derived two-build hashes, payload and manifest-contract SHA-256 values, canonical
+  release ID/stamp, final manifest identity, and published automation-branch head.
+- **PENDING PR/MERGE:** exact candidate PR, green CI head, merge commit, and
+  default-branch generated-byte/manifest verification.
+- **PENDING PRODUCTION:** exact Pages and Connect identities plus semantic,
+  supported-zero, fixed-window, responsive, and accessibility results.

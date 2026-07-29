@@ -114,7 +114,7 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   committed 46-site data and stale manifest still fail the new exact release gate
   at the roster check, as expected, until the official clean refresh lands.
 
-### 2026-07-28 official refresh checkpoint
+### 2026-07-28 official refresh checkpoint — Run 8
 
 - Review implementation commit `f3c8447f969126dbebbd1d69edc50ea0cd310a0b`
   was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
@@ -142,7 +142,7 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   --check` passed. The next authoritative evidence is a fresh pinned R 4.5.2
   workflow run on the corrected exact head.
 
-### 2026-07-28 official roster checkpoint
+### 2026-07-28 official roster checkpoint — Run 9
 
 - Schema correction commit `3f9340963fd930a67069d39b5461f73cd6c16ffd`
   was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
@@ -170,7 +170,7 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   science helpers, affected-file parsing, and `git diff --check` passed locally.
   An independent attribute audit found no analogous producer-side roster trap.
 
-### 2026-07-28 official evidence-order checkpoint
+### 2026-07-28 official evidence-order checkpoint — Run 10
 
 - Roster correction commit `d8b92a290a86b74d2b24af301acef45385941e05`
   was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
@@ -199,11 +199,212 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   R 4.5.3. Independent review reproduced the old coupling and confirmed the repair;
   a fresh pinned R 4.5.2 official producer remains authoritative.
 
+### 2026-07-28 official full-source and capacity checkpoint — Run 11
+
+- Privacy-boundary correction commit
+  `24041e05e6c17ce7ae68b0b23e20921a3e3a6839` was pushed to
+  `codex/birds-pass-7`. Manually dispatched workflow run
+  `30413616743` (run number 11) on that exact branch/head; producer job
+  `90455149138` checked out the requested immutable revision.
+- The producer passed pinned setup and all pre-fetch gates, wrote the exact 47 raw
+  bird files including PUUM, built all 47 opportunity-complete bird bundles,
+  replaced all 47 raw files with schema-v2 evidence, and passed the cross-job
+  allowlist and PII scans. Its producer log recorded 26,365 valid physical counts,
+  including 117 supported-zero counts, and 24,509 supported point-years, including
+  79 supported-zero point-years. These are producer checkpoint values, not final
+  release receipts, because no independent validator received an artifact.
+- The original environmental producer then completed 17 site bundles through GRSM
+  and had begun MLBS when it was intentionally cancelled. From the environmental
+  start at 01:28:17 UTC through cancellation at 03:17:50 UTC, the observed
+  site-local path consumed about 110 minutes for 17 completed sites. A straight
+  47-site projection was about 303 minutes for environmental work alone, before
+  the already-observed bird stage and final packaging, so the 300-minute producer
+  timeout did not provide a credible completion budget.
+- GitHub records the producer and run as `cancelled`, not failed. Packaging and all
+  three uploads skipped, the validator and publisher never ran, the run has no
+  artifacts, and no review or production branch changed. The cancellation was a
+  capacity decision and does not supersede any scientific gate result.
+
+### 2026-07-28 official batching and cancellation checkpoint — Run 12
+
+- Environmental batching commit
+  `ef9ae6103b150ab0a1c376b1c408f821717ea556` replaced 141 site-product
+  `loadByProduct()` requests with 36 deterministic product-chunk requests: eleven
+  four-site chunks and one three-site chunk over the exact 47-site roster. Each
+  response is split before scientific selection into site/product shards under a
+  marked mode-0700 private root; shard files are mode 0600, read-time site scope is
+  re-audited, each site's files are deleted immediately after consumption, and the
+  private root is removed on every function exit. No raw environmental shard is a
+  candidate or cross-job artifact.
+- The pure batching/negative suite passed. The full 47-site producer parity suite
+  also passed for direct loading and chunk sizes 1, 4, and 8, reversed batch row
+  order, exact public/evidence RDS bytes and receipt JSON, 47/20/47 product support,
+  precipitation fallbacks, tower-stream locality, and plant-identity privacy.
+- Manually dispatched workflow run `30419237413` (run number 12), producer job
+  `90472357337`, on exact head `ef9ae6103b150ab0a1c376b1c408f821717ea556`.
+  It again passed the complete bird stage. The environmental stage completed the
+  first three chunks (12 sites through TREE) in about 75 minutes and had completed
+  the fourth chunk's precipitation fetch and air-temperature load when the operator
+  intentionally cancelled it to move to the timeout-adjusted exact head.
+- The apparent `Private shard root is missing` message is a cancellation artifact,
+  not an organic producer failure. The cancellation request landed while the air-
+  temperature progress meter flushed from 80% at 04:59:32.483 UTC to 100% at
+  04:59:32.725 UTC. The workflow EXIT trap recursively deleted its owned private
+  temp tree; the still-returning R process correctly rejected the missing root at
+  04:59:32.727 UTC, and GitHub logged `The operation was canceled` at
+  04:59:32.793 UTC. The exact installed neonUtilities 4.0.1 source deletes only
+  its own `zips*` and `store*` children of `tempdir()`, never a sibling
+  `bird-environment-shards-*` root. The ownership audit therefore remains unchanged
+  and fail-closed.
+- Run 12 is conclusively `cancelled`: packaging and uploads skipped, the validator
+  and publisher never ran, no artifacts exist, and no review or production branch
+  changed. The first three complete chunks averaged about 25 minutes each, a rough
+  301-minute environmental projection. Together with the observed 11.5-minute
+  pre-environment stage, that projects to about 313 minutes before final packaging.
+  Timeout-only commit `7bd89bea6d14146e8b3320df40123a9be40029d0`
+  therefore raises the producer cap from 300 to 360 minutes, leaving roughly 47
+  minutes for packaging and runtime variance. This is capacity evidence, not a
+  completion receipt; only an uncancelled exact-head run can close the release.
+
+### 2026-07-29 official complete-producer and climate-boundary checkpoint — Run 13
+
+- Timeout-adjusted commit `7bd89bea6d14146e8b3320df40123a9be40029d0`
+  was pushed to `codex/birds-pass-7`. Manually dispatched
+  [workflow run 30424003027](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30424003027)
+  (run number 13) on that exact head. GitHub records the run as `failure`, not as a
+  completed release.
+- Producer job
+  [90486375883](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30424003027/job/90486375883)
+  succeeded from 05:04:22 through 09:39:17 UTC (4:34:55). The exact network and
+  bundling step ran from 05:06:26 through 09:38:58. Its environmental subprocess
+  reported 4:23:05 elapsed, 3,107.59 user seconds, 77.93 system seconds, 20% CPU,
+  2,729,276 KB maximum RSS, zero swaps, 88 filesystem inputs, and 34,133,712
+  filesystem outputs.
+- The producer fetched the complete 47-site bird release: 27,076
+  `brd_perpoint` rows and 373,518 `brd_countdata` rows. The SHA-256 of
+  `data/source_receipt.json` is
+  `55f30d251428cb932ce4fb474bd394ed5a14f3f7c0d077bfb6b7fa9193db88bc`.
+  It also wrote all 47 environmental bundles and evidence files with source
+  support of temperature 47/47, precipitation 20/47, and phenology 47/47. The
+  SHA-256 of `data/environment_source_receipt.json` is
+  `03f4bc77a8cea49cc5160e250aff50ffb717093fe1b5dd02b73006e9da85662e`.
+- The three producer uploads are immutable evidence from Run 13, but none is a
+  validated release artifact:
+
+  - `breeding-birds-produced-2026-7bd89bea6d14146e8b3320df40123a9be40029d0`:
+    artifact ID `8719216871`, API size `57,185,368` bytes, GitHub archive SHA-256
+    `62b3d16b3e598ef579b3467ac991d365dc57981c95d638a1a3029c68972982a4`,
+    inner `breeding-birds-produced-2026.tgz` SHA-256
+    `3cb45e576374696300378808b715c1c69ecaa4e2357bbefc2970bb1c3926932d`,
+    API expiry `2026-08-05T09:39:02Z`.
+  - `breeding-birds-raw-evidence-2026-7bd89bea6d14146e8b3320df40123a9be40029d0`:
+    artifact ID `8719217732`, API size `2,930,237` bytes, GitHub archive SHA-256
+    `8767b9f37aa5093f3d3ce07643d28fe87c61da939ab3d0cf9d34ff2d51c21d45`,
+    inner `breeding-birds-raw-evidence-2026.tgz` SHA-256
+    `57d69e27e50eb199d27f0357cc60f9eb61c8b057ac21630d103886773a9d44e0`,
+    API expiry `2026-08-01T09:39:05Z`.
+  - `breeding-birds-env-evidence-2026-7bd89bea6d14146e8b3320df40123a9be40029d0`:
+    artifact ID `8719219169`, API size `52,736,294` bytes, GitHub archive SHA-256
+    `9f467bf7557934cb35769cb8e071c4b79f3ed8b1b54ad8e0a694ad97bdfe7450`,
+    inner `breeding-birds-env-evidence-2026.tgz` SHA-256
+    `33b59b2405f80817480dfcf8ca5e3caad1c4007d86ba51c3e6588477498021a9`,
+    API expiry `2026-08-01T09:39:07Z`.
+- Validator job
+  [90538428552](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30424003027/job/90538428552)
+  ran from 09:39:20 through 10:01:26 UTC. It independently reconciled every raw
+  visit and detection into 47 bundles, then independently verified 47 canonical
+  environmental evidence files and byte-exact public bundles. The derived rebuild
+  wrote the 47-row site index, then failed at 10:01:23 with
+  `BARR has temperature support for only 1 of 2 realized bird-count months`.
+  Because that exact head still required complete realized-month temperature at
+  every site, the failure was correct for the then-declared contract.
+- Publisher job
+  [90543288734](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30424003027/job/90543288734)
+  skipped. The validated-artifact packaging and upload steps also skipped, so Run
+  13 produced no validated candidate, no payload or release-stamp receipt, no
+  manifest identity, and no automation-branch update.
+
+### 2026-07-29 finalized incomplete-temperature contract and local exact gate
+
+- Commit `2da56ee499c10064b47b468bd23330fba6b35892` finalizes the observed
+  climate boundary. BARR and TOOL each have valid June and July bird counts but a
+  coverage-qualified temperature climatology only for July: exactly 1 of 2
+  realized months at each site. A partial window is never averaged and temperature
+  is never imputed. Each site retains `breeding_temp_c = NA` and is omitted only
+  from the finite-temperature plot, which therefore has support at 45 of 47 sites.
+- The bird release remains exactly 47 sites. The local exact-head audit retained
+  47 rows in `data/site_index.rds`, `data/site_climate.rds`,
+  `data/cross_site.rds`, `search_index.rds$sites`, and the cross-site export frame.
+  The Search taxon-site frame has 3,632 rows, 530 taxa, and all 47 sites; the common
+  2017–2024 rarefaction target is 90 valid physical counts. BARR and TOOL are not
+  removed from bird, Search, or export surfaces.
+- Against the preserved exact Run 13 producer and evidence artifacts, the local
+  full `scripts/verify_bundle.R` oracle on the finalized head passed all 47 bundles:
+  26,365 valid physical counts (117 supported-zero counts) and 24,509 supported
+  point-years (79 supported-zero point-years). This local audit demonstrates the
+  repaired contract; it does not retroactively turn Run 13 into a validated release.
+- Two consecutive local derived rebuilds were byte-identical. Their SHA-256 values
+  were:
+
+  - `data/site_index.rds`:
+    `9bb00144d14d027d090945a5c2bbcbf248616fd34040000ace711f76b10abeb2`
+  - `data/site_climate.rds`:
+    `25695dc7930a8a021aab74d0eb89c755914d8b59cabdfcac32aab832131020db`
+  - `data/site_month_clim.rds`:
+    `73de810e7d0348b2b4942582479c5196e488a5ca5ed562ecc2285fd40a81cda2`
+  - `data/cross_site.rds`:
+    `d23fd9d12e802d54fc59d79d9e525c53ce7199ee2dd52aa2685a20ba779a4cf2`
+  - `data/search_index.rds`:
+    `0e0b615abef69440e81e3e360e4931c9f281851d820421ecccb059ec1e52d4a9`
+
+### Run 14 pending closeout ledger — replace only with exact official evidence
+
+At this documentation cut, [workflow run 30454799557](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30454799557)
+(run number 14) had been dispatched on exact head
+`2da56ee499c10064b47b468bd23330fba6b35892`. Producer job
+[90585528840](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30454799557/job/90585528840)
+was still in progress. These known identities are not conclusions or release
+receipts. Run 13 values, local audit values, synthetic rehearsals, another commit,
+or another run must not fill the placeholders below.
+
+- Run 14 workflow and job receipts: **PENDING** — record final workflow conclusion
+  and timestamps; producer conclusion/end time; validator and publisher job IDs,
+  timestamps, step conclusions, and final conclusions.
+- Run 14 producer and validated artifacts: **PENDING** — for each produced, raw-
+  evidence, environmental-evidence, and validated-candidate upload, record the exact
+  name, artifact ID, API size, GitHub archive SHA-256, inner archive SHA-256, and
+  retention/expiry identity. Record an explicit `not created` for any skipped upload.
+- Run 14 scientific receipts: **PENDING** — record exact bird and environmental
+  receipt SHA-256 values, 47-site source row/support counts, count and point-year
+  opportunity totals, BARR/TOOL realized-month support, 45/47 finite-temperature
+  support, Search/site/export row counts, and two-build derived hashes from Run 14.
+- Run 14 release identity: **PENDING** — record the validated payload SHA-256,
+  manifest-contract SHA-256, release ID, canonical release-stamp bytes/hash, final
+  manifest identity, and validated-candidate inner/archive hashes.
+- Automation candidate: **PENDING** — record the exact
+  `automation/breeding-birds-release-2026` head SHA, publisher job conclusion, and
+  reviewed generated/source diff scope.
+- Pull request and exact-head CI: **PENDING** — record PR URL/number, exact head SHA,
+  required check names, workflow run URLs/IDs, and green conclusions.
+- Merge and default-branch verification: **PENDING** — record merge commit SHA,
+  exact merged candidate head, `master` CI run URL/ID, and manifest/generated-byte
+  equality result.
+- Pages production: **PENDING** — record deployment run/commit, URL, semantic smoke
+  result for `breeding-birds-poster-v1`, and desktop/390/320 responsive and keyboard
+  QA.
+- Connect production: **PENDING** — record deployment identity/commit, URL, semantic
+  smoke result for `breeding-birds-release-2026-v1`, site-selection and supported-
+  zero lifecycle QA, fixed-window Search/Board checks, and responsive/accessibility
+  results.
+- Driver reconciliation: **PENDING AFTER PRODUCTION** — record the docs-only Driver
+  PR and merge receipts with disposition `CONTEXT / HOLD DRIVER INGESTION / NO
+  DRIVER BYTE CHANGE`.
+
 ### Required closeout
 
-1. Run the refresh with `NEON_TOKEN` to build all 47 sites from the exact release in
-   empty staging, retain source receipts, rebuild derived indexes in the clean
-   validator, and generate the manifest there.
+1. Let exact-head Run 14 finish. Fill the pending ledger only from its final jobs,
+   uploads, clean-validator rebuilds, release stamp, and manifest; do not promote
+   the local audit or Run 13 producer artifact.
 2. Review the exact candidate diff on
    `automation/breeding-birds-release-2026`; require the full pinned CI result on the
    same head and record its run URL and outcome here.
