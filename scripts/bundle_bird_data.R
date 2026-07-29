@@ -570,8 +570,8 @@ schema <- list(
     realized_months = "exact distinct calendar months containing valid counts in the analysis window",
     monthly_climatology_min_coverage_year_months = 2L,
     aggregation = "equal-weight arithmetic mean across realized calendar-month climatologies",
-    completeness = "every realized count month must have a coverage-qualified climatology",
-    missing_policy = "fail closed; no imputation"
+    completeness = "breeding_temp_c requires every realized count month to have a coverage-qualified climatology",
+    missing_policy = "retain the 47-site row; set breeding_temp_c to NA and omit only from the temperature gradient when incomplete; no imputation"
   ),
   detection_method_states = c("reported", "missing_or_unknown"),
   distance_states = c("observed", "sentinel_not_estimable", "source_missing", "invalid"),

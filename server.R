@@ -700,7 +700,8 @@ server <- function(input, output, session) {
     filename = function() sprintf("NEON-Birds_cross-site-gradient_%s.csv", format(Sys.Date(),"%Y%m%d")),
     content = function(file){ g <- GRADIENT
       if (is.null(g) || !nrow(g)) g <- data.frame(note="Cross-site gradient unavailable (run scripts/build_cross_site.R).")
-      else g <- g[order(g$breeding_temp_c), intersect(GRADIENT_KEEP, names(g)), drop=FALSE]
+      else g <- g[order(g$breeding_temp_c, g$site, na.last = TRUE, method = "radix"),
+                  intersect(GRADIENT_KEEP, names(g)), drop=FALSE]
       utils::write.csv(g, file, row.names=FALSE, na="") },
     contentType="text/csv")
 
@@ -791,6 +792,7 @@ server <- function(input, output, session) {
     if (!yc$col %in% names(g)) yc <- list(col = "S_obs", lab = "Species richness (observed)")
     g$xx <- suppressWarnings(as.numeric(g[[xcol]])); g$yy <- suppressWarnings(as.numeric(g[[yc$col]]))
     if (identical(xvar, "temp")) g$xx <- temp_val(g$xx, unit)
+    n_context_supported <- sum(is.finite(g$xx))
     g <- g[is.finite(g$xx) & is.finite(g$yy), ]; if (!nrow(g)) return(note_plot("No sites with this combination", "\U0001F30D"))
     g$precip_lab <- ifelse(is.finite(g$precip_annual_mm),
       paste0(round(g$precip_annual_mm), " mm/yr"), "precipitation unavailable / no complete year")
@@ -832,11 +834,17 @@ server <- function(input, output, session) {
       "biome, latitude, residual completeness, detectability, and spatiotemporal sampling"
     # both caveats stacked at the TOP, so they never collide with the x-axis title
     # + legend at the bottom (the overlap fix).
-    nshown <- if (nrow(g) < 47) sprintf("<b>%d of 47 NEON sites</b>", nrow(g)) else "<b>each of 47 NEON sites</b>"
+    context_name <- if (identical(xvar, "precip"))
+      "complete-year precipitation" else "complete realized-month temperature"
+    nshown <- if (n_context_supported < 47)
+      sprintf("<b>%d of 47 NEON sites have %s support</b>", n_context_supported, context_name) else
+      sprintf("<b>47 of 47 NEON sites have %s support</b>", context_name)
+    plotted <- if (nrow(g) < n_context_supported)
+      sprintf(" · %d have the selected bird metric", nrow(g)) else ""
     rho_label <- if (is.finite(rho)) sprintf("%.2f, n = %d", rho, n_sites) else
       sprintf("unavailable, n = %d", n_sites)
     ann <- list(
-      list(text = sprintf("Every dot is %s · 2017–2024 bird window · %s × %s · dot size = counted points", nshown, if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
+      list(text = sprintf("%s%s · one dot per supported pair · 2017–2024 bird window · %s × %s · dot size = counted points", nshown, plotted, if (xvar == "precip") "precipitation" else "breeding-season temperature", tolower(yc$lab)),
            x = 0, y = 1.15, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11)),
       list(text = sprintf("Descriptive Spearman ρ = %s · space-for-time, not one site warming · confounded by %s", rho_label, conf),
            x = 0, y = 1.075, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)))
@@ -882,12 +890,21 @@ server <- function(input, output, session) {
     req(rv$site); cl <- if (!is.null(SITE_CLIMATE)) SITE_CLIMATE[SITE_CLIMATE$site == rv$site, , drop = FALSE] else NULL
     if (is.null(cl) || !nrow(cl)) return(NULL)
     win <- if (is.null(cl$count_months_lab) || is.na(cl$count_months_lab)) "the breeding season" else cl$count_months_lab
+    n_realized <- suppressWarnings(as.integer(cl$n_realized_months[[1]]))
+    n_supported <- suppressWarnings(as.integer(cl$n_supported_realized_months[[1]]))
+    temp_support <- if (is.finite(n_realized) && is.finite(n_supported) &&
+                        n_supported < n_realized) sprintf(
+      paste0(
+        " Coverage-qualified temperature is available for <b>%d of %d</b> realized ",
+        "months, so the aggregate breeding-season temperature is unavailable and ",
+        "this site is omitted only from the temperature gradient; no value is imputed."
+      ), n_supported, n_realized) else ""
     gp <- if (!is.na(cl$peak_greenup_pct)) sprintf(
       " The separate RELEASE-2026 plant-phenology climatology peaks near <b>%d%%</b> green-up in %s; this is neutral seasonal context only.",
       cl$peak_greenup_pct, cl$greenup_peak_lab) else ""
     insight_banner("calendar-range", tone="pine", HTML(sprintf(
-      "At <b>%s</b>, the exact distinct calendar months containing valid 2017–2024 point counts are <b>%s</b>. Each realized month is shaded separately; the curves are contextual monthly climatologies, not a measured bird response or a continuous breeding-season band.%s",
-      rv$site, win, gp)))
+      "At <b>%s</b>, the exact distinct calendar months containing valid 2017–2024 point counts are <b>%s</b>. Each realized month is shaded separately; the curves are contextual monthly climatologies, not a measured bird response or a continuous breeding-season band.%s%s",
+      rv$site, win, temp_support, gp)))
   })
 
   output$aboutPanel <- renderUI({
@@ -900,7 +917,7 @@ server <- function(input, output, session) {
       div(class="about-card", h4(bs_icon("calculator"), " How many species?"),
         p(tags$b("Bias-corrected Chao2"), " extrapolates richness from incidence across the complete valid physical-count ledger. Two valid bouts at one point-year remain two samples, while duplicate detections of a species within one count collapse to one incidence. Supported zero counts remain explicit. The estimator does not make repeated counts independent places or estimate occupancy.")),
       div(class="about-card", h4(bs_icon("globe-americas"), " Across the continent (climate gradient)"),
-        p("NEON runs this same protocol at ", tags$b("47 sites"), " from arctic tundra to Hawai'i and Caribbean forests. The ", tags$b("Across the continent"), " tab places each site by its ", tags$b("breeding-season temperature"), " against its bird community."),
+        p("NEON runs this same protocol at ", tags$b("47 sites"), " from arctic tundra to Hawai'i and Caribbean forests. The ", tags$b("Across the continent"), " tab places sites with complete realized-month support by their ", tags$b("breeding-season temperature"), " against their bird community; unsupported site temperatures stay explicit and are never imputed."),
         p("The public comparison uses bird counts from ", tags$b("2017–2024 only"), ". Richness is ", tags$b("rarefied to a common number of valid six-minute counts"), " (incidence rarefaction; Colwell et al. 2012), which standardizes count-sample size only. Completeness, detectability, repeated-place structure, biome, latitude, and spatiotemporal sampling can still differ. It is a descriptive ", tags$b("space-for-time"), " comparison, not one site warming. Precipitation is shown only where at least one complete calendar year exists; missing values are never imputed."),
         p("The per-site ", tags$b("season"), " panel places the breeding-count window on the site's green-up and temperature year, context for ", tags$em("when"), " counts happen, not a bird-vs-environment driver model (counts run only once or twice a year). Environment data: air temperature ", tags$code("DP1.00002.001"), ", precipitation ", tags$code("DP1.00044.001"), ", plant phenology ", tags$code("DP1.10055.001"), ".")),
       div(class="about-card", h4(bs_icon("table"), " Data dictionary & downloads"),

@@ -144,8 +144,18 @@ The bird analysis window and environmental source record have different roles.
 Valid bird counts from 2017–2024 determine the distinct calendar months used for
 `breeding_temp_c`. For each realized month, the app first requires a
 coverage-qualified RELEASE-2026 calendar-month temperature climatology, then gives
-each realized month equal weight. Every realized count month must be supported or
-the comparison fails closed.
+each realized month equal weight. If even one realized count month lacks that
+support, `breeding_temp_c` is `NA`: the site and all bird evidence remain in the
+47-site release, but the site is omitted from the temperature gradient and the
+display states the reduced denominator. `n_realized_months` and
+`n_supported_realized_months` preserve the exact boundary. Missing temperature is
+never imputed, and a partial realized window is never relabeled as a breeding-season
+mean.
+
+In the exact RELEASE-2026 record, BARR and TOOL each have valid June and July bird
+counts but a coverage-qualified climatology for only July (`1/2` realized months).
+They remain in every 47-site bird, search, and export roster with
+`breeding_temp_c = NA`; the temperature gradient therefore reports 45 of 47 sites.
 
 `precip_annual_mm` is the mean of complete 12-month calendar-year totals in the
 pinned RELEASE-2026 environmental record. It is not restricted to bird detections,

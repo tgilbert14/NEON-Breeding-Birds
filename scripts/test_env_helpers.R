@@ -152,9 +152,18 @@ check(isTRUE(realized_complete$complete) && realized_complete$temp_c == 6 &&
 realized_monthly$temp_c[[6]] <- NA_real_
 realized_partial <- env_realized_window_temperature(realized_monthly, 5:7)
 check(!isTRUE(realized_partial$complete) && is.na(realized_partial$temp_c) &&
+      !is.nan(realized_partial$temp_c) &&
       realized_partial$n_realized_months == 3L &&
       realized_partial$n_supported_realized_months == 2L,
-      "one unsupported realized bird month suppresses the breeding-window mean")
+      "one unsupported realized bird month suppresses only the breeding-window mean")
+realized_none_monthly <- realized_monthly
+realized_none_monthly$temp_c[5:7] <- NA_real_
+realized_none <- env_realized_window_temperature(realized_none_monthly, 5:7)
+check(!isTRUE(realized_none$complete) && is.na(realized_none$temp_c) &&
+      !is.nan(realized_none$temp_c) &&
+      realized_none$n_realized_months == 3L &&
+      realized_none$n_supported_realized_months == 0L,
+      "zero supported realized months remain explicit without imputation")
 duplicate_monthly <- rbind(realized_monthly, realized_monthly[1, , drop = FALSE])
 err <- tryCatch({ env_realized_window_temperature(duplicate_monthly, 5:7); NULL },
                 error = identity)

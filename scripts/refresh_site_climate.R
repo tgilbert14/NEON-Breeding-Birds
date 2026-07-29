@@ -74,11 +74,6 @@ for (path in env_files) {
   realized <- count_months(site)
   breeding_months <- sort(unique(realized))
   breeding_support <- env_realized_window_temperature(monthly, breeding_months)
-  if (!isTRUE(breeding_support$complete))
-    stop(sprintf(
-      "%s has temperature support for only %d of %d realized bird-count months.",
-      site, breeding_support$n_supported_realized_months,
-      breeding_support$n_realized_months), call. = FALSE)
   meta <- neon_sites[neon_sites$site == site, , drop = FALSE]
   climate_rows[[site]] <- tibble::tibble(
     site = site,
@@ -109,9 +104,15 @@ for (path in env_files) {
 
 climate <- dplyr::bind_rows(climate_rows)
 monthly_climate <- dplyr::bind_rows(month_rows)
-if (nrow(climate) != 47L || any(!is.finite(climate$breeding_temp_c)) ||
+breeding_complete <-
+  climate$n_supported_realized_months == climate$n_realized_months
+if (nrow(climate) != 47L ||
     any(climate$n_realized_months < 1L) ||
-    any(climate$n_supported_realized_months != climate$n_realized_months) ||
+    any(climate$n_supported_realized_months < 0L |
+          climate$n_supported_realized_months > climate$n_realized_months) ||
+    any(breeding_complete & !is.finite(climate$breeding_temp_c)) ||
+    any(!breeding_complete &
+          (!is.na(climate$breeding_temp_c) | is.nan(climate$breeding_temp_c))) ||
     any(is.na(climate$count_months) | !nzchar(climate$count_months)) ||
     any(is.na(climate$count_months_lab) | !nzchar(climate$count_months_lab)))
   stop("Climate output failed exact roster, temperature, or realized-window validation.", call. = FALSE)
@@ -119,5 +120,14 @@ attr(climate, "release") <- "RELEASE-2026"
 attr(monthly_climate, "release") <- "RELEASE-2026"
 saveRDS(climate, CLIMATE_OUT, compress = "xz", version = 3)
 saveRDS(monthly_climate, MONTH_OUT, compress = "xz", version = 3)
-cat(sprintf("OK: wrote climate context for 47 sites; precipitation summaries at %d sites; green-up at %d sites.\n",
-            sum(!is.na(climate$precip_annual_mm)), sum(!is.na(climate$peak_greenup_pct))))
+unsupported <- as.character(climate$site[!breeding_complete])
+cat(sprintf(
+  paste0(
+    "OK: wrote climate context for 47 sites; complete realized-month temperature ",
+    "at %d sites; precipitation summaries at %d sites; green-up at %d sites; ",
+    "temperature unavailable without imputation at: %s.\n"
+  ),
+  sum(breeding_complete), sum(!is.na(climate$precip_annual_mm)),
+  sum(!is.na(climate$peak_greenup_pct)),
+  if (length(unsupported)) paste(unsupported, collapse = ", ") else "none"
+))

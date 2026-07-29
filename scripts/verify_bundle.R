@@ -284,9 +284,9 @@ assert(identical(names(schema$climate_context_rule), c(
        identical(as.character(schema$climate_context_rule$aggregation),
                  "equal-weight arithmetic mean across realized calendar-month climatologies") &&
        identical(as.character(schema$climate_context_rule$completeness),
-                 "every realized count month must have a coverage-qualified climatology") &&
+                 "breeding_temp_c requires every realized count month to have a coverage-qualified climatology") &&
        identical(as.character(schema$climate_context_rule$missing_policy),
-                 "fail closed; no imputation"),
+                 "retain the 47-site row; set breeding_temp_c to NA and omit only from the temperature gradient when incomplete; no imputation"),
        "Bundle schema climate context rule mismatch.")
 assert(identical(unlist(schema$point_count_minute_states, use.names = FALSE),
                  c("standard_minute", "incidental_minute_88", "source_missing", "invalid_or_unknown")),
@@ -1230,9 +1230,15 @@ for (site in expected_sites) {
   assert(same_num(row$analysis_year_min, BIRD_CROSS_SITE_YEAR_MIN) &&
          same_num(row$analysis_year_max, BIRD_CROSS_SITE_YEAR_MAX),
          paste(site, "climate analysis-window identity mismatch."))
-  assert(n_supported == length(realized) && is.finite(row$breeding_temp_c) &&
-         same_num(row$breeding_temp_c, round(mean(values), 1)),
-         paste(site, "breeding-season temperature is not supported by every realized count month."))
+  temperature_complete <- n_supported == length(realized)
+  expected_breeding_temp <- if (temperature_complete) round(mean(values), 1) else NA_real_
+  observed_breeding_temp <- suppressWarnings(as.numeric(row$breeding_temp_c))
+  assert(n_supported <= length(realized) &&
+         !is.nan(observed_breeding_temp) &&
+         identical(is.finite(observed_breeding_temp),
+                   temperature_complete) &&
+         same_num(row$breeding_temp_c, expected_breeding_temp),
+         paste(site, "breeding-season temperature availability does not match exact realized-month support."))
   expected_mat <- round(mean(env_temp[is.finite(env_temp)]), 1)
   expected_amplitude <- round(diff(range(expected_temp[is.finite(expected_temp)])), 1)
   peak_index <- if (any(is.finite(expected_greenup)))

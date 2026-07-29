@@ -236,5 +236,8 @@ GRADIENT <- local({
   m <- neon_sites[match(g$site, neon_sites$site), ]
   g$name <- m$name; g$state <- m$state; g$bio <- m$bio
   g$biome <- biome_of(g$site); g$biome_col <- biome_col(g$biome); g$biome_lab <- unname(BIOME_LAB[g$biome])
-  g[order(g$mat_c), ]
+  # Order the comparison by the exact realized-month temperature estimand.
+  # Available-record MAT remains contextual metadata and never substitutes for
+  # an unsupported breeding window.
+  g[order(g$breeding_temp_c, g$site, na.last = TRUE, method = "radix"), ]
 })

@@ -10,6 +10,30 @@ app_server <- source("server.R")$value
 stopifnot(is.function(app_server), !is.null(SITE_INDEX), nrow(SITE_INDEX) == 47L,
           identical(sort(as.character(SITE_INDEX$site)), sort(as.character(neon_sites$site))))
 
+# RELEASE-2026 retains every bird site while making the exact realized-month
+# temperature boundary machine-testable. BARR and TOOL each have June + July
+# counts but only one supported calendar-month climatology; neither partial
+# window may be averaged or silently removed from the 47-row export.
+partial_temperature <- SITE_CLIMATE[
+  SITE_CLIMATE$n_supported_realized_months < SITE_CLIMATE$n_realized_months,
+  , drop = FALSE
+]
+temperature_frame <- GRADIENT[
+  is.finite(suppressWarnings(as.numeric(GRADIENT$breeding_temp_c))),
+  , drop = FALSE
+]
+gradient_export <- GRADIENT[, intersect(GRADIENT_KEEP, names(GRADIENT)), drop = FALSE]
+stopifnot(!is.null(SITE_CLIMATE), nrow(SITE_CLIMATE) == 47L,
+          !is.null(GRADIENT), nrow(GRADIENT) == 47L,
+          nrow(gradient_export) == 47L,
+          identical(sort(as.character(partial_temperature$site)), c("BARR", "TOOL")),
+          all(partial_temperature$n_realized_months == 2L),
+          all(partial_temperature$n_supported_realized_months == 1L),
+          all(is.na(partial_temperature$breeding_temp_c) &
+                !is.nan(partial_temperature$breeding_temp_c)),
+          nrow(temperature_frame) == 45L,
+          !any(c("BARR", "TOOL") %in% as.character(temperature_frame$site)))
+
 candidate <- NULL
 for (site in as.character(SITE_INDEX$site)) {
   bundle <- load_site_bundle(site)
@@ -108,6 +132,8 @@ stopifnot(grepl("y=~relative_rate", server_source, fixed = TRUE),
           grepl("col = \"birds_per_count_window\"", server_source, fixed = TRUE),
           grepl("Unstandardized sample-incidence Hill q1", server_source, fixed = TRUE),
           grepl("Descriptive Spearman", server_source, fixed = TRUE),
+          grepl("omitted only from the temperature gradient; no value is imputed",
+                server_source, fixed = TRUE),
           !grepl("Fisher-z", server_source, fixed = TRUE),
           grepl("count_months", server_source, fixed = TRUE),
           grepl("d <- SEARCH_SITES", server_source, fixed = TRUE),
@@ -126,4 +152,12 @@ stopifnot(grepl("visits$year >= BIRD_CROSS_SITE_YEAR_MIN", search_source, fixed 
           grepl("CROSS_PATH", search_source, fixed = TRUE),
           !grepl("INDEX_PATH", search_source, fixed = TRUE),
           !grepl("site_index$n_species", search_source, fixed = TRUE))
+ui_source <- paste(readLines("ui.R", warn = FALSE), collapse = "\n")
+stopifnot(grepl("Temperature · complete realized months", ui_source, fixed = TRUE),
+          grepl("47-site release roster; climate support is reported explicitly",
+                ui_source, fixed = TRUE),
+          grepl("Missing climate values are reported as unavailable and never imputed",
+                ui_source, fixed = TRUE),
+          !grepl("Temperature · 47 sites", ui_source, fixed = TRUE),
+          !grepl("All 47 NEON sites, not just this one", ui_source, fixed = TRUE))
 cat("OK: real positive-site, distance-profile, and opportunity-complete all-zero Shiny lifecycles passed.\n")
