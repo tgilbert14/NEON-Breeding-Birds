@@ -217,7 +217,9 @@ build_site <- function(site) {
     year = as.integer(pp_year),
     bout = pp_bout,
     startDate = col_chr(pp, "startDate"),
-    endDate = col_chr(pp, "endDate"),
+    # RELEASE-2026 brd_perpoint has no endDate. Retain the public schema field
+    # as an explicit compatibility null without consulting undeclared source data.
+    endDate = rep(NA_character_, nrow(pp)),
     samplingImpractical = pp_state_raw,
     sampling_state = pp_state,
     valid_count = pp_valid,
@@ -550,7 +552,7 @@ schema <- list(
   detection_index_denominator = "valid point-count bouts",
   valid_visit_rule = "samplingImpractical == OK",
   observer_support = "site/species aggregate counts only; raw measuredBy remains only in producer-local evidence",
-  cross_job_evidence = "schema-v1 exact two-table scientific projection; observer identity, personnel, remarks, and source UIDs excluded",
+  cross_job_evidence = "schema-v2 exact two-table scientific projection; source brd_perpoint has no endDate; public visits.endDate is retained as typed NA; observer identity, personnel, remarks, and source UIDs excluded",
   species_community_unit = "safe normalized genus + species binomial; parent species and subspecies collapse; ambiguous nomenclature fails closed",
   source_taxonomy_provenance = "reportedTaxonID, reportedScientificName, reportedVernacularName, and reportedTaxonRank preserve exact source values",
   breeding_detection_rule = "matched valid visit AND pointCountMinute in 1:6 AND safely canonicalized taxonRank in species/subspecies AND known detectionMethod AND not flyover AND positive finite integer clusterSize",

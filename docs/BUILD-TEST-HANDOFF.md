@@ -114,6 +114,34 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   committed 46-site data and stale manifest still fail the new exact release gate
   at the roster check, as expected, until the official clean refresh lands.
 
+### 2026-07-28 official refresh checkpoint
+
+- Review implementation commit `f3c8447f969126dbebbd1d69edc50ea0cd310a0b`
+  was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
+  `30410928683` on that exact branch/head.
+- The producer passed pinned R setup, checksum-pinned package bootstrap,
+  dependency installation, 128 science fixtures, the privacy gate, and token
+  presence. It then failed closed on the first site before bundling with
+  `ABBY brd_perpoint lacks required RELEASE-2026 field(s): endDate`.
+- No source/candidate artifact was packaged, no review branch was updated, and the
+  validator and publisher jobs skipped. Committed and production data remained
+  unchanged.
+- Cause: the cross-job evidence allowlist incorrectly required `endDate`, but the
+  current official RELEASE-2026 `brd_perpoint` schema publishes `startDate` and no
+  `endDate`. Evidence schema v2 removes the nonexistent field. The public
+  `visits.endDate` compatibility column is retained as typed `NA`; both the
+  producer and independent raw oracle construct that null explicitly so candidate
+  bytes cannot depend on undeclared producer-local input.
+- The sanitizer now uses its v2 staging identity. A regression proves a true
+  no-`endDate` source succeeds and that an injected undeclared `endDate` changes
+  only the full producer-local digest, never the privacy-safe evidence projection.
+  The bundle verifier additionally requires every released `visits.endDate` value
+  to be `NA`.
+- Local R 4.5.3 reruns passed the schema-v3 receipt/schema-v2 evidence privacy
+  suite, all 128 science helper checks, and parsing of all 27 R files; `git diff
+  --check` passed. The next authoritative evidence is a fresh pinned R 4.5.2
+  workflow run on the corrected exact head.
+
 ### Required closeout
 
 1. Run the refresh with `NEON_TOKEN` to build all 47 sites from the exact release in

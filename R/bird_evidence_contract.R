@@ -4,11 +4,11 @@
 # storage. Only this exact two-table scientific projection may cross a job or be
 # uploaded as an Actions artifact.
 
-BIRD_EVIDENCE_SCHEMA_VERSION <- 1L
+BIRD_EVIDENCE_SCHEMA_VERSION <- 2L
 BIRD_EVIDENCE_TABLE_COLUMNS <- list(
   brd_perpoint = sort(c(
     "boutNumber", "decimalLatitude", "decimalLongitude",
-    "endCloudCoverPercentage", "endDate", "eventID",
+    "endCloudCoverPercentage", "eventID",
     "kmPerHourObservedWindSpeed", "nlcdClass", "observedAirTemp",
     "observedHabitat", "plotID", "pointID", "release",
     "samplingImpractical", "samplingProtocolVersion", "siteID",

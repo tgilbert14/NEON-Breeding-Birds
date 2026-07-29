@@ -283,7 +283,9 @@ for (site in expected_sites) {
     year = as.integer(pp_year),
     bout = pp_bout,
     startDate = as.character(pp$startDate),
-    endDate = col_chr(pp, "endDate"),
+    # RELEASE-2026 brd_perpoint has no endDate. The public schema retains an
+    # explicit compatibility-null column and must not consume undeclared input.
+    endDate = rep(NA_character_, nrow(pp)),
     samplingImpractical = as.character(pp$samplingImpractical),
     sampling_state = clean_state(pp$samplingImpractical),
     valid_count = pp_valid,

@@ -170,14 +170,14 @@ assert(identical(receipt$release_generated_utc, "2026-01-23T00:07:49Z") &&
        "Bird source receipt release/retrieval identity mismatch.")
 assert(identical(as.integer(receipt$schema_version), 3L) &&
        identical(names(receipt$evidence_projection), c("schema_version", "tables", "privacy")) &&
-       identical(as.integer(receipt$evidence_projection$schema_version), 1L) &&
+       identical(as.integer(receipt$evidence_projection$schema_version), 2L) &&
        identical(as.character(receipt$evidence_projection$privacy),
                  "no observer identity, personnel table, free-text sampling remarks, or source UIDs"),
        "Bird source/evidence receipt schema mismatch.")
 expected_evidence_tables <- list(
   brd_perpoint = sort(c(
     "boutNumber", "decimalLatitude", "decimalLongitude", "endCloudCoverPercentage",
-    "endDate", "eventID", "kmPerHourObservedWindSpeed", "nlcdClass", "observedAirTemp",
+    "eventID", "kmPerHourObservedWindSpeed", "nlcdClass", "observedAirTemp",
     "observedHabitat", "plotID", "pointID", "release", "samplingImpractical",
     "samplingProtocolVersion", "siteID", "startCloudCoverPercentage", "startDate"
   ), method = "radix"),
@@ -395,6 +395,8 @@ for (site in expected_sites) {
   )
   assert(identical(names(visits), visit_cols),
          paste(site, "visit ledger does not match the exact public allowlist."))
+  assert(all(is.na(visits$endDate)),
+         paste(site, "schema-v2 evidence must retain public visits.endDate as typed NA."))
   assert(identical(names(opportunities), opp_cols),
          paste(site, "opportunity ledger does not match the exact public allowlist."))
   recorded_bouts <- suppressWarnings(as.numeric(opportunities$n_bouts_recorded))

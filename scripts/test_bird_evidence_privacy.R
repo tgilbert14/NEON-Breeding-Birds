@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# Deterministic privacy and integrity checks for the schema-v3 cross-job
-# breeding-bird evidence boundary.
+# Deterministic privacy and integrity checks for the schema-v3 source receipt
+# and schema-v2 cross-job breeding-bird evidence boundary.
 
 suppressPackageStartupMessages({ library(jsonlite); library(digest) })
 source("R/site_metadata.R")
@@ -27,7 +27,6 @@ make_full_source <- function(site) {
   pp$eventID <- paste(site, c("2019-06-02", "2020-06-03"), sep = ".")
   pp$boutNumber <- c("1", "2")
   pp$startDate <- c("2019-06-02T05:00:00Z", "2020-06-03T05:00:00Z")
-  pp$endDate <- c("2019-06-02T05:06:00Z", "2020-06-03T05:06:00Z")
   pp$samplingImpractical <- "OK"
   pp$release <- "RELEASE-2026"
   pp$measuredBy <- c("private-observer-2", "private-observer-1")
@@ -67,6 +66,8 @@ example <- make_full_source("ABBY")
 projection <- bird_evidence_projection(example)
 bird_assert_evidence_projection(projection)
 stopifnot(
+  !"endDate" %in% names(example$brd_perpoint),
+  !"endDate" %in% names(projection$brd_perpoint),
   identical(names(projection), names(BIRD_EVIDENCE_TABLE_COLUMNS)),
   !"measuredBy" %in% names(projection$brd_perpoint),
   !"samplingImpracticalRemarks" %in% names(projection$brd_perpoint),
@@ -75,6 +76,22 @@ stopifnot(
   !"uid" %in% names(projection$brd_countdata),
   !"detection_uid" %in% names(projection$brd_countdata),
   !"brd_personnel" %in% names(projection)
+)
+
+# RELEASE-2026 omits brd_perpoint.endDate. Even if a future producer response
+# adds that undeclared field, schema-v2 keeps it producer-local rather than
+# silently widening the cross-job scientific evidence contract.
+source_with_end_date <- example
+source_with_end_date$brd_perpoint$endDate <-
+  c("2019-06-02T05:06:00Z", "2020-06-03T05:06:00Z")
+projection_with_end_date <- bird_evidence_projection(source_with_end_date)
+stopifnot(
+  !"endDate" %in% names(projection_with_end_date$brd_perpoint),
+  !identical(bird_full_source_sha256(example),
+             bird_full_source_sha256(source_with_end_date)),
+  identical(projection, projection_with_end_date),
+  identical(bird_evidence_projection_sha256(example),
+            bird_evidence_projection_sha256(source_with_end_date))
 )
 
 private_change <- example
@@ -203,4 +220,4 @@ saveRDS(clean_abby, abby_path, compress = "xz", version = 3)
 bird_scan_evidence_directory(raw_dir, expected_sites, parsed_receipt)
 unlink(test_root, recursive = TRUE, force = TRUE)
 
-cat("OK: schema-v3 bird evidence sanitizer is deterministic, allowlisted, and PII-safe.\n")
+cat("OK: schema-v3 receipt / schema-v2 bird evidence is deterministic, allowlisted, and PII-safe.\n")

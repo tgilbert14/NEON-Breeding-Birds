@@ -6,7 +6,7 @@ suppressPackageStartupMessages({ library(jsonlite); library(digest) })
 
 RAW_DIR <- Sys.getenv("BIRD_RAW_DIR", "build/raw/birds")
 RECEIPT_PATH <- Sys.getenv("BIRD_RECEIPT", "build/source_receipt.json")
-STAGE_NAME <- ".bird-sanitized-v1"
+STAGE_NAME <- ".bird-sanitized-v2"
 
 source("R/site_metadata.R")
 source("R/bird_evidence_contract.R")
