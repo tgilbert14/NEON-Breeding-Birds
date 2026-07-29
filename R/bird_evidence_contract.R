@@ -94,13 +94,20 @@ bird_evidence_projection <- function(x) {
     bird_evidence_fail("Bird source evidence lacks required table(s): ",
                        paste(missing_tables, collapse = ", "), ".")
   out <- lapply(names(BIRD_EVIDENCE_TABLE_COLUMNS), function(table_name) {
-    table <- bird_canonical_table(x[[table_name]])
+    table <- x[[table_name]]
+    if (!is.data.frame(table))
+      bird_evidence_fail("Evidence source is not a data frame: ", table_name, ".")
+    if (anyDuplicated(names(table)))
+      bird_evidence_fail(table_name, " contains duplicate source field names.")
     allowed <- BIRD_EVIDENCE_TABLE_COLUMNS[[table_name]]
     missing <- setdiff(allowed, names(table))
     if (length(missing))
       bird_evidence_fail(table_name, " lacks evidence field(s): ",
                          paste(missing, collapse = ", "), ".")
-    table[, allowed, drop = FALSE]
+    # Select the public evidence fields before canonical row sorting. Excluded
+    # private/source-only columns must never influence evidence row order or its
+    # digest, even when their names sort ahead of an allowed differentiator.
+    bird_canonical_table(table[, allowed, drop = FALSE])
   })
   names(out) <- names(BIRD_EVIDENCE_TABLE_COLUMNS)
   out

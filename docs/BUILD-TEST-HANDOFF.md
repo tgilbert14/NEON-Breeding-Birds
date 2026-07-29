@@ -170,6 +170,35 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   science helpers, affected-file parsing, and `git diff --check` passed locally.
   An independent attribute audit found no analogous producer-side roster trap.
 
+### 2026-07-28 official evidence-order checkpoint
+
+- Roster correction commit `d8b92a290a86b74d2b24af301acef45385941e05`
+  was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
+  `30412711867` on that exact branch/head.
+- The producer passed all pre-fetch gates, wrote 47 immutable full-source files,
+  passed the corrected exact-roster check, and built all 47 opportunity-complete
+  site bundles. It then failed closed before evidence replacement with
+  `ABBY staged bird evidence is not in deterministic canonical row/column order`.
+- No artifact crossed jobs, the validator and publisher skipped, and neither the
+  review branch nor production changed. The incomplete producer output is not
+  reusable because its receipt bound the rejected projection digests.
+- Cause: evidence projection canonicalized the complete source table before
+  selecting allowed public fields. Excluded producer-local columns could therefore
+  choose the order of otherwise safe rows; changing only `measuredBy` changed the
+  evidence bytes and digest, and re-projecting the result was not idempotent. No
+  private value was serialized, but this row-order coupling violated the declared
+  privacy and determinism boundary.
+- Evidence schema v2 now selects the exact allowlist first and canonicalizes only
+  that safe projection. Duplicate source field names fail closed before ambiguous
+  name-based selection. An adversarial regression makes `pointID` the only allowed
+  differentiator, reverses private `measuredBy`, and requires identical canonical
+  projections/digests plus idempotent re-projection. The full producer-local digest
+  still intentionally binds complete private source content.
+- The repaired privacy/sanitizer suite, all 128 science helpers, the release-stamp
+  tamper suite, parsing of all 27 R files, and `git diff --check` passed under local
+  R 4.5.3. Independent review reproduced the old coupling and confirmed the repair;
+  a fresh pinned R 4.5.2 official producer remains authoritative.
+
 ### Required closeout
 
 1. Run the refresh with `NEON_TOKEN` to build all 47 sites from the exact release in

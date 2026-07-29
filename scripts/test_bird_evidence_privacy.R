@@ -114,6 +114,38 @@ stopifnot(
   identical(bird_evidence_projection_sha256(example),
             bird_evidence_projection_sha256(private_change))
 )
+
+# Excluded producer-only values must not choose the public projection's row
+# order. Make pointID the only allowed visit differentiator, then reverse a
+# private field that alphabetically precedes pointID in the complete table.
+private_order_a <- example
+for (name in BIRD_EVIDENCE_TABLE_COLUMNS$brd_perpoint)
+  private_order_a$brd_perpoint[[name]] <-
+    rep(private_order_a$brd_perpoint[[name]][[1]], 2L)
+private_order_a$brd_perpoint$pointID <- c("21", "22")
+private_order_a$brd_perpoint$measuredBy <- c("private-z", "private-a")
+private_order_b <- private_order_a
+private_order_b$brd_perpoint$measuredBy <- rev(private_order_a$brd_perpoint$measuredBy)
+private_projection_a <- bird_evidence_projection(private_order_a)
+private_projection_b <- bird_evidence_projection(private_order_b)
+bird_assert_evidence_projection(private_projection_a)
+bird_assert_evidence_projection(private_projection_b)
+stopifnot(
+  identical(private_projection_a, private_projection_b),
+  identical(private_projection_a$brd_perpoint$pointID, c("21", "22")),
+  identical(bird_evidence_projection_sha256(private_order_a),
+            bird_evidence_projection_sha256(private_order_b))
+)
+
+duplicate_source_field <- example
+duplicate_source_field$brd_perpoint <- cbind(
+  duplicate_source_field$brd_perpoint,
+  duplicate_source_field$brd_perpoint["siteID"]
+)
+names(duplicate_source_field$brd_perpoint)[
+  ncol(duplicate_source_field$brd_perpoint)] <- "siteID"
+expect_error(bird_evidence_projection(duplicate_source_field), "duplicate source field")
+
 reordered <- lapply(example[c(4, 2, 1, 3)], function(value) {
   if (is.data.frame(value)) value[nrow(value):1, rev(names(value)), drop = FALSE] else value
 })
