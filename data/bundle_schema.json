@@ -1,0 +1,34 @@
+{
+  "schema_version": 4,
+  "product": "DP1.10003.001",
+  "release": "RELEASE-2026",
+  "incidence_unit": "valid physical six-minute point-count keyed by visits.survey_id; repeated counts are protocol samples, not independent places",
+  "annual_audit_unit": "point x year opportunity; one or two valid bouts retained in n_valid_bouts",
+  "detection_index_denominator": "valid point-count bouts",
+  "valid_visit_rule": "samplingImpractical == OK",
+  "observer_support": "site/species aggregate counts only; raw measuredBy remains only in producer-local evidence",
+  "cross_job_evidence": "schema-v2 exact two-table scientific projection; source brd_perpoint has no endDate; public visits.endDate is retained as typed NA; observer identity, personnel, remarks, and source UIDs excluded",
+  "species_community_unit": "safe normalized genus + species binomial; parent species and subspecies collapse; ambiguous nomenclature fails closed",
+  "source_taxonomy_provenance": "reportedTaxonID, reportedScientificName, reportedVernacularName, and reportedTaxonRank preserve exact source values",
+  "breeding_detection_rule": "matched valid visit AND pointCountMinute in 1:6 AND safely canonicalized taxonRank in species/subspecies AND known detectionMethod AND not flyover AND positive finite integer clusterSize",
+  "visit_outcomes": ["positive", "supported_zero", "unavailable"],
+  "point_year_outcomes": ["positive", "supported_zero", "unavailable"],
+  "cross_site_rule": {
+    "analysis_year_min": 2017,
+    "analysis_year_max": 2024,
+    "incidence_unit": "valid visits.survey_id physical counts",
+    "rarefaction_support": "minimum T_counts across the exact 47-site roster"
+  },
+  "climate_context_rule": {
+    "analysis_year_min": 2017,
+    "analysis_year_max": 2024,
+    "realized_months": "exact distinct calendar months containing valid counts in the analysis window",
+    "monthly_climatology_min_coverage_year_months": 2,
+    "aggregation": "equal-weight arithmetic mean across realized calendar-month climatologies",
+    "completeness": "breeding_temp_c requires every realized count month to have a coverage-qualified climatology",
+    "missing_policy": "retain the 47-site row; set breeding_temp_c to NA and omit only from the temperature gradient when incomplete; no imputation"
+  },
+  "detection_method_states": ["reported", "missing_or_unknown"],
+  "distance_states": ["observed", "sentinel_not_estimable", "source_missing", "invalid"],
+  "point_count_minute_states": ["standard_minute", "incidental_minute_88", "source_missing", "invalid_or_unknown"]
+}
