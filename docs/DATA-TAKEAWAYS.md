@@ -1,51 +1,123 @@
-# NEON Breeding Bird Explorer — Data Takeaways & Critical Review
-_Suite audit — June 2026. NEON DP1.10003.001 (Breeding landbird point counts)._
+# Data takeaways — RELEASE-2026 results pending
 
-## What the data actually shows
-- **46 sites, 29,279 point-counts of effort, ~374k detection rows.** Observed richness (`n_species`) runs **38 (TOOL, arctic tundra) → 138 (CLBJ, Texas oak savanna)**, median **86.5**. Effort spans wildly: `n_points` **13 (STER) → 144**, median 81; `n_visits` (point-count occasions) **198 (BLAN) → 1,260 (CPER)**. Raw richness is an effort artifact, which is exactly why the gradient tab rarefies.
-- **Effort-rarefying re-orders the whole leaderboard.** Rarefied to a common **t = 99 occasions** (`t_used`, the min over sites), `S_rare` runs **25.8 → 106.6**. The richest *raw* sites are not the richest *rarefied*: **UNDE/KONZ fall from rank ~4.5 (S_obs 119) to rank ~18–19 (S_rare ~75)**, **CPER drops 66→33.4** at 1,260 occasions, while low-effort **BLAN holds 85→85.0** (rank 27→9) and **DELA 104→94.5** (rank 13→4). The "observed richness" view is a survey-effort map, not an ecology map.
-- **The continental temperature→richness gradient is real but modest.** Spearman **ρ = 0.39 (breeding_temp_c vs S_rare), p ≈ 0.007** across 46 sites (ρ = 0.45 on raw S_obs, 0.32 on Hill q1). Warmer breeding-season sites hold more species — consistent with the suite's broad pattern, but this is a weak-to-moderate space-for-time correlation confounded by biome and latitude (lat vs S_rare ρ = −0.23), not a driver model. The chart states this.
-- **The "birds per count" abundance axis is a detection index dominated by flock outliers.** `birds_per_count` runs **5.16 → 40.52** (median 13.87). Max `clusterSize` in the suite is **500** — a White-winged Dove flock at LAJA and a genus-level "Icteridae sp." swarm at WOOD; CLBJ's index is pumped by **300/150/130-bird Franklin's Gull flyovers**. A loud or flocking species and a quiet territorial one at equal density give wildly unequal counts. Labelled "detection index, not population" everywhere — correctly.
-- **Detection is overwhelmingly acoustic, and that's the data's texture.** Across the suite: **singing 230,729, calling 100,916, visual 28,708**, plus compound methods (**calling and singing 3,908; visual and singing 1,337**), **flyover 3,104 (0.83%)**, drumming 2,433. Per-site singing share (`pct_singing`) ranges from ~28% (BARR, treeless tundra) to ~80% (forest sites) — a habitat signature in how birds are *found*, not just which are present.
-- **Sampling completeness is high but Chao2 is unstable exactly where it's shown by default.** Incidence `coverage` is **0.98–0.999** suite-wide (median chao2/S_obs ratio 1.2 — most species present are detected). But only **2/46 sites have a stable Chao2** at the strictest read, and **the HARV demo is one of the unstable ones**: S_obs 97, **Chao2 297 with Q2 = 1** (one species detected at exactly two occasions), ratio 3.06 — the single most extrapolation-sensitive estimate in the dataset is the first thing a new user sees.
-- **Distance carried a `999` sentinel — now recoded to NA at build time.** `observerDistance` held **1,199 values of exactly 999 (0.32%, across 28 sites)** — NEON's "distance not estimable" placeholder (flocks / flyovers / detected-but-far; **602 of them `visual`**, `clusterSize` up to 76), not a metre measurement. It sat *below* the QC `far` (>1,000 m) threshold so nothing tripped — yet because 999 is finite and >500 it was **mislabelling those 602 visual records as real long-range visual IDs in `bird_qc()`'s `visualfar` flag**, and printing as a literal "999 m" in the profile table + per-species CSV. The 999 spike is an unambiguous sentinel (995–998 are empty, 990 has just 2; real distances taper smoothly to a 990 m max). `scripts/bundle_bird_data.R` (`na_sentinel()`) now recodes `999`/`9999`→`NA` at build, and the shipped bundles were migrated (`scripts/recode_sentinel_distance.R`). **Post-fix: 0 records at 999; NA distance 1.66% (the 1,199 now honestly counted as "no usable distance"); `visualfar` candidates 1,304→702** (real ≥500 m visuals only). It was already truncated out of the area-corrected decay (`<=200 m`), and it feeds **no** abundance/richness/cascade metric — so this shifts zero headline numbers.
-- **Coverage is deep in time and clean structurally.** Every site has **7–12 years** (2013–2025, median 9); **no single-year sites** (good for the point×year incidence unit). The effort denominator is correctly the structural `n_visits` (HARV: 646 point-visits), **not** `n_distinct(obs$eventID)` (HARV: 7 — a plot×year grain that would inflate every index ~92×). Demo bundle == HARV bundle byte-for-byte (`identical(obs)` TRUE). Precip exists at **19/46** sites (gated, never imputed); green-up at **44/46**.
+## Pre-release notice
 
-## How it's built
-Raw `../bird-data-fetch/<SITE>_raw.rds` (neonUtilities `brd_countdata` + `brd_perpoint`, pulled under R-4.1.1) → **`scripts/bundle_bird_data.R`** filters to `clusterSize>0`, derives `is_species` (drops `sp.`/slash morphospecies), recodes the `observerDistance` `999`/`9999` sentinel → `NA` (`na_sentinel()`), and writes per-site `data/sites/<SITE>.rds = list(obs, points, meta)`. `obs` is one row per detection (`pointkey, year, bout, scientificName, vernacularName, observerDistance, detectionMethod, clusterSize`); `points` is one row per point with `n_visits` = the effort denominator; `meta$n_visits` = site total point-counts. **`scripts/build_cross_site.R`** computes effort-standardized community metrics — incidence vectors over the **point×year occasion** (`sampling_occasion()`), `S_rare` rarefied to t=99 (`rarefy_incidence`, Colwell et al. 2012), `coverage` (Chao & Jost 2012), Hill q1/q2 — into `data/cross_site.rds`. **`scripts/refresh_site_climate.R`** reads co-located `data/env/<SITE>.rds` to build `site_climate.rds` (breeding-season temp from the realized count months, peak green-up, gated precip) and `site_month_clim.rds` (the seasonal band). The app renders: **detection index** = `sum(clusterSize)/n_visits` (`species_board`); **ubiquity** = % of points detected; **Chao2** + accumulation on the de-pseudoreplicated occasion unit; the **area-corrected distance decay** (`distance_decay`, detections/ha per annulus, truncated 200 m); a per-species **QC-flag system** (`bird_qc`) with clickable inspector + CSV; and the cross-site climate gradient (rarefied richness default).
+The numerical takeaways previously stored here came from a superseded 46-site,
+detection-adjacent build. They must not be reused for Pass 7. In particular, old
+site rankings, richness ranges, rarefaction targets, correlations, counts, and
+precipitation coverage were not computed from the new opportunity-complete
+contract.
 
-Metric definition note: the unit of analysis is a **species detected at a site** (community grain, with detection) — there is no "individual" career here, so the flagship's mark-recapture machinery (MNKA, lifespan, tag-identity QC) correctly ports to *nothing*; the analogs are the species board, Chao2, and per-species detection QC.
+This file intentionally publishes no replacement ecological result until the
+exact RELEASE-2026 candidate is produced, independently validated, reviewed, and
+merged. The release evidence and exact revision must be recorded in
+[`BUILD-TEST-HANDOFF.md`](BUILD-TEST-HANDOFF.md) before this note is replaced.
 
-## Critical findings by lens
+## Fixed release facts
 
-### NEONize (suite cohesion / parity / honesty machinery)
-- **[low] Chao2 default view leads with its least-stable estimate.** HARV (the instant demo) shows Chao2 297 from S_obs 97 with Q2=1. The banner does append "(a rough floor)" when `unstable`, but a 3× extrapolation is the first number a new user meets. *Fix:* pick a demo site with a stable Chao2, or front-load the coverage number (0.99) which is the honest completeness story, and de-emphasize the point estimate when Q2<3.
-- **[info] QC system is gold-standard and matches the playbook** (ranked verify-not-wrong flags, clickable inspector, per-flag + report CSV, green clean-path). Parity with the flagship is intact. Keep it.
-- **[info] Honesty labelling is exemplary** — "detection index, not population", space-for-time, rarefied-by-default, gated precip, eventID-grain guard with an inline comment. This app is the suite's honesty exemplar; the cascade should reuse its framing verbatim for the consumer rung.
+These are release and contract facts, not derived ecological findings:
 
-### Ecological (point-count / detection / occupancy / rarefied richness)
-- **[RESOLVED] The 999-m distance sentinel is recoded to NA at build time.** 1,199 records (0.32%, 28 sites) at exactly 999 m were placeholder codes ("distance not estimable"), not measurements. They sat *below* the >1,000 m `far` flag (so nothing tripped) while being finite-and->500 — so they were *also* **falsely populating the `visualfar` flag (602 visual records mislabelled as long-range visual IDs)**. *Fixed:* `na_sentinel()` in `scripts/bundle_bird_data.R` recodes `999`/`9999`→NA at build, and the shipped bundles were migrated (`scripts/recode_sentinel_distance.R`). NA now routes them into the honest missing-distance accounting; `visualfar` candidates fell 1,304→702 (real ≥500 m visuals only); 0 sentinels remain and no abundance/richness metric moved.
-- **[warn] Flyovers and compound methods muddy the detection index and board colour.** "flyover" (3,104 detections, incl. 300-bird Franklin's Gull flocks) are non-territorial and arguably shouldn't count toward a *breeding*-density index; "calling and singing" (3,908) and "visual and singing" (1,337) fall through `method_col()` into grey "other", discarding real signal. *Fix:* map compound methods to their dominant component (sing/call/visual) for colour; consider excluding `flyover` from the breeding detection index (or flagging it), and state it.
-- **[warn] "Birds per count" is flock-dominated and not comparable across biomes.** clusterSize→500 outliers at LAJA/WOOD make the index a poor abundance proxy. The app says so, but the gradient tab still offers it as a y-metric ("biome-biased") — fine, as long as it stays non-default (it is).
-- **[info] Singing-share is an under-exploited honest signal.** `pct_singing` (28%→80%) is a real habitat/detectability axis already computed in `cross_site.rds` but only surfaced as a footnote. It would be a defensible secondary community metric.
+- Bird product: `DP1.10003.001`, immutable `RELEASE-2026`, DOI
+  `10.48443/v6hs-mx57`.
+- Required bird-site roster: exactly 47 sites, including `PUUM`.
+- Air-temperature context: 47 of 47 bird sites.
+- Plant-phenology context: 47 of 47 bird sites.
+- Precipitation source-stream context: 20 of 47 bird sites. A public annual value
+  additionally requires a complete calendar year; unsupported values remain
+  missing and are never imputed.
+- Runtime is bundle-only. A visitor cannot change results through a live API fetch.
 
-### Data science (tidy / typed / codebook / FAIR / reproducible)
-- **[warn] No machine-readable codebook ships with the downloads.** CSV exports (`spCsv`, `gridSpeciesCsv`, `qcReportCsv`) are tidy and well-named, but there is no column dictionary defining `observerDistance` units (m) and its `NA` = "distance not estimable" (the former `999` sentinel, now recoded at build), `clusterSize` semantics, `detectionMethod` levels, or the `index`/`ubiquity` formulas. *Fix:* ship a `codebook.csv`/`data_dictionary.md` and a download button; the README's "Data" section is the seed.
-- **[info] `cross_site.rds` carries a self-documenting `attr(,"method")` string** — good FAIR practice; expose it in the app's About/download so the rarefaction target (t=99) travels with the data.
-- **[info] Reproducible & deterministic** — accumulation uses a seedless deterministic shuffle, rarefaction is closed-form, no hidden RNG state. Rebuild path is documented (4 scripts). Solid.
+## What is being recomputed
 
-### Statistics (small-n honesty / pooling / null / CI / overclaiming)
-- **[warn] The cross-site gradient reports ρ with no CI or n-context band.** ρ = 0.39 (p≈0.007, n=46) is shown as a point estimate on the chart. With 46 sites a bootstrap or Fisher-z CI is cheap and would prevent over-reading a moderate correlation. *Fix:* add the n and a CI (e.g. "ρ = 0.39, 95% CI [0.11, 0.61], n=46").
-- **[warn] Chao2 is reported without its analytic CI.** The estimator has a known log-normal variance (Chao 1987); showing 297 with no interval invites false precision, especially at Q2=1. *Fix:* add the Chao2 95% CI, or suppress the point estimate when Q2<3 and report only the coverage-based completeness.
-- **[info] De-pseudoreplication is correct and load-bearing.** Chao2/accumulation/rarefaction all use the point×year occasion, never pooled revisits — the playbook's hard-won rule, applied properly. The effort-denominator guard (n_visits not eventID) is the right call and prevents a 92× error.
+The candidate rebuild starts from `brd_perpoint`, not from detection rows. It
+retains every attempted physical count and gives each one a `positive`,
+`supported_zero`, or `unavailable` outcome. Valid physical counts keyed by
+`survey_id` are the sample-incidence units. Repeated bouts remain separate
+protocol samples, but they are not described as independent places, years, or
+occupancy replicates.
 
-## Honest-stats & caveats — what this app must NOT be read to claim
-- **The detection index is not abundance or population.** A 500-bird dove flock and a territorial ovenbird are not "more vs fewer birds" in any density sense; the index is detection-confounded and flock-distorted. The app says this on every surface — keep it that way.
-- **Observed richness is not ecological richness; it is an effort map.** UNDE/KONZ "richest" only because they were surveyed hardest. Always read the **rarefied** axis for cross-site comparison.
-- **The continental temperature→richness pattern is correlational space-for-time (ρ=0.39), not a warming forecast.** 46 different places at one time, confounded by biome and latitude — it cannot say a given site will gain species as it warms.
-- **The seasonal green-up/temperature panel is context, not a bird-vs-environment driver model.** Counts run 1–2×/year, so there is no within-season bird trend to correlate; the panel only places *when* counts happen on the climatology.
-- **Chao2 is a minimum and, at the demo site, an unstable extrapolation (Q2=1, 3×).** Read coverage (0.99) as the completeness story; treat the Chao2 point estimate as a soft floor, not a count.
-- **Ubiquity is a naïve-occupancy floor, not detection-corrected occupancy** — it under-counts quiet/secretive birds and is still effort-dependent. The About panel states this correctly.
+The same visit ledger is aggregated to `pointkey x year` only for annual support
+and audit. A point-year is positive when any valid bout is positive, even if
+another bout is a supported-zero count. At either stated grain:
 
-## Place in the cascade
-This app is the **consumer (bird) rung's corroboration layer**, and the suite truths hold here. Per project memory, **birds can't carry a sub-annual lag** — point counts run once or twice a breeding season, so there is no within-season time series to lag against climate or plants. This explorer's job in the cascade is therefore **descriptive corroboration**, and its honesty machinery shows exactly why: the within-site seasonal panel is explicitly *context, not a driver model*. The cascade should pull **rarefied richness (`S_rare` @ t=99)** as the bird community metric, **never the raw detection index** (flock-dominated, biome-biased) and never observed richness (effort-driven). The one signal this app does contribute upward is its own clean read of the suite's headline gradient — **breeding-season temperature → bird richness, ρ≈0.39 across 46 sites** — a warm-direction, weak-to-moderate correlate that *aligns with* the temperature→green-up backbone but is a rung further down (climate→plants→consumers), confounded by biome and latitude, and must be pooled across sites (n=6-style per-site reads would be a false-negative regime). It is the corroborating echo of the cascade's one robust link, not an independent driver test.
+- **positive** — valid support and at least one eligible protocol-filtered
+  detection;
+- **supported zero** — valid support and no eligible in-window, non-flyover
+  detection;
+- **unavailable** — no valid count at that grain; missing support, never zero.
+
+Eligible protocol-filtered community detections must join a valid visit, occur in
+formal point-count minutes 1–6, have a known detection method, have species/subspecies
+identification that safely canonicalizes to a genus + species binomial, have
+positive finite integer cluster size, and not be a flyover. Parent species and all
+reported subspecies share that one biological-species community unit. Exact
+reported taxonomy remains provenance. Minute 88 incidentals,
+missing/unknown minute values, flyovers, coarse identifications, invalid visits,
+ambiguous joins, missing/unknown methods, raw methods, observer support, and raw
+distance states remain auditable even when they do not enter metrics. Observer
+support is limited to site/species aggregate counts; raw observer values and
+row-level aliases remain
+producer-local and are removed before the receipt-bound scientific evidence is
+transferred to the independent validator. The observer aggregates and complete-
+source digest are producer attestations; the allowlisted projection digest and
+all scientific row/opportunity derivations are independently verified across the
+job boundary.
+
+The privacy-safe site-wide detection audit export conserves every public `obs` +
+`held` row, including taxa that never appear in the species picker. It carries
+canonical and reported taxonomy, eligibility, protocol-window, method, flyover,
+distance, and held-reason fields without observer identities or free text.
+
+From that common ledger, the validator recomputes:
+
+- observed eligible richness and birds-per-valid-count detection index;
+- valid-physical-count detection frequency for the Bird Board;
+- bias-corrected physical-count Chao2, sample coverage, sampled incidence
+  accumulation, and common-count-support rarefaction;
+- supported annual series, including real zero-detection years;
+- site/map/search summaries under the same eligibility rule;
+- the relative area-and-effort-standardized distance signature;
+- RELEASE-2026 environmental context and 2017–2024 cross-site descriptive
+  comparisons.
+
+## Interpretation rules that will remain true
+
+- Birds per count is a **detection index**, not abundance, density, occupancy, or
+  population size.
+- Detection frequency is a physical-count sample summary, not geographic spread
+  or detection-corrected occupancy.
+- A supported zero means a valid count occurred and no eligible bird was detected;
+  it does not prove absence.
+- Chao2 is an extrapolation. Results with weak duplicate incidence support do not
+  lead, and uncertainty must travel with the estimate. The implemented point is
+  `Sobs + ((T-1)/T) * Q1 * (Q1-1) / (2 * (Q2+1))`.
+- Accumulation describes the sampled curve only; it does not predict whether
+  additional counts would add species. Hill q1/q2 are unstandardized plug-in
+  summaries, not effort-robust or detection-corrected estimates.
+- The distance panel is a relative observation signature, not density or a fitted
+  detection function; its 0–200 m display limit and excluded observed-distance
+  count must remain visible.
+- Cross-site climate panels are descriptive space-for-time comparisons, not
+  causal effects or forecasts. The 2017–2024 bird window selects realized count
+  months for temperature context; precipitation uses only complete calendar years
+  from the pinned context record. Context products are not bird measurements and
+  missing precipitation is never imputed.
+- Raw observed richness and detection counts should not rank sites with unequal
+  support; use the common-count rarefied result with coverage for comparison.
+
+## Publication checklist for replacement takeaways
+
+When the candidate is green, any numerical replacement for this note must state:
+
+1. the exact git revision and successful validation run;
+2. source-receipt release, DOI, retrieval time, and 47-site roster;
+3. the common valid-count rarefaction target and 2017–2024 analysis window;
+4. the total valid-count support and its positive/supported-zero split, plus the
+   separately labelled positive, supported-zero, and unavailable point-year audit
+   totals behind each reported result;
+5. uncertainty and support diagnostics for extrapolations or associations;
+6. context-product support for every environmental comparison;
+7. the explicit caveats above.
+
+Until then, the app's old 46-site numbers are archived history, not Pass 7
+evidence.

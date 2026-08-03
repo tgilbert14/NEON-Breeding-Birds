@@ -1,0 +1,405 @@
+{
+  "schema_version": 3,
+  "product": "DP1.10003.001",
+  "release": "RELEASE-2026",
+  "doi": "10.48443/v6hs-mx57",
+  "release_generated_utc": "2026-01-23T00:07:49Z",
+  "retrieval": {
+    "package": "basic",
+    "tool": "neonUtilities::loadByProduct",
+    "neonUtilities_version": "4.0.1",
+    "r_version": "4.5.2",
+    "token_required": true,
+    "staging_was_empty": true
+  },
+  "evidence_projection": {
+    "schema_version": 2,
+    "tables": {
+      "brd_perpoint": ["boutNumber", "decimalLatitude", "decimalLongitude", "endCloudCoverPercentage", "eventID", "kmPerHourObservedWindSpeed", "nlcdClass", "observedAirTemp", "observedHabitat", "plotID", "pointID", "release", "samplingImpractical", "samplingProtocolVersion", "siteID", "startCloudCoverPercentage", "startDate"],
+      "brd_countdata": ["boutNumber", "clusterSize", "detectionMethod", "eventID", "observerDistance", "plotID", "pointCountMinute", "pointID", "release", "scientificName", "sexOrAge", "siteID", "startDate", "taxonID", "taxonRank", "vernacularName"]
+    },
+    "privacy": "no observer identity, personnel table, free-text sampling remarks, or source UIDs"
+  },
+  "expected_site_count": 47,
+  "expected_sites": ["ABBY", "BARR", "BART", "BLAN", "BONA", "CLBJ", "CPER", "DCFS", "DEJU", "DELA", "DSNY", "GRSM", "GUAN", "HARV", "HEAL", "JERC", "JORN", "KONA", "KONZ", "LAJA", "LENO", "MLBS", "MOAB", "NIWO", "NOGP", "OAES", "ONAQ", "ORNL", "OSBS", "PUUM", "RMNP", "SCBI", "SERC", "SJER", "SOAP", "SRER", "STEI", "STER", "TALL", "TEAK", "TOOL", "TREE", "UKFS", "UNDE", "WOOD", "WREF", "YELL"],
+  "fetched_site_count": 47,
+  "fetched_sites": ["ABBY", "BARR", "BART", "BLAN", "BONA", "CLBJ", "CPER", "DCFS", "DEJU", "DELA", "DSNY", "GRSM", "GUAN", "HARV", "HEAL", "JERC", "JORN", "KONA", "KONZ", "LAJA", "LENO", "MLBS", "MOAB", "NIWO", "NOGP", "OAES", "ONAQ", "ORNL", "OSBS", "PUUM", "RMNP", "SCBI", "SERC", "SJER", "SOAP", "SRER", "STEI", "STER", "TALL", "TEAK", "TOOL", "TREE", "UKFS", "UNDE", "WOOD", "WREF", "YELL"],
+  "files": [
+    {
+      "site": "ABBY",
+      "file": "ABBY_raw.rds",
+      "full_source_content_sha256": "e38c19eda34be360bdda82aef0351cfb89c1a716b34ec5a50293a3cb27ff4f00",
+      "evidence_projection_sha256": "d643e5b1e55c973e992c919a565b44e5f14b0a3ea347b2d5e8fb08c168f9719a",
+      "brd_perpoint_rows": 289,
+      "brd_countdata_rows": 3473
+    },
+    {
+      "site": "BARR",
+      "file": "BARR_raw.rds",
+      "full_source_content_sha256": "0b0b5bd37fa7f8bc8708b2bc94a5e34e48557515f6ee675747f81e35b97e80f0",
+      "evidence_projection_sha256": "c2f2f0cabdab0a3fba091f9a5f39f0edcd4422ec0c7bca46468d531785a063fb",
+      "brd_perpoint_rows": 520,
+      "brd_countdata_rows": 4697
+    },
+    {
+      "site": "BART",
+      "file": "BART_raw.rds",
+      "full_source_content_sha256": "ddb1c9f24ad15e532ddd83e3792e731879390b3b27e84687539861bc1b1ff5b9",
+      "evidence_projection_sha256": "19d1b4f0580b633ef35858607316b08aebfc30783b4f59aa905cb7f87488d00c",
+      "brd_perpoint_rows": 800,
+      "brd_countdata_rows": 7172
+    },
+    {
+      "site": "BLAN",
+      "file": "BLAN_raw.rds",
+      "full_source_content_sha256": "ea2ea1bfffed5d3f3b14b9a25396c2f1ffd93fe34b15475ff7f4080e4cbc3e29",
+      "evidence_projection_sha256": "0d5190a9adc306e69dc842c6c028038108facd7684dea1276ad0d175e514ad08",
+      "brd_perpoint_rows": 176,
+      "brd_countdata_rows": 2426
+    },
+    {
+      "site": "BONA",
+      "file": "BONA_raw.rds",
+      "full_source_content_sha256": "e275a1f4e9590e26491ec9fc22d86e0615647d508cd37573ddc20be12ce8ab86",
+      "evidence_projection_sha256": "4dbc7cc983cd297fa668a7ffa754d25b5f12ee3c9d0887948a13325f4e9c935c",
+      "brd_perpoint_rows": 762,
+      "brd_countdata_rows": 5848
+    },
+    {
+      "site": "CLBJ",
+      "file": "CLBJ_raw.rds",
+      "full_source_content_sha256": "cb7aab5bfe4746c430f87ac0e1fc596cedc91ef941b252e75ba8733fb7d6aa43",
+      "evidence_projection_sha256": "1bf0283e9fd39fb38cb66fb1ffc4b4868e2189f9379b21b7921d7f053c146557",
+      "brd_perpoint_rows": 648,
+      "brd_countdata_rows": 12003
+    },
+    {
+      "site": "CPER",
+      "file": "CPER_raw.rds",
+      "full_source_content_sha256": "311834842b21a57f3c78dd4a7e6b82873d23071c188e85f34572036300e0995b",
+      "evidence_projection_sha256": "ce50ef6d2db67200d84f6a77f4384b3e53badb6010635959d1044c9ee1d47175",
+      "brd_perpoint_rows": 1170,
+      "brd_countdata_rows": 16223
+    },
+    {
+      "site": "DCFS",
+      "file": "DCFS_raw.rds",
+      "full_source_content_sha256": "d67fb7ef8632dca065d3df41e11f05b1353d9819ef135543a2fb7102fc5f4771",
+      "evidence_projection_sha256": "6e4ce64a076a6cf3ce5344d5df745fb7621c8a73d9f77fbf267f74f90db39bb4",
+      "brd_perpoint_rows": 300,
+      "brd_countdata_rows": 5687
+    },
+    {
+      "site": "DEJU",
+      "file": "DEJU_raw.rds",
+      "full_source_content_sha256": "ecbde56e71c8d16152b805d7479f7391059d2d3f5e6fb469e4017606036c5226",
+      "evidence_projection_sha256": "4ce8927183a0554cee6f334969dd712daed9a8d0acc983d4916dc36653ad08ab",
+      "brd_perpoint_rows": 720,
+      "brd_countdata_rows": 6699
+    },
+    {
+      "site": "DELA",
+      "file": "DELA_raw.rds",
+      "full_source_content_sha256": "5bc0920b1faa201b2642fa361f4b5128c51cbd5ca12a2a6ad4a23aaa76d42fe7",
+      "evidence_projection_sha256": "a15189e72d182f932f1cdb8cf49166aaea955a0fa59e57d5a4af93344540588f",
+      "brd_perpoint_rows": 272,
+      "brd_countdata_rows": 5111
+    },
+    {
+      "site": "DSNY",
+      "file": "DSNY_raw.rds",
+      "full_source_content_sha256": "9b0fa8e84ee5a3064950bdb5af255483e76e842abfcaa1b2515c179b2d73c156",
+      "evidence_projection_sha256": "94cd688e43d9b872991bebc3834614ff25b4091e4eec2a116fec2712dbb32a64",
+      "brd_perpoint_rows": 908,
+      "brd_countdata_rows": 8933
+    },
+    {
+      "site": "GRSM",
+      "file": "GRSM_raw.rds",
+      "full_source_content_sha256": "45e83b82456820d001930378f6e9c6594540759ec0130a33e2b4c49c168f37c8",
+      "evidence_projection_sha256": "56515c3914e3e2d5ba4a0d6f98585ab052d5982272971bf4e5937df5d4f097d9",
+      "brd_perpoint_rows": 854,
+      "brd_countdata_rows": 11299
+    },
+    {
+      "site": "GUAN",
+      "file": "GUAN_raw.rds",
+      "full_source_content_sha256": "cb5594399afb89e05dcaf7bc1d4286edcd915534051901fae44cf4244258d3a2",
+      "evidence_projection_sha256": "340ae8ff782ba2e7ad5ec178a06bb9d1a6e7bf8fb8bce6effc4ecf977e41b97f",
+      "brd_perpoint_rows": 727,
+      "brd_countdata_rows": 16585
+    },
+    {
+      "site": "HARV",
+      "file": "HARV_raw.rds",
+      "full_source_content_sha256": "5592823e6393d145f8d176c92878b63f7d29e2a2750ea58e3dd0b19579f783fa",
+      "evidence_projection_sha256": "6ba3859e445003c16190432230fd5c7bf62c440a4402bca39f7e9e536b514a00",
+      "brd_perpoint_rows": 952,
+      "brd_countdata_rows": 11644
+    },
+    {
+      "site": "HEAL",
+      "file": "HEAL_raw.rds",
+      "full_source_content_sha256": "0d06406414e752e793a46a894e5244bacf449745fee91b27a9d3b1335c0a21e4",
+      "evidence_projection_sha256": "f81265b027a04ee63df86b6fd3e236ac53b0867eacb92295ed67afed90612cce",
+      "brd_perpoint_rows": 667,
+      "brd_countdata_rows": 5035
+    },
+    {
+      "site": "JERC",
+      "file": "JERC_raw.rds",
+      "full_source_content_sha256": "3df4036443169ee0f64a0a91bddd1a66673d647959b70f79c484e01bdae3b6d5",
+      "evidence_projection_sha256": "f56ec9b2f69540906bea7b6d1a5d0c77aef19607fb8e702d5e830c483b8f30c6",
+      "brd_perpoint_rows": 728,
+      "brd_countdata_rows": 10306
+    },
+    {
+      "site": "JORN",
+      "file": "JORN_raw.rds",
+      "full_source_content_sha256": "9065f5964a17f5de939c5a0d4540a358f1a0ade91e7805a6e3eb854bd814f960",
+      "evidence_projection_sha256": "a1ec6729f1a066ccccbba1351d8225571bae28ff62b4b3fb2c73920b668c0341",
+      "brd_perpoint_rows": 711,
+      "brd_countdata_rows": 6470
+    },
+    {
+      "site": "KONA",
+      "file": "KONA_raw.rds",
+      "full_source_content_sha256": "ef4e49535a3713d3ddf462e311380f41bff526e98eeba6947544bbf9a4a91ac1",
+      "evidence_projection_sha256": "a19a57bfa76cffeba4461eee5348ef0a42b5f23a3a1698d7d4e072f480a6ac7d",
+      "brd_perpoint_rows": 210,
+      "brd_countdata_rows": 4190
+    },
+    {
+      "site": "KONZ",
+      "file": "KONZ_raw.rds",
+      "full_source_content_sha256": "15e7a5f6fbc487da1a3471efadc2afe33cc43159f07f1a3060994c0b25ae979e",
+      "evidence_projection_sha256": "546beb5857203ebd5ed17fdff7a60310ab12c4eb92bcd0bd1493795c62403961",
+      "brd_perpoint_rows": 738,
+      "brd_countdata_rows": 14105
+    },
+    {
+      "site": "LAJA",
+      "file": "LAJA_raw.rds",
+      "full_source_content_sha256": "a99c97868ed080b84af6778037d0603d5abcbe014375ecae8219ee01517d901c",
+      "evidence_projection_sha256": "677e1581dc53683bb2a56022a8db6d7b871acbf3650e4912a50b33792e808dbc",
+      "brd_perpoint_rows": 260,
+      "brd_countdata_rows": 6020
+    },
+    {
+      "site": "LENO",
+      "file": "LENO_raw.rds",
+      "full_source_content_sha256": "00a00119aa8b457b33ae4f7955812978be3ed4ac5f25c3e4abb467c111563d31",
+      "evidence_projection_sha256": "4646c83b1b3408dc9b4c83c3626a01cb133ed8c474dda2c72759d2021eb7cbc4",
+      "brd_perpoint_rows": 322,
+      "brd_countdata_rows": 5990
+    },
+    {
+      "site": "MLBS",
+      "file": "MLBS_raw.rds",
+      "full_source_content_sha256": "7a46eff3ad3a412c5fddc2ce408e28b43d9fb16c5db2122a5ef0c98de5edc64f",
+      "evidence_projection_sha256": "bedbc204b34a5b0f7b1ec978a017f6d511e0a95a54b1cb966f3da2258f9e97d9",
+      "brd_perpoint_rows": 504,
+      "brd_countdata_rows": 7205
+    },
+    {
+      "site": "MOAB",
+      "file": "MOAB_raw.rds",
+      "full_source_content_sha256": "64e850e1afbbeaec489f871b1ade1fec7120520f48e341027460e7fe3d4ca84b",
+      "evidence_projection_sha256": "4123e32b9319b888e0a2dcd6b63f4841f7294cfa8c3521323836a43f2fad62d6",
+      "brd_perpoint_rows": 764,
+      "brd_countdata_rows": 7491
+    },
+    {
+      "site": "NIWO",
+      "file": "NIWO_raw.rds",
+      "full_source_content_sha256": "4cc117d7b5df670fa032e1f33881b99fad75926b1623bc7434e0b350abf82248",
+      "evidence_projection_sha256": "8acc36336460f50cc616edc206a876b1c2a4765c1186701b0910756d031882d2",
+      "brd_perpoint_rows": 486,
+      "brd_countdata_rows": 4550
+    },
+    {
+      "site": "NOGP",
+      "file": "NOGP_raw.rds",
+      "full_source_content_sha256": "6ddb5836b20a7434a7dcf4b5ebf44a63b8a5b394bb5216f042112f5801f08429",
+      "evidence_projection_sha256": "894a2950123000013f8897669984a14e552cded4e2a792ab077244966660b7de",
+      "brd_perpoint_rows": 320,
+      "brd_countdata_rows": 5976
+    },
+    {
+      "site": "OAES",
+      "file": "OAES_raw.rds",
+      "full_source_content_sha256": "abb9bface42bc20225fb1f36e75e0a002ab2157ad0fa0d1aa22c2bcc49e9a9ae",
+      "evidence_projection_sha256": "e1259c07d3d7c72fa0972eaab35d2bb76cfb1d77e6ff0e9c2d7a24686fad1bf1",
+      "brd_perpoint_rows": 503,
+      "brd_countdata_rows": 9685
+    },
+    {
+      "site": "ONAQ",
+      "file": "ONAQ_raw.rds",
+      "full_source_content_sha256": "f9f77c80471e45aff1a62aed799d8348819ab29368bc0cdd036a10c9794eb5e8",
+      "evidence_projection_sha256": "7f7a12c64941be586dd565ae228e81dcbe464c8067898c338a8bf64e1b23d61e",
+      "brd_perpoint_rows": 432,
+      "brd_countdata_rows": 4983
+    },
+    {
+      "site": "ORNL",
+      "file": "ORNL_raw.rds",
+      "full_source_content_sha256": "e2610166d899e5b35f7e3b09927de2e31a835ce0dc8e2ee72d060c6512f68365",
+      "evidence_projection_sha256": "1d22a64fe7f82386827a0f58aad9306b5edae63ffe385c410c0084c3816410e6",
+      "brd_perpoint_rows": 864,
+      "brd_countdata_rows": 14878
+    },
+    {
+      "site": "OSBS",
+      "file": "OSBS_raw.rds",
+      "full_source_content_sha256": "2e3b50ca09e8395a0f3d5276e6dcd9d90c1a286fcb70f8ce7d73982668f95be3",
+      "evidence_projection_sha256": "5dd9f62317c2dabe9147f2dd2392cd0259c98bed873d2babb2990cb1a467e929",
+      "brd_perpoint_rows": 771,
+      "brd_countdata_rows": 7987
+    },
+    {
+      "site": "PUUM",
+      "file": "PUUM_raw.rds",
+      "full_source_content_sha256": "2f45a52d9cb54546e11149d38bc18676bbccb11875e85949fb40822166f57d2b",
+      "evidence_projection_sha256": "7771bef54cab75c37d9485e071b1745a16065357a5b47f6dcc1b33162babae80",
+      "brd_perpoint_rows": 90,
+      "brd_countdata_rows": 1153
+    },
+    {
+      "site": "RMNP",
+      "file": "RMNP_raw.rds",
+      "full_source_content_sha256": "4d03474a2483358943d783b4a53b073c8a2f9760221543cb5f4fb975636d50b4",
+      "evidence_projection_sha256": "d72b7a0dd4a65b9898a769d9c0d75666b207fcf9368f9f798c5a0bcfd81c870e",
+      "brd_perpoint_rows": 738,
+      "brd_countdata_rows": 7419
+    },
+    {
+      "site": "SCBI",
+      "file": "SCBI_raw.rds",
+      "full_source_content_sha256": "6e05556ec79fbdffa02c14979b21bc47632be5f2cb65821fb1f8c67923bb99c7",
+      "evidence_projection_sha256": "ba25b9e86be8bb8575f238529fd0c450317b40d24a0e6ea5f0e9404f6684c170",
+      "brd_perpoint_rows": 422,
+      "brd_countdata_rows": 5195
+    },
+    {
+      "site": "SERC",
+      "file": "SERC_raw.rds",
+      "full_source_content_sha256": "08d2da94c611c3833eca697385c35d1f72358f869e75f1b69a7af62b9922d472",
+      "evidence_projection_sha256": "1d5ac2ba46423374e769971d7fa9234df04f2e93b9d29f6e4c2ac883ed667465",
+      "brd_perpoint_rows": 386,
+      "brd_countdata_rows": 5601
+    },
+    {
+      "site": "SJER",
+      "file": "SJER_raw.rds",
+      "full_source_content_sha256": "6ecb892f3c3a13a8920cf16c0cd7f6b60a5b6115207fa5a8a8b2ce83c3fb29da",
+      "evidence_projection_sha256": "ada4168ed6ac5473cb0cd6f88e63fcdfd4ef13c11c33b8ded9f3d86cdc0a1bb5",
+      "brd_perpoint_rows": 629,
+      "brd_countdata_rows": 12150
+    },
+    {
+      "site": "SOAP",
+      "file": "SOAP_raw.rds",
+      "full_source_content_sha256": "de2ee10e9f77fcbf5f7c339480765f0ed84a30a1c9255620699814bb6bf32b87",
+      "evidence_projection_sha256": "c7b862f08ab2bb3712c170f2c2331419dcf9d875fb521dd9d78705939c07cda0",
+      "brd_perpoint_rows": 239,
+      "brd_countdata_rows": 4642
+    },
+    {
+      "site": "SRER",
+      "file": "SRER_raw.rds",
+      "full_source_content_sha256": "18ae21406a8093ba0bd25d9639d6a819b869d1aeb7617532ab7a9eae84d46d71",
+      "evidence_projection_sha256": "8b791417be5786b028356d5a92d7e8853fe48b022bd0728bd025621985342d74",
+      "brd_perpoint_rows": 738,
+      "brd_countdata_rows": 14822
+    },
+    {
+      "site": "STEI",
+      "file": "STEI_raw.rds",
+      "full_source_content_sha256": "f4f57440612ca03e6908e48d3e2072919972e57ae2e4e59f5aa017b08d1ed9db",
+      "evidence_projection_sha256": "202e94f9b0c2eec13f4b25c9b34ba822d741abcc5a6a6a9eaa5270e8e5fbd1c4",
+      "brd_perpoint_rows": 853,
+      "brd_countdata_rows": 9315
+    },
+    {
+      "site": "STER",
+      "file": "STER_raw.rds",
+      "full_source_content_sha256": "7ff6f8fb677b352c207973bcd3dcc73926c3bee6153577fac1a96f3ce8fe760d",
+      "evidence_projection_sha256": "83162fb067ca69d314399d394173866670038f126f414df6e2ca85b736ab5631",
+      "brd_perpoint_rows": 185,
+      "brd_countdata_rows": 2819
+    },
+    {
+      "site": "TALL",
+      "file": "TALL_raw.rds",
+      "full_source_content_sha256": "b55ad368acb428dd36fae71a946b800bd3b6815580f0fb07d9aae757a0287a52",
+      "evidence_projection_sha256": "18442166389c5b8c3a8486e3cccaf2db1f1c8b89b115c735e3fca948d5c1730b",
+      "brd_perpoint_rows": 1034,
+      "brd_countdata_rows": 16389
+    },
+    {
+      "site": "TEAK",
+      "file": "TEAK_raw.rds",
+      "full_source_content_sha256": "42580411b38ec216dbf78aab4cd1b656cfba6891dd3d83b23e8f149904fe8be2",
+      "evidence_projection_sha256": "4ca83e06894da6d01674a69902899d642f2ef318c607236eb29b3b51680e0062",
+      "brd_perpoint_rows": 736,
+      "brd_countdata_rows": 11506
+    },
+    {
+      "site": "TOOL",
+      "file": "TOOL_raw.rds",
+      "full_source_content_sha256": "1a38657619049b82aaa1da65a8f3353e6e6407c9d9bfa5881b56cd49850cf9e3",
+      "evidence_projection_sha256": "4310ce1d9133763162e029896fc02473ec2d01128c255d926c8e29e90c0f5383",
+      "brd_perpoint_rows": 214,
+      "brd_countdata_rows": 1588
+    },
+    {
+      "site": "TREE",
+      "file": "TREE_raw.rds",
+      "full_source_content_sha256": "f9fc028f1132b774f6eb4e6f2589d0665594b28561a9a3ef98e600274258adf7",
+      "evidence_projection_sha256": "0e8b43e3dc50c15dc03311a1f293d0dba1fd36dfce14e6946cbeaee318e6f7bb",
+      "brd_perpoint_rows": 306,
+      "brd_countdata_rows": 3679
+    },
+    {
+      "site": "UKFS",
+      "file": "UKFS_raw.rds",
+      "full_source_content_sha256": "0e9db5627b8de13eeba91037d64723949b11a8991841615c67dae93ebca26f0c",
+      "evidence_projection_sha256": "a657a3813884c7a12bd2d60f963faf70071b1665cb0882da797db50bee387cea",
+      "brd_perpoint_rows": 360,
+      "brd_countdata_rows": 6460
+    },
+    {
+      "site": "UNDE",
+      "file": "UNDE_raw.rds",
+      "full_source_content_sha256": "2c079d876f049cc8345dde27f8b8c0eca182e18f4d70d25828d117aa0a824ed3",
+      "evidence_projection_sha256": "f7d132456633619a330c94ae68b1b558e1fc22ac258af644d9cd3e4421c1d58c",
+      "brd_perpoint_rows": 826,
+      "brd_countdata_rows": 9137
+    },
+    {
+      "site": "WOOD",
+      "file": "WOOD_raw.rds",
+      "full_source_content_sha256": "7290812d53ea61593b3db15491239126f657e146841e2031783dc7f8e0cf5cef",
+      "evidence_projection_sha256": "4a89f388de326c019986d7c40199a86c95108f03b42352cc7424ac4320a21a8e",
+      "brd_perpoint_rows": 709,
+      "brd_countdata_rows": 14840
+    },
+    {
+      "site": "WREF",
+      "file": "WREF_raw.rds",
+      "full_source_content_sha256": "027d06d9e980d22dae8af3ddb80f7de68170c63040836cc7c75c2400332c2d7a",
+      "evidence_projection_sha256": "07e20c773404447a9614af07081f374faca513fb6ade5fb42ee1abb40196d67b",
+      "brd_perpoint_rows": 612,
+      "brd_countdata_rows": 5242
+    },
+    {
+      "site": "YELL",
+      "file": "YELL_raw.rds",
+      "full_source_content_sha256": "cf52eb040144cb427645f1b5df746dae42b614da589ef4715bdc000e7a09e43f",
+      "evidence_projection_sha256": "b46c5af551929b2e4f9a0440ce87f5c2af05ea9ee0ba80b382f7582cf728d74f",
+      "brd_perpoint_rows": 621,
+      "brd_countdata_rows": 8890
+    }
+  ]
+}

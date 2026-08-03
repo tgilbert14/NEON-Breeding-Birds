@@ -1,112 +1,147 @@
-# ===========================================================================
-# build_search_index.R — precompute the "Search the network" index.
-#
-# Reads the COMMITTED bundles (data/sites/<SITE>.rds) — NOT a live fetch — and
-# writes one small table to data/search_index.rds. The app loads it once at
-# boot (like site_index) and filters it in memory, so the network search stays
-# instant and the bundled-load story is unchanged.
-#
-# The index is a tidy taxon x site occurrence table: one row per
-# (scientificName, site) where that breeding-bird species was DETECTED, with:
-#   vernacular   — the common name (display label in the autocomplete)
-#   site, name, state
-#   index        — the per-site DETECTION INDEX (breeding birds per point-count),
-#                  computed by the SAME species_board() the Overview uses, so
-#                  flyovers are excluded (the app's honesty rule) and it matches
-#                  the headline. NOT an absolute density.
-#   detections   — raw # detections of that species at the site (context only)
-#   year_min/max — the species' detected-year span at the site
-#   n_sites      — # of sites the species occurs at (precomputed for the
-#                  "detected at > N sites" threshold query)
-#
-# It also carries the per-site headline metrics (richness, birds/count) as a
-# small companion table for the "site richness > X" threshold query — reusing
-# site_index so the numbers are identical to the picker map.
-#
-# Run after the bundles refresh:
-#   "/c/Program Files/R/R-4.5.2/bin/Rscript.exe" scripts/build_search_index.R
-# ===========================================================================
-suppressPackageStartupMessages({ library(dplyr) })
+# Build the network search index from the same exact 2017-2024 physical-count
+# window as every other multi-site bird comparison. Lifetime site-index metrics
+# are deliberately excluded from this artifact.
+
+suppressPackageStartupMessages({ library(dplyr); library(tibble) })
 source("R/site_metadata.R")
 source("R/bird_helpers.R")
 
-`%||%` <- function(a, b) if (is.null(a) || length(a) == 0 || (length(a) == 1 && is.na(a))) b else a
-
-SITE_DIR <- "data/sites"
-files <- list.files(SITE_DIR, pattern = "\\.rds$", full.names = TRUE)
-if (!length(files)) stop("No bundles in ", SITE_DIR, " — run scripts/bundle_bird_data.R first.")
-cat(sprintf("Indexing %d bundled sites for network search...\n", length(files)))
+ROOT <- Sys.getenv("BIRD_OUTPUT_ROOT", ".")
+SITE_DIR <- file.path(ROOT, "data", "sites")
+CROSS_PATH <- file.path(ROOT, "data", "cross_site.rds")
+OUT <- file.path(ROOT, "data", "search_index.rds")
+files <- list.files(SITE_DIR, pattern = "^[A-Z]{4}[.]rds$", full.names = TRUE)
+codes <- sort(sub("[.]rds$", "", basename(files)))
+if (!identical(codes, sort(as.character(neon_sites$site))) || length(codes) != 47L)
+  stop("Search-index build requires the exact 47-site release roster.", call. = FALSE)
+if (!file.exists(CROSS_PATH))
+  stop("Search-index build requires the validated cross-site artifact first.", call. = FALSE)
+cross <- readRDS(CROSS_PATH)
+if (!is.data.frame(cross) || nrow(cross) != 47L ||
+    !identical(sort(as.character(cross$site)), codes) ||
+    !identical(as.integer(attr(cross, "schema_version", exact = TRUE)), 4L) ||
+    any(cross$analysis_year_min != BIRD_CROSS_SITE_YEAR_MIN) ||
+    any(cross$analysis_year_max != BIRD_CROSS_SITE_YEAR_MAX))
+  stop("Search-index cross-site input violates the schema-v4 window contract.", call. = FALSE)
 
 site_meta <- function(code) {
-  m <- neon_sites[neon_sites$site == code, ]
-  list(name  = if (nrow(m)) m$name[1]  else code,
-       state = if (nrow(m)) m$state[1] else NA_character_)
+  m <- neon_sites[neon_sites$site == code, , drop = FALSE]
+  list(name = if (nrow(m)) m$name[[1]] else code,
+       state = if (nrow(m)) m$state[[1]] else NA_character_)
 }
 
-rows <- lapply(files, function(f) {
-  code <- sub("\\.rds$", "", basename(f))
-  b <- tryCatch(readRDS(f), error = function(e) NULL)
-  if (is.null(b) || is.null(b$obs) || !nrow(b$obs)) return(NULL)
-  obs <- b$obs
-  nvis <- b$meta$n_visits %||% (if (!is.null(b$points$n_visits)) sum(b$points$n_visits, na.rm = TRUE) else NA_integer_)
-
-  # per-species per-site detection index, EXACTLY as the Overview computes it
-  # (species_board: species-level only, flyovers excluded from index_birds).
-  brd <- species_board(obs, b$points, nvis)
-  if (is.null(brd) || !nrow(brd)) return(NULL)
-
-  # year span per species at this site (species-level detections only)
-  sp <- species_level_only(obs)
-  yr <- sp %>%
-    dplyr::filter(!is.na(.data$scientificName), nzchar(.data$scientificName)) %>%
-    dplyr::group_by(.data$scientificName) %>%
-    dplyr::summarise(year_min = suppressWarnings(min(.data$year, na.rm = TRUE)),
-                     year_max = suppressWarnings(max(.data$year, na.rm = TRUE)), .groups = "drop")
-
-  m <- site_meta(code)
-  brd %>%
-    dplyr::filter(!is.na(.data$scientificName), nzchar(.data$scientificName)) %>%
-    dplyr::transmute(
-      scientificName = .data$scientificName,
-      vernacular     = .data$vernacular %||% .data$scientificName,
-      site = code, name = m$name, state = m$state,
-      index = round(.data$index, 3),               # birds per point-count, flyovers excluded
-      detections = .data$detections) %>%
-    dplyr::left_join(yr, by = "scientificName")
+rows <- lapply(files, function(path) {
+  code <- sub("[.]rds$", "", basename(path))
+  b <- readRDS(path)
+  if (!identical(as.integer(b$meta$schema_version), 4L))
+    stop(code, " is not a schema-v4 physical-count bundle.", call. = FALSE)
+  effort <- bird_validate_effort(b$opportunity, b$visits, b$obs)
+  visits <- effort$visits
+  keep <- visits$valid_count & visits$year >= BIRD_CROSS_SITE_YEAR_MIN &
+    visits$year <= BIRD_CROSS_SITE_YEAR_MAX
+  visits <- visits[keep, , drop = FALSE]
+  if (nrow(visits) < 1L)
+    stop(code, " has no valid counts in the shared search window.", call. = FALSE)
+  obs <- bird_prepare_obs(b$obs)
+  obs <- obs[as.character(obs$survey_id) %in% as.character(visits$survey_id), , drop = FALSE]
+  bird_validate_visits(visits, obs)
+  board <- species_board(obs, points = NULL, nvis = nrow(visits),
+                         opportunity = NULL, visits = visits,
+                         observer_support = NULL)
+  if (is.null(board) || !nrow(board)) return(NULL)
+  eligible <- eligible_breeding_detections(obs)
+  years <- eligible %>%
+    dplyr::group_by(.data$communityScientificName) %>%
+    dplyr::summarise(year_min = min(.data$year), year_max = max(.data$year), .groups = "drop") %>%
+    dplyr::rename(scientificName = "communityScientificName")
+  meta <- site_meta(code)
+  out <- board %>% dplyr::transmute(
+    scientificName = .data$scientificName,
+    vernacular = .data$vernacular,
+    site = code,
+    name = meta$name,
+    state = meta$state,
+    analysis_year_min = BIRD_CROSS_SITE_YEAR_MIN,
+    analysis_year_max = BIRD_CROSS_SITE_YEAR_MAX,
+    detection_index_window = .data$index,
+    detection_frequency_window = .data$detection_frequency,
+    detection_rows_window = .data$detections,
+    n_detected_counts_window = .data$n_detected_counts,
+    n_points_detected_window = .data$n_points,
+    distance_usable_pct_window = .data$distance_usable_pct,
+    distance_n_used_window = .data$distance_n_used,
+    distance_n_outside_truncation_window = .data$distance_n_outside_truncation,
+    method = .data$method
+  ) %>% dplyr::left_join(years, by = "scientificName")
+  out$vernacular[is.na(out$vernacular) | !nzchar(trimws(out$vernacular))] <-
+    out$scientificName[is.na(out$vernacular) | !nzchar(trimws(out$vernacular))]
+  out
 })
 
 taxa <- dplyr::bind_rows(rows)
-# clean vernacular: fall back to sci name when missing/blank
-taxa$vernacular <- ifelse(is.na(taxa$vernacular) | !nzchar(trimws(taxa$vernacular)),
-                          taxa$scientificName, taxa$vernacular)
-# n_sites per species (drives the "detected at > N sites" query)
-ns <- taxa %>% dplyr::count(.data$scientificName, name = "n_sites")
-taxa <- taxa %>% dplyr::left_join(ns, by = "scientificName")
-taxa <- taxa[order(taxa$scientificName, -taxa$index), , drop = FALSE]
+if (!nrow(taxa)) stop("Search index contains no window-qualified species.", call. = FALSE)
+support <- taxa %>% dplyr::count(.data$scientificName, name = "n_sites_window")
+taxa <- taxa %>% dplyr::left_join(support, by = "scientificName") %>%
+  dplyr::arrange(.data$scientificName, dplyr::desc(.data$detection_index_window), .data$site)
 
-# companion: per-site headline metrics for the richness threshold query.
-# Reuse site_index so these match the picker map exactly.
-si <- tryCatch(readRDS("data/site_index.rds"), error = function(e) NULL)
-sites <- if (!is.null(si)) {
-  m <- neon_sites[match(si$site, neon_sites$site), ]
-  dplyr::tibble(site = si$site, name = m$name, state = m$state,
-                n_species = si$n_species, n_points = si$n_points,
-                n_visits = si$n_visits, birds_per_count = si$birds_per_count,
-                top_species = si$top_species)
-} else {
-  taxa %>% dplyr::group_by(.data$site, .data$name, .data$state) %>%
-    dplyr::summarise(n_species = dplyr::n_distinct(.data$scientificName), .groups = "drop")
-}
-sites <- sites[order(-sites$n_species), , drop = FALSE]
+meta <- neon_sites[match(cross$site, neon_sites$site), , drop = FALSE]
+sites <- tibble::tibble(
+  site = as.character(cross$site),
+  name = meta$name,
+  state = meta$state,
+  analysis_year_min = as.integer(cross$analysis_year_min),
+  analysis_year_max = as.integer(cross$analysis_year_max),
+  bird_year_min = as.integer(cross$bird_year_min),
+  bird_year_max = as.integer(cross$bird_year_max),
+  S_obs = as.integer(cross$S_obs),
+  S_rare = as.numeric(cross$S_rare),
+  t_used = as.integer(cross$t_used),
+  T_counts = as.integer(cross$T_counts),
+  n_points_window = as.integer(cross$n_points_window),
+  n_birds_window = as.numeric(cross$n_birds_window),
+  n_positive_counts_window = as.integer(cross$n_positive_counts_window),
+  n_supported_zero_counts_window = as.integer(cross$n_supported_zero_counts_window),
+  birds_per_count_window = as.numeric(cross$birds_per_count_window),
+  top_species_window = as.character(cross$top_species_window),
+  coverage = as.numeric(cross$coverage)
+) %>% dplyr::arrange(dplyr::desc(.data$S_obs), .data$site)
 
-out <- list(taxa = tibble::as_tibble(taxa), sites = tibble::as_tibble(sites))
-saveRDS(out, "data/search_index.rds", compress = "xz")
+expected_taxa <- c(
+  "scientificName", "vernacular", "site", "name", "state",
+  "analysis_year_min", "analysis_year_max", "detection_index_window",
+  "detection_frequency_window", "detection_rows_window",
+  "n_detected_counts_window", "n_points_detected_window",
+  "distance_usable_pct_window", "distance_n_used_window",
+  "distance_n_outside_truncation_window", "method", "year_min", "year_max",
+  "n_sites_window")
+expected_sites <- c(
+  "site", "name", "state", "analysis_year_min", "analysis_year_max",
+  "bird_year_min", "bird_year_max", "S_obs", "S_rare", "t_used", "T_counts",
+  "n_points_window", "n_birds_window", "n_positive_counts_window",
+  "n_supported_zero_counts_window", "birds_per_count_window",
+  "top_species_window", "coverage")
+if (!identical(names(taxa), expected_taxa) || !identical(names(sites), expected_sites) ||
+    nrow(sites) != 47L || !identical(sort(sites$site), codes) ||
+    any(taxa$year_min < BIRD_CROSS_SITE_YEAR_MIN |
+          taxa$year_max > BIRD_CROSS_SITE_YEAR_MAX) ||
+    any(taxa$analysis_year_min != BIRD_CROSS_SITE_YEAR_MIN |
+          taxa$analysis_year_max != BIRD_CROSS_SITE_YEAR_MAX) ||
+    any(sites$analysis_year_min != BIRD_CROSS_SITE_YEAR_MIN |
+          sites$analysis_year_max != BIRD_CROSS_SITE_YEAR_MAX) ||
+    any(sites$n_positive_counts_window + sites$n_supported_zero_counts_window !=
+          sites$T_counts) ||
+    any(c("n_species", "n_points", "n_visits", "birds_per_count", "top_species",
+          "n_opportunities") %in% names(sites)))
+  stop("Search index failed its exact window-only schema validation.", call. = FALSE)
 
-sz <- file.size("data/search_index.rds")
-cat(sprintf("Wrote data/search_index.rds: %d taxon x site rows, %d distinct species, %d sites | %s\n",
-            nrow(taxa), length(unique(taxa$scientificName)), nrow(sites),
-            format(structure(sz, class = "object_size"), units = "auto")))
-# 10 most widespread species (sanity check)
-top <- taxa %>% dplyr::distinct(.data$scientificName, .data$vernacular, .data$n_sites) %>%
-  dplyr::arrange(-.data$n_sites) %>% utils::head(10)
-print(as.data.frame(top))
+search_index <- list(
+  schema_version = 4L,
+  analysis_year_min = BIRD_CROSS_SITE_YEAR_MIN,
+  analysis_year_max = BIRD_CROSS_SITE_YEAR_MAX,
+  incidence_unit = "valid physical six-minute count keyed by survey_id",
+  taxa = tibble::as_tibble(taxa),
+  sites = sites)
+saveRDS(search_index, OUT, compress = "xz", version = 3)
+cat(sprintf(
+  "OK: wrote %s (%d 2017-2024 taxon-site rows, %d taxa, 47 sites).\n",
+  OUT, nrow(taxa), length(unique(taxa$scientificName))))

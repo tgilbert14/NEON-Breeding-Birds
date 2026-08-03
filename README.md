@@ -1,41 +1,127 @@
 # NEON Breeding Bird Explorer
 
-An (unofficial) R/Shiny explorer for NEON's **Breeding landbird point counts**
-(**DP1.10003.001**) across **46 NEON sites**, from arctic tundra (Utqiaġvik, −2 °C) to
-Caribbean dry forest (Guánica, 26 °C) — a *NEONize* sibling of the Small Mammal Tracker,
-built to the same Desert Data Labs quality bar, in a warm **"Field Guide"** theme
-(parchment + ink, Fraunces serif, dawn-sky hero) distinct from the mammal app's house style.
+An unofficial R/Shiny explorer for NEON **Breeding landbird point counts**
+(`DP1.10003.001`). Pass 7 is pinned to the immutable **RELEASE-2026** dataset
+(DOI [`10.48443/v6hs-mx57`](https://doi.org/10.48443/v6hs-mx57)) and its exact
+47-site roster, including `PUUM`.
 
-🌐 **Landing page** → <https://tgilbert14.github.io/NEON-Breeding-Birds/> · 🚀 **Live app** → <https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/> · ▶ Run locally → `shiny::runApp(".")`
+- **Living Poster:** <https://tgilbert14.github.io/NEON-Breeding-Birds/>
+- **App:** <https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/>
 
-> The unit is a **species detected at a site** (community grain, with detection). The honesty
-> backbone: raw point-count totals are *detection-confounded* — a loud species and a quiet one
-> at equal density give unequal counts — so the abundance axis is a **detection index** (birds
-> per point-count), never a "population." `observerDistance` powers each species' detection-decay.
+The app is bundle-only at runtime. It does not call the NEON API when a visitor
+opens it; the published data, receipts, derived indexes, and dependency manifest
+are reviewed and committed together.
 
-## Tabs
-- **Overview** — most-detected species (coloured by how they're first detected: singing/calling/visual), the story so far, and a **seasonal-context** panel placing the breeding-count window on the site's green-up + temperature year (co-located NEON phenology/temperature — context, *not* a bird-vs-environment driver model).
-- **Community** — species accumulation by **point-counts** (point × year occasion) + a **Chao2** estimate of how many species really use the site (point counts miss nocturnal/secretive/rare birds).
-- **Bird Board** (flagship) — every species as a dot: **ubiquity** (% of points where detected — a *less count-biased* axis than the index, though still a detection floor) × **detection index**. Tap to pin a card; faint dots are too few detections to place.
-- **Across the continent** (flagship) — every NEON site as a dot in climate space: **breeding-season temperature** (all 46 sites; precipitation toggle gated to the 19 with a gauge) × a bird-community metric (richness **rarefied to a common number of point-counts**, Hill q1, mean ubiquity, …). Coloured by biome, sized by effort. Tap a site to pin its card or jump to it. Space-for-time, correlational — stated on the chart.
-- **Species Profile** — a downloadable card (PNG + CSV): detection index, ubiquity, points/grids, the **area-corrected detectability-by-distance** (detections per hectare per ring — a raw count would rise then fall on annulus geometry alone), yearly counts.
-- **Map** — point-count grids, sized by richness.
+## The scientific grain
 
-## Run it
-R 4.5.x, bundle-only: `shiny::runApp(".", port = 8192)`. Splash leads with a national map picker (46 sites, coloured by biome). The default site is **CLBJ** (LBJ National Grassland, Texas oak savanna), the richest site in the set and one with a stable Chao2 estimate, so the first numbers a new user meets are honest.
+The structural `brd_perpoint` table is the effort authority. A physical visit is
+`siteID + eventID + plotID + pointID`, and only a visit with
+`samplingImpractical == "OK"` enters a denominator. Each valid six-minute bout is
+one sample-incidence unit. One or two bouts aggregate to a supported
+`point x year` opportunity only for annual support and audit summaries; repeated
+counts are explicit samples, not independent places or occupancy replicates.
 
-## Data
-Per-site `data/sites/<SITE>.rds` = `list(obs, points, meta)`. `obs` = one row per detection
-(`pointkey, scientificName, vernacularName, observerDistance, detectionMethod, clusterSize, …`);
-`points` = per point (`nlcdClass, lat, lng, n_visits` = effort); abundance index = sum(clusterSize) / point-visits.
-Co-located monthly **environment** per site in `data/env/<SITE>.rds` (precip/temp/phenology, 2013–present);
-precomputed cross-site tables `data/site_climate.rds`, `data/site_month_clim.rds`, `data/cross_site.rds`
-(effort-rarefied richness, coverage, Hill numbers) feed the climate tab at boot.
+- A **supported zero** is a valid physical count with no eligible in-window,
+  non-flyover bird detection. It remains in the incidence denominator. A separate
+  point-year outcome is recomputed across all valid bouts for annual audit, so a
+  point-year can be positive even when one of its bouts is a supported-zero count.
+- An **unavailable** attempted count is not valid survey support. A point-year
+  with no valid bout is likewise unavailable. Neither state is a biological zero.
+- Protocol-filtered community metrics use valid, positive species/subspecies
+  detections from formal point-count minutes 1–6 with a known detection method
+  and exclude flyovers. Parent species and reported subspecies collapse to one safe,
+  normalized binomial community unit; exact reported names, ranks, taxon IDs, and
+  common names remain provenance. Unsafe nomenclature, missing/unknown methods,
+  minute 88 incidentals, missing/unknown minutes, flyovers, and other held records
+  remain auditable in the bundle and site-wide export.
 
-### Rebuild
-1. `Rscript-4.1.1 scripts/fetch_bird_all.R` (all 46 sites) · 2. `Rscript scripts/bundle_bird_data.R` ·
-3. `Rscript scripts/refresh_site_climate.R` (climate + monthly climatology) · 4. `Rscript scripts/build_cross_site.R` (rarefied cross-site metrics).
-Environment overlays are built by `../App-NEON-Small-Mammal-Tracker/scripts/refresh_env_data.R` and copied to `data/env/`.
+This distinction drives richness, Chao2, sample coverage, rarefaction,
+accumulation, annual series, and the Bird Board.
 
-## Honesty notes
-Detection index ≠ population (labelled everywhere); ubiquity (incidence) is *less count-biased* but still a detection floor (naïve occupancy, uncorrected for imperfect detection — not "the least-biased axis"); **Chao2 and species accumulation use the point × year *occasion* as the incidence unit** (a point's yearly revisits are not pooled as separate places — avoids the pseudoreplication that inflates richness); the **cross-site climate gradient is space-for-time** (46 places observed at once, not one site warming) and **richness is rarefied to a common number of point-counts** because raw richness tracks effort (sites differ 13–144 points) — both stated on the chart; precipitation is shown only for the 19 sites with a NEON gauge, never imputed; the within-site seasonal panel is **context, not a driver model** (counts run only 1–2×/yr, so there's no within-season bird trend to correlate); the detectability-by-distance panel is **area-corrected** (detections/ha per ring), since a raw point-count histogram rises with distance on annulus geometry; the effort denominator is total point-visits from the structural effort table (never `obs$eventID`, a different grain); lat/long are grid centroids (the map aggregates to grid); the basic package has no family/native-status, so the board colours by detection method. Built by Desert Data Labs · desertdatalabs@gmail.com. Not affiliated with NEON/Battelle/NSF.
+## How to read the app
+
+- **Overview** summarizes detected species and the birds-per-count detection
+  index. The index is not abundance, density, occupancy, or population size.
+- **Community** uses the complete valid physical-count universe, including
+  supported-zero counts. Chao2 is the bias-corrected sample-incidence
+  extrapolation; unstable estimates do not lead. Accumulation describes only the
+  sampled curve and does not predict what additional counts would find.
+- **Bird Board** leads with **detection frequency**: the percentage of valid
+  six-minute counts on which a species was detected. It is a sample detection
+  summary, not geographic spread or detection-corrected occupancy.
+- **Species Profile** carries visit and opportunity support, annual supported
+  zeros, QC provenance, and a relative area-and-effort-standardized distance
+  signature. The distance bars are explicitly truncated to 0–200 m, disclose
+  otherwise-observed distances beyond that limit, and are neither density nor a
+  fitted detection function.
+- **Across the continent** defaults to incidence richness rarefied to a common
+  number of valid counts in the common 2017–2024 window. This standardizes sample
+  count only; it is a descriptive space-for-time comparison, not a causal model
+  or forecast. The optional Hill summaries are unstandardized plug-in summaries,
+  not effort-robust or detection-corrected alternatives.
+
+Environmental overlays are context only. The 2017–2024 bird window selects the
+calendar months used for breeding-temperature context; the temperature values are
+coverage-qualified RELEASE-2026 month climatologies. Under that release,
+temperature and phenology support all 47 bird sites; precipitation has a source
+stream at 20 of 47, is summarized only from complete calendar years, and is never
+imputed.
+
+## Bundle contract
+
+Each `data/sites/<SITE>.rds` is schema v4:
+
+```text
+list(obs, visits, opportunity, points, held, meta)
+```
+
+`obs` retains canonical species-community units beside exact source-reported
+taxonomy, raw and interpreted point-count minute fields, raw and canonical
+detection-method fields, flyover eligibility, and both raw and interpreted
+distance state. Missing/unknown detection methods fail closed. `visits` contains
+physical survey attempts plus count-level support/detection outcomes;
+`opportunity` contains point-year support and annual/audit outcomes;
+`held` preserves rows that cannot enter scientific metrics; `meta` binds the
+bundle to the release receipt and schema. Observer support is published only as
+site/species aggregate counts inside `meta`; raw `measuredBy` values, row-level
+pseudonyms, free-text sampling remarks, personnel tables, and unused source-row
+identifiers remain producer-local and are removed before cross-job transfer. The
+validator receives only the receipt-bound, exact two-table scientific evidence
+projection needed to reconcile every visit and detection row.
+
+The About tab exposes a privacy-safe site-wide detection audit CSV so flyover-only,
+coarse-only, unsafe-taxonomy, and held-only rows do not depend on appearing in the
+species picker. The existing per-species export remains available.
+
+The complete interpretation contract is in
+[`docs/SCIENCE-CONTRACT.md`](docs/SCIENCE-CONTRACT.md). Build, verification, and
+release evidence live in
+[`docs/BUILD-TEST-HANDOFF.md`](docs/BUILD-TEST-HANDOFF.md).
+
+## Run locally
+
+Use R 4.5.2 with the packages pinned by `manifest.json`, then run from the repo
+root:
+
+```r
+Sys.setenv(BRD_LIVE = "0")
+shiny::runApp(".", port = 8192)
+```
+
+The app intentionally fails closed on stale or incompatible bundles. A local run
+therefore requires the validated RELEASE-2026 candidate and never falls back to a
+live fetch or partial roster.
+
+## Refresh and release
+
+Do not fetch into `data/` or push generated data directly to `master`. The
+[`refresh-data` workflow](.github/workflows/refresh-data.yml) produces the exact
+47-site release in empty staging, validates it in a clean checkout, rebuilds all
+derived indexes twice, verifies the bundle and manifest, and publishes only the
+`automation/breeding-birds-release-2026` review branch. Merging that reviewed,
+green head is the explicit deploy decision.
+
+See [`DEPLOY.md`](DEPLOY.md) for the operator procedure.
+
+Built by Desert Data Labs · desertdatalabs@gmail.com. Not affiliated with
+NEON, Battelle, or NSF.
