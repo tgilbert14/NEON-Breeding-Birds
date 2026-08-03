@@ -22,6 +22,21 @@ are air temperature `DP1.00002.001` / `10.48443/p69b-5e50`, precipitation
 never imputed. Environmental relationships are descriptive space-for-time
 associations, not causal effects, forecasts, or bird measurements.
 
+Environmental retrieval may use deterministic chunks of at most four canonical
+sites as a transport optimization only. Each complete `loadByProduct()` response
+is checked for exact requested-site scope and required table support, then split
+before scientific table or stream selection into private site/product shards.
+Unknown metadata, foreign sites, ambiguous columns, missing required source-table
+support, and path or ownership violations fail closed. Shards are mode 0600 under
+a marked mode-0700 job-local root, are re-audited at read time, are removed
+immediately after site consumption, and never cross the job boundary. A present
+source stream can still lack a coverage-qualified value for one realized month;
+that scientific support boundary follows the explicit no-imputation rule below.
+The exact public bundles, validation evidence, support counts, and receipt must be
+byte-identical to direct site-local retrieval; full 47-site direct/chunked parity
+is a required producer regression. Chunking changes neither environmental meaning
+nor the independent validation contract.
+
 ## Survey and opportunity grains
 
 `brd_perpoint` is the authority for sampling effort. One physical visit is keyed
@@ -214,9 +229,55 @@ all distance states and 0–200 m truncation accounting, empty incidence columns
 bias-corrected Chao2 point/variance fixtures, the `Q2 == 0` coverage branch,
 2017–2024 cross-site exclusion, positive + supported-zero count conservation,
 `U_incidence` / `Q1_incidence` / `Q2_incidence` re-derivation, common rarefaction
-support, window-specific context fields, realized-month climate support, site-wide
-row conservation, and export/codebook parity. Release validation also checks every
-real bundle, exact 47-site roster, release/DOI/schema identities, conservation
-identities, semantic markers, independent manifest equality, exact cross-job
-evidence tables and columns, projection digests, prohibited-field scans, and
-email-like-value scans.
+support, window-specific context fields, complete and incomplete realized-month
+climate states, site-wide row conservation, 45/47 finite-temperature support, and
+export/codebook parity. Release validation also checks every real bundle, exact
+47-site roster, release/DOI/schema identities, conservation identities, semantic
+markers, independent manifest equality, exact cross-job evidence tables and
+columns, projection digests, prohibited-field scans, and email-like-value scans.
+
+## Official release attestation
+
+[Refresh run 30454799557](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30454799557)
+ran on scientific-contract head `2da56ee499c10064b47b468bd23330fba6b35892`.
+Producer job `90585528840`, clean-validator job `90662811450`, and restricted
+publisher job `90672878106` all succeeded. The validator independently reconciled
+every source visit and detection, reconstructed the environmental context, rebuilt
+all derived indexes twice with byte equality, regenerated and verified the exact
+manifest/release stamp, and passed the real positive-site, distance-profile, and
+opportunity-complete all-zero Shiny lifecycles.
+
+The official result contains 47 sites, 27,076 `brd_perpoint` source rows, 373,518
+`brd_countdata` source rows, 26,365 valid physical counts including 117 supported-
+zero counts, and 24,509 supported point-years including 79 supported-zero point-
+years. Temperature, precipitation, and phenology source support is respectively
+47/47, 20/47, and 47/47. BARR and TOOL retain incomplete realized-month
+temperature support and `breeding_temp_c = NA`; all bird, Search-site, and export
+surfaces retain 47 sites while the finite-temperature gradient uses 45.
+
+The schema-v3 release stamp binds source receipt SHA-256
+`55f30d251428cb932ce4fb474bd394ed5a14f3f7c0d077bfb6b7fa9193db88bc`,
+environment receipt SHA-256
+`03f4bc77a8cea49cc5160e250aff50ffb717093fe1b5dd02b73006e9da85662e`,
+payload SHA-256
+`82bbbcd2ea4e478d4e1cae60823363d6fb49f9cb72498569393ff146dcc3b252`,
+manifest-contract SHA-256
+`80ac001287046d72983a2e1ee4fd6c5354d75b19b4f1c451d913d7c8d210b9cf`,
+and release ID
+`sha256:28cf09453f25d5d8fc509d414c7549fbefec45f6f89dc611946360944976a3ac`.
+The final manifest covers 121 runtime files and 91 pinned packages.
+
+Publisher output `e3ec1cd35cc75891ac6eebd87da307d8266f8ca5`, recovery head
+`ffd0f05d13a716118d1efc63a0abbbfaca7f054a`, and merged production revision
+`97c3e4c25b69068c7d8b3d56bc3da3bc019e5097` all have tree
+`61cd60092c87e2e127e0baeef9ae3a1f0447b8f3`; no scientific, manifest, data, or
+poster byte changed during recovery. Exact-head
+[PR CI 30817207865](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30817207865)
+and exact-master
+[CI 30818593951](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818593951)
+both passed the complete scientific and generated-byte contract. Pages
+[deployment 30818592101](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818592101)
+and [production smoke 30818593688](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818593688)
+succeeded; the smoke verified that Pages and Connect served the same exact release
+instance. This production attestation changes no estimand and does not convert any
+descriptive association into a causal result.
