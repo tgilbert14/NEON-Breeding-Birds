@@ -2,12 +2,13 @@
 
 ## Decision
 
-**CONTEXT.** Breeding birds provide an effort-standardized consumer-community
-context layer for the Driver Cascade. They do not carry a sub-annual driver lag:
-NEON point counts occur only once or twice during the breeding season. The Driver
-may use pooled, opportunity-complete, rarefied richness as descriptive
-corroboration, but must not promote the detection index, raw richness, or a
-site-level association to a causal driver claim.
+**CONTEXT / HOLD DRIVER INGESTION / NO DRIVER BYTE CHANGE.** Breeding birds
+provide an effort-standardized consumer-community context layer for the Driver
+Cascade. They do not carry a sub-annual driver lag: NEON point counts occur only
+once or twice during the breeding season. The Driver may use pooled,
+opportunity-complete, rarefied richness as descriptive corroboration, but must not
+promote the detection index, raw richness, or a site-level association to a causal
+driver claim.
 
 ## Evidence contract
 
@@ -35,7 +36,12 @@ site-level association to a causal driver claim.
 - Birds per count: detection index only; never population, abundance, density,
   occupancy, or a Driver response variable.
 - Environmental channels: RELEASE-2026 air temperature, precipitation, and plant
-  phenology are contextual. Partial precipitation support remains missing.
+  phenology are contextual. Source support is temperature 47/47, precipitation
+  20/47, and phenology 47/47, but source presence does not guarantee a complete
+  estimand. BARR and TOOL each support only one of two realized bird-count months,
+  so their breeding-window temperature is `NA`, never imputed. Both remain in
+  every 47-site bird, Search-site, and export roster; only the finite-temperature
+  gradient uses 45 of 47 sites.
 
 ## Pass 7 learning
 
@@ -85,9 +91,33 @@ or singing, or use flyover-dominated counts as an on-point community signal.
 
 This package remains **CONTEXT** before and after Pass 7. The engineering and
 opportunity contracts are candidates for **ADOPT** across other observational
-apps. A synthetic 47-site schema-v4 rehearsal, independent raw/bundle oracles,
-positive/all-zero runtime lifecycles, and local responsive checks pass, but no
-Birds scientific result is promoted until the official candidate, exact manifest,
-CI, Pages, Connect, responsive/accessibility QA, and production receipts all pass
-on the exact merged revision. Driver register reconciliation is docs-only and
-occurs after those receipts; app artifact hashes stay unchanged.
+apps. The app-local release gate is now complete:
+
+- [Run 30454799557](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30454799557)
+  produced, independently validated, and published exact review candidate
+  `e3ec1cd35cc75891ac6eebd87da307d8266f8ca5`. Its full oracle covers 47 sites,
+  26,365 valid physical counts including 117 supported-zero counts, and 24,509
+  supported point-years including 79 supported-zero point-years.
+- Release identity
+  `sha256:28cf09453f25d5d8fc509d414c7549fbefec45f6f89dc611946360944976a3ac`
+  binds the exact source/environment receipts, payload, and manifest contract. The
+  exact manifest covers 121 runtime files and 91 pinned packages.
+- Recovery PR [#3](https://github.com/tgilbert14/NEON-Breeding-Birds/pull/3)
+  used exact head `ffd0f05d13a716118d1efc63a0abbbfaca7f054a`; exact-head
+  [CI 30817207865](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30817207865)
+  passed before merge. Candidate, recovery head, and merged production revision
+  `97c3e4c25b69068c7d8b3d56bc3da3bc019e5097` share tree
+  `61cd60092c87e2e127e0baeef9ae3a1f0447b8f3`, so recovery changed no candidate
+  code, data, manifest, receipt, or poster byte.
+- Exact-master [CI 30818593951](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818593951),
+  [Pages deployment 30818592101](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818592101),
+  and [production smoke 30818593688](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818593688)
+  all succeeded. Production smoke verified that Pages and Connect served the same
+  exact validated release instance.
+
+These receipts promote the app's exact source/context and opportunity contracts,
+not a causal Drivers result. The final disposition is therefore **CONTEXT / HOLD
+DRIVER INGESTION / NO DRIVER BYTE CHANGE**. A future Driver-specific decision may
+adopt the reusable opportunity contract or descriptive pooled context only after
+register/implication reconciliation in the Driver repository; this app-local docs
+closeout does not rebuild or mutate any Driver artifact.

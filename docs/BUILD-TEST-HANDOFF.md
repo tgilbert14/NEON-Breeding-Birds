@@ -1,5 +1,16 @@
 # Breeding Birds build and test handoff
 
+## 2026-08-03 · Production closeout (UTC)
+
+### Final status
+
+Pass 7 is released. The exact validated candidate, recovery pull request, merge,
+pinned CI, Pages deployment, and Pages/Connect semantic production smoke all
+completed successfully. The merged production revision is
+`97c3e4c25b69068c7d8b3d56bc3da3bc019e5097`; its tree is byte-identical to the
+validated automation candidate. The final disposition is `CONTEXT / HOLD DRIVER
+INGESTION / NO DRIVER BYTE CHANGE`.
+
 ## 2026-07-28 · Pass 7 foundation (America/Phoenix)
 
 ### Scope
@@ -114,7 +125,7 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   committed 46-site data and stale manifest still fail the new exact release gate
   at the roster check, as expected, until the official clean refresh lands.
 
-### 2026-07-28 official refresh checkpoint
+### 2026-07-28 official refresh checkpoint — Run 8
 
 - Review implementation commit `f3c8447f969126dbebbd1d69edc50ea0cd310a0b`
   was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
@@ -142,7 +153,7 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   --check` passed. The next authoritative evidence is a fresh pinned R 4.5.2
   workflow run on the corrected exact head.
 
-### 2026-07-28 official roster checkpoint
+### 2026-07-28 official roster checkpoint — Run 9
 
 - Schema correction commit `3f9340963fd930a67069d39b5461f73cd6c16ffd`
   was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
@@ -170,7 +181,7 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   science helpers, affected-file parsing, and `git diff --check` passed locally.
   An independent attribute audit found no analogous producer-side roster trap.
 
-### 2026-07-28 official evidence-order checkpoint
+### 2026-07-28 official evidence-order checkpoint — Run 10
 
 - Roster correction commit `d8b92a290a86b74d2b24af301acef45385941e05`
   was pushed to `codex/birds-pass-7`. Manually dispatched workflow run
@@ -199,15 +210,153 @@ worktree based at `76437b8a6c5d9a7cb5b2832888044b179165a91c`.
   R 4.5.3. Independent review reproduced the old coupling and confirmed the repair;
   a fresh pinned R 4.5.2 official producer remains authoritative.
 
-### Required closeout
+### 2026-07-28/29 capacity and climate checkpoints — Runs 11–13
 
-1. Run the refresh with `NEON_TOKEN` to build all 47 sites from the exact release in
-   empty staging, retain source receipts, rebuild derived indexes in the clean
-   validator, and generate the manifest there.
-2. Review the exact candidate diff on
-   `automation/breeding-birds-release-2026`; require the full pinned CI result on the
-   same head and record its run URL and outcome here.
-3. Re-read and update the Driver knowledge package, suite register, and implication
-   backlog with the verified evidence and explicit disposition.
-4. Merge only the green exact review head, deploy those bytes to Connect, and require
-   the semantic Pages/Connect smoke check to pass in production.
+- [Run 11](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30413616743)
+  (`24041e05e6c17ce7ae68b0b23e20921a3e3a6839`) completed the 47-site bird
+  stage and privacy-safe evidence replacement. Producer job `90455149138` was
+  then intentionally cancelled after 17 environmental sites because the observed
+  site-local path could not credibly fit the 300-minute cap. Validator and
+  publisher were cancelled without starting and GitHub records no artifacts.
+- [Run 12](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30419237413)
+  (`ef9ae6103b150ab0a1c376b1c408f821717ea556`) exercised deterministic
+  four-site environmental batches. Producer job `90472357337` was intentionally
+  cancelled during the fourth batch so the timeout-only correction could be used;
+  validator and publisher were cancelled without starting and no artifacts exist.
+- [Run 13](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30424003027)
+  (`7bd89bea6d14146e8b3320df40123a9be40029d0`) completed producer job
+  `90486375883`. Validator job `90538428552` independently accepted the 47 bird
+  and environmental evidence bundles, then failed the old derived rule because
+  BARR had coverage-qualified temperature support for only one of its two realized
+  count months. Publisher job `90543288734` skipped. Its three producer/evidence
+  artifacts are checkpoint evidence only, never a validated candidate.
+- Commit `2da56ee499c10064b47b468bd23330fba6b35892` finalized the observed
+  scientific boundary: BARR and TOOL remain in all 47-site bird/Search/export
+  surfaces, receive `breeding_temp_c = NA`, and are omitted only from the finite-
+  temperature gradient. No temperature is imputed and the gradient reports 45 of
+  47 sites.
+
+### 2026-07-29 official validated release — Run 14
+
+- [Run 14](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30454799557)
+  ran on exact reviewed head `2da56ee499c10064b47b468bd23330fba6b35892`.
+  Producer job `90585528840` succeeded from 13:10:35 through 17:54:57 UTC;
+  validator job `90662811450` succeeded from 17:55:05 through 18:33:05 UTC; and
+  publisher job `90672878106` succeeded from 18:33:17 through 18:33:31 UTC.
+  Every substantive step in all three jobs passed.
+- The source receipt contains the exact 47-site roster, 27,076 `brd_perpoint`
+  rows, and 373,518 `brd_countdata` rows. The bird and environmental receipt
+  SHA-256 values are respectively
+  `55f30d251428cb932ce4fb474bd394ed5a14f3f7c0d077bfb6b7fa9193db88bc`
+  and `03f4bc77a8cea49cc5160e250aff50ffb717093fe1b5dd02b73006e9da85662e`.
+  Environmental source support is temperature 47/47, precipitation 20/47, and
+  phenology 47/47.
+- The clean validator independently reconciled every raw visit and detection,
+  independently reconstructed all environmental context, rebuilt every derived
+  index twice, and passed byte equality. The final oracle covers 47 sites, 26,365
+  valid physical counts including 117 supported-zero counts, and 24,509 supported
+  point-years including 79 supported-zero point-years. It retained all 47 sites,
+  reported complete realized-month temperature at 45 sites, used common
+  rarefaction target 90 for 2017–2024, and wrote 3,632 Search taxon-site rows for
+  530 taxa across 47 sites.
+- Exact candidate/master SHA-256 values are `0107aff6ef0f2ce1514c71b1ddd0b1a91eb7831dd239e9fc725fd4c86a1d8cbf`
+  for `site_index.rds`, `9ef599a692b53e2901cf93026baa44e9bb427ce8fd2ed594cc34b8348c87ffd0`
+  for `site_climate.rds`, `c2546d0a8b377dafca4789937e6385d2daa7b0eeabe638141908d6d5c278e2f4`
+  for `site_month_clim.rds`, `ea4c5672957a7e877e291cd311d16f9489b5d1d88fe36ea175519a4db17053aa`
+  for `cross_site.rds`, and `43096b61f594f9948c31b4c3713a9d28aa9de56905511a41891aaae89fa94a67`
+  for `search_index.rds`.
+- The schema-v3 release stamp binds payload SHA-256
+  `82bbbcd2ea4e478d4e1cae60823363d6fb49f9cb72498569393ff146dcc3b252`,
+  manifest-contract SHA-256
+  `80ac001287046d72983a2e1ee4fd6c5354d75b19b4f1c451d913d7c8d210b9cf`,
+  and release ID
+  `sha256:28cf09453f25d5d8fc509d414c7549fbefec45f6f89dc611946360944976a3ac`.
+  `data/release_stamp.json` and `docs/release.json` are byte-identical with
+  SHA-256 `bec9fa507403d9cbbb34798cd39caea3463a41d43756193e9479191b8b2b0341`;
+  `manifest.json` has SHA-256
+  `14f7425c3134ee217af4ab4331a5805c72dbc23e56724207c190877df5a767d2`
+  and covers 121 runtime files plus 91 pinned packages.
+
+Run 14 uploaded four GitHub artifacts. The GitHub archive digest is the exact
+`digest` returned by the Actions artifact API; raw and environmental evidence are
+now expired by their intended three-day retention policy.
+
+- Produced candidate: `breeding-birds-produced-2026-2da56ee499c10064b47b468bd23330fba6b35892`,
+  ID `8734205246`, 57,185,399 bytes, SHA-256
+  `006d2946cfdd1ff6e7dd4f14efbd159c6ab64ac31b939400524a1d31d2c8ac24`,
+  expires 2026-08-05 17:54:48 UTC.
+- Raw evidence: `breeding-birds-raw-evidence-2026-2da56ee499c10064b47b468bd23330fba6b35892`,
+  ID `8734206153`, 2,930,241 bytes, SHA-256
+  `2b21c7af42ec0b887e8dd245c5a87973ccb5ec77b4a2e4316651ef320754b4c7`,
+  expired 2026-08-01 17:54:51 UTC.
+- Environmental evidence: `breeding-birds-env-evidence-2026-2da56ee499c10064b47b468bd23330fba6b35892`,
+  ID `8734207725`, 52,736,381 bytes, SHA-256
+  `366b988388db648baffba1dc110c4deae68d1cd21bbf89bf4e4bb81e218c59f8`,
+  expired 2026-08-01 17:54:53 UTC.
+- Validated candidate: `breeding-birds-release-2026-2da56ee499c10064b47b468bd23330fba6b35892`,
+  ID `8735378174`, 57,317,410 bytes, SHA-256
+  `bbb6802037ef8c6b558e64af9d8bb935dff4f94f5f1bd138cf66f801d81fde4b`,
+  expires 2026-08-05 18:32:53 UTC.
+
+Publisher job `90672878106` committed only the reviewed 106-file candidate scope
+(seven additions, 99 modifications) to
+`automation/breeding-birds-release-2026` as
+`e3ec1cd35cc75891ac6eebd87da307d8266f8ca5`. It did not write `master`.
+
+### 2026-08-03 recovery, merge, and production receipts
+
+- The legacy scheduled refresh had advanced `master` independently to
+  `945c1292a8bd0c1f6178036518aa0141708a63c3`. Recovery head
+  `ffd0f05d13a716118d1efc63a0abbbfaca7f054a` records the validated candidate
+  and legacy refresh as parents while retaining exact candidate tree
+  `61cd60092c87e2e127e0baeef9ae3a1f0447b8f3`; a direct comparison from
+  `e3ec1cd35cc75891ac6eebd87da307d8266f8ca5` has no changed files.
+- [Recovery PR #3](https://github.com/tgilbert14/NEON-Breeding-Birds/pull/3)
+  used exact head `ffd0f05d13a716118d1efc63a0abbbfaca7f054a`. Exact-head pinned
+  [CI run 30817207865](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30817207865),
+  job `91697774641`, checked out that SHA and passed static contracts, 128
+  scientific fixtures, privacy/environmental oracles, release-stamp verification,
+  the full 47-site opportunity oracle, the 121-file manifest, offline source,
+  positive-site/distance/all-zero server lifecycles, and committed generated-byte
+  equality.
+- PR #3 merged as `97c3e4c25b69068c7d8b3d56bc3da3bc019e5097`. The merge tree is the same
+  `61cd60092c87e2e127e0baeef9ae3a1f0447b8f3`, byte-identical to both the
+  validated candidate and recovery head.
+- Exact-master [validation run 30818593951](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818593951),
+  job `91702470321`, checked out `97c3e4c25b69068c7d8b3d56bc3da3bc019e5097`
+  and completed successfully. Its generated manifest and release stamp matched
+  the committed bytes, and the full scientific, privacy, environmental, offline,
+  and positive/all-zero runtime gates passed again.
+- [Pages run 30818592101](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818592101)
+  built and deployed exact master `97c3e4c25b69068c7d8b3d56bc3da3bc019e5097`.
+  Build job `91702473537`, deploy job `91702525670`, and report job `91702525713`
+  all succeeded; GitHub reported the environment URL as
+  <https://tgilbert14.github.io/NEON-Breeding-Birds/>. Pages artifact `8857818179`
+  is 6,015,168 bytes with SHA-256
+  `90ac4122e333dda8322ddebcfd023cea3719ba9042ca715d2ff4583ed46db713`.
+- [Production smoke run 30818593688](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/30818593688),
+  job `91702467072`, checked out exact master and succeeded. At 13:35:14 UTC it
+  verified that Pages and
+  <https://019ee116-75d9-5940-8ccd-9b8c7afabce4.share.connect.posit.cloud/>
+  both served release instance
+  `sha256:28cf09453f25d5d8fc509d414c7549fbefec45f6f89dc611946360944976a3ac`,
+  including the Pages poster marker, byte-exact Pages release stamp, Connect app
+  marker, product ID, and absence of startup-failure text.
+- Exact-head and exact-master CI both passed the static responsive-order,
+  accessibility-hook, local-asset, 47-site-scope, and Living Poster gates. The
+  earlier manual 1440/390/320 viewport and keyboard QA remains recorded above.
+  No separate post-merge manual live-browser viewport recording was available, so
+  the production claim is limited to the automated semantic/release-instance smoke.
+
+### Closeout disposition
+
+The app-local release is closed with no pending build, CI, Pages, or production
+smoke field. The Driver disposition remains `CONTEXT / HOLD DRIVER INGESTION / NO
+DRIVER BYTE CHANGE`: this release verifies the source context and reusable
+opportunity contract, but does not promote a causal bird-driver result or mutate a
+Driver artifact. Suite-level register/implication reconciliation belongs in the
+Driver Cascade repository and is intentionally outside this app-local docs-only
+commit. The next concrete action is for the Driver owner to record this exact
+`CONTEXT / HOLD DRIVER INGESTION / NO DRIVER BYTE CHANGE` disposition, release ID,
+and production receipts in the suite register and implication backlog without
+rebuilding a Driver artifact.
