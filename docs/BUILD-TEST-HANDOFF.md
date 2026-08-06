@@ -1,5 +1,34 @@
 # Breeding Birds build and test handoff
 
+## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
+
+- **Trigger/evidence:** the reviewed Birds manifest records exact `bslib`
+  `0.11.0` from the dated 2026-07-15 RSPM lane. Confirmed Small Mammal and
+  Vegetation Structure runs proved that a versionless `bslib` request now
+  resolves `0.12.0` from moving `https://cran.rstudio.com`; that same drift would
+  make Birds' exact manifest/release-stamp gate fail closed.
+- **Repair:** pinned `bslib@0.11.0` in both manifest-producing installs:
+  `Validate Breeding Birds` in `.github/workflows/ci.yml` and the independent
+  validator in `Propose immutable NEON breeding-bird refresh`. Rolled only their
+  dependency-cache namespaces to
+  `breeding-birds-geo-closure-pak-0.11.1-bslib-0.11.0-v3` and
+  `breeding-birds-validator-geo-pak-0.11.1-bslib-0.11.0-v3`; the fetch-only
+  producer cache and every post-deploy lane remain unchanged.
+- **Withheld pre-fix run:** refresh run `31066272814` started from pre-fix source
+  `7356483cf8c96e232d68e38dae27249ac9fb290f`. It is diagnostic evidence only and
+  must not publish the final release candidate even if every job finishes.
+- **Validation/scope:** Ruby safe-loaded both workflow files; static assertions
+  proved an exact `bslib@0.11.0` pin and fresh cache in each manifest producer,
+  no remaining versionless manifest lane, and the retained manifest's exact
+  `bslib` `0.11.0`. `scripts/write_manifest.R` parsed and `git diff --check`
+  passed. No gate, science, data, runtime, manifest, Pages, Connect, or Driver
+  artifact byte changed. Decision: **SUITE-PLATFORM / NONE / NO DRIVER BYTE
+  CHANGE**.
+- **Next action:** rerun the immutable refresh from the corrected exact head,
+  review only its `breeding-birds-release-2026-<corrected-source-sha>` artifact
+  and `automation/breeding-birds-release-2026` candidate, and keep every artifact
+  from `31066272814` superseded.
+
 ## 2026-08-05 · Cover badge removal source handoff (America/Phoenix)
 
 ### Scope and authority
