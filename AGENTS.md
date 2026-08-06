@@ -57,8 +57,9 @@ you did not create.
    equality, Connect's `breeding-birds-release-2026-v1` marker, and Pages'
    `breeding-birds-poster-v1` marker. HTTP 200 alone is not health.
 7. Pages and the app use the static Living Poster frame: one hook, one promise, one
-   contextual CTA, one Driver route, local responsive art, an explicit illustration /
-   data boundary, and recorded image provenance.
+   contextual CTA, one Driver route, local responsive art with accessible descriptions,
+   and durable image provenance. Keep the illustration / data boundary in that provenance;
+   the cover does not require a visible artwork badge.
 
 ## Durable closeout
 

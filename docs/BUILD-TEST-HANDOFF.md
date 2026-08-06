@@ -1,5 +1,44 @@
 # Breeding Birds build and test handoff
 
+## 2026-08-05 · Cover badge removal source handoff (America/Phoenix)
+
+### Scope and authority
+
+- Clean source baseline: `origin/master` at
+  `07c852c2ed56357b39fb0315ecca1f12ebff962b`; local source branch:
+  `codex/birds-remove-visible-art-badge`.
+- Removed only the visible editorial-illustration caption from the Pages Living
+  Poster and its in-app counterpart. The descriptive image alt text, local
+  responsive artwork, `docs/ART-PROVENANCE.md`, release scope, detection-index
+  limitation, and all scientific/data bytes remain unchanged.
+- Removed the now-dead caption CSS. `scripts/check_cover.mjs` now requires the
+  Pages/app badges and caption CSS to remain absent while continuing to verify
+  the accessible descriptions, byte-identified provenance, and scientific
+  limits. `AGENTS.md` now records that the illustration/data boundary is durable
+  provenance, not a required visible cover badge.
+
+### Local evidence and release boundary
+
+- Passed: `node scripts/check_cover.mjs`, `node --check www/app.js`,
+  `bash -n scripts/post_deploy_smoke.sh`, and `git diff --check`.
+- Diagnostic R 4.5.3 checks passed all 128 bird-helper assertions, the schema-v3
+  privacy/evidence contract, environmental helpers and batching, full 47-site
+  direct/sharded producer parity, the independent environmental candidate oracle,
+  and the adversarial deterministic release-stamp fixtures.
+- The authoritative `manifest.json`, `data/release_stamp.json`, and
+  `docs/release.json` were deliberately not rewritten on the macOS R 4.5.3 host.
+  Repository policy requires their prestamp/write/final/verify sequence in the
+  pinned R 4.5.2 / Ubuntu 22.04 validator, so this source handoff is not yet a
+  deploy candidate and production remains unchanged.
+- Next action: push the exact source commit, manually run **Propose immutable NEON
+  breeding-bird refresh** on that ref, review the generated
+  `automation/breeding-birds-release-2026` candidate, and merge only its green
+  exact head. The merge makes Connect republish watched `master`; the
+  `Verify Breeding Birds production` workflow must then prove Pages marker
+  `breeding-birds-poster-v1`, Connect marker
+  `breeding-birds-release-2026-v1`, and the exact schema-v3 release ID. No push,
+  merge, deployment, or live-production claim was made in this local pass.
+
 ## 2026-08-03 · Production closeout (UTC)
 
 ### Final status

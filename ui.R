@@ -69,9 +69,6 @@ bird_poster <- function() {
             "conducting a dawn point count."
           )
         )
-      ),
-      tags$figcaption(
-        "Generated editorial illustration · not field documentation or measured data"
       )
     )
   )
