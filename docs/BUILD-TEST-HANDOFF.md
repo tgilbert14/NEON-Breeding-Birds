@@ -1,5 +1,73 @@
 # Breeding Birds build and test handoff
 
+## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
+
+- **Trigger/evidence:** the reviewed Birds manifest records exact `bslib`
+  `0.11.0` from the dated 2026-07-15 RSPM lane. Confirmed Small Mammal and
+  Vegetation Structure runs proved that a versionless `bslib` request now
+  resolves `0.12.0` from moving `https://cran.rstudio.com`; that same drift would
+  make Birds' exact manifest/release-stamp gate fail closed.
+- **Repair:** pinned `bslib@0.11.0` in both manifest-producing installs:
+  `Validate Breeding Birds` in `.github/workflows/ci.yml` and the independent
+  validator in `Propose immutable NEON breeding-bird refresh`. Rolled only their
+  dependency-cache namespaces to
+  `breeding-birds-geo-closure-pak-0.11.1-bslib-0.11.0-v3` and
+  `breeding-birds-validator-geo-pak-0.11.1-bslib-0.11.0-v3`; the fetch-only
+  producer cache and every post-deploy lane remain unchanged.
+- **Withheld pre-fix run:** refresh run `31066272814` started from pre-fix source
+  `7356483cf8c96e232d68e38dae27249ac9fb290f`. It is diagnostic evidence only and
+  must not publish the final release candidate even if every job finishes.
+- **Validation/scope:** Ruby safe-loaded both workflow files; static assertions
+  proved an exact `bslib@0.11.0` pin and fresh cache in each manifest producer,
+  no remaining versionless manifest lane, and the retained manifest's exact
+  `bslib` `0.11.0`. `scripts/write_manifest.R` parsed and `git diff --check`
+  passed. No gate, science, data, runtime, manifest, Pages, Connect, or Driver
+  artifact byte changed. Decision: **SUITE-PLATFORM / NONE / NO DRIVER BYTE
+  CHANGE**.
+- **Next action:** rerun the immutable refresh from the corrected exact head,
+  review only its `breeding-birds-release-2026-<corrected-source-sha>` artifact
+  and `automation/breeding-birds-release-2026` candidate, and keep every artifact
+  from `31066272814` superseded.
+
+## 2026-08-05 · Cover badge removal source handoff (America/Phoenix)
+
+### Scope and authority
+
+- Clean source baseline: `origin/master` at
+  `07c852c2ed56357b39fb0315ecca1f12ebff962b`; local source branch:
+  `codex/birds-remove-visible-art-badge`.
+- Removed only the visible editorial-illustration caption from the Pages Living
+  Poster and its in-app counterpart. The descriptive image alt text, local
+  responsive artwork, `docs/ART-PROVENANCE.md`, release scope, detection-index
+  limitation, and all scientific/data bytes remain unchanged.
+- Removed the now-dead caption CSS. `scripts/check_cover.mjs` now requires the
+  Pages/app badges and caption CSS to remain absent while continuing to verify
+  the accessible descriptions, byte-identified provenance, and scientific
+  limits. `AGENTS.md` now records that the illustration/data boundary is durable
+  provenance, not a required visible cover badge.
+
+### Local evidence and release boundary
+
+- Passed: `node scripts/check_cover.mjs`, `node --check www/app.js`,
+  `bash -n scripts/post_deploy_smoke.sh`, and `git diff --check`.
+- Diagnostic R 4.5.3 checks passed all 128 bird-helper assertions, the schema-v3
+  privacy/evidence contract, environmental helpers and batching, full 47-site
+  direct/sharded producer parity, the independent environmental candidate oracle,
+  and the adversarial deterministic release-stamp fixtures.
+- The authoritative `manifest.json`, `data/release_stamp.json`, and
+  `docs/release.json` were deliberately not rewritten on the macOS R 4.5.3 host.
+  Repository policy requires their prestamp/write/final/verify sequence in the
+  pinned R 4.5.2 / Ubuntu 22.04 validator, so this source handoff is not yet a
+  deploy candidate and production remains unchanged.
+- Next action: push the exact source commit, manually run **Propose immutable NEON
+  breeding-bird refresh** on that ref, review the generated
+  `automation/breeding-birds-release-2026` candidate, and merge only its green
+  exact head. The merge makes Connect republish watched `master`; the
+  `Verify Breeding Birds production` workflow must then prove Pages marker
+  `breeding-birds-poster-v1`, Connect marker
+  `breeding-birds-release-2026-v1`, and the exact schema-v3 release ID. No push,
+  merge, deployment, or live-production claim was made in this local pass.
+
 ## 2026-08-03 · Production closeout (UTC)
 
 ### Final status

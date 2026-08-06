@@ -212,20 +212,6 @@
       object-fit: cover;
       object-position: 69% center;
     }
-    .art-note {
-      position: absolute;
-      z-index: 3;
-      right: 4vw;
-      bottom: 22px;
-      margin: 0;
-      padding: 5px 10px;
-      border: 1px solid rgba(255, 245, 220, .62);
-      border-radius: 999px;
-      color: var(--paper);
-      background: rgba(12, 32, 53, .9);
-      font-size: .68rem;
-      letter-spacing: .035em;
-    }
     .compact-footer {
       border-top: 1px solid var(--line);
       color: var(--paper-2);
@@ -271,7 +257,6 @@
       .poster-art { order: 1; width: 100%; height: 42svh; min-height: 300px; margin: 0; }
       .poster-art::before { background: none; }
       .poster-art img { height: 42svh; min-height: 300px; object-position: 69% 50%; }
-      .art-note { right: 16px; bottom: 8px; left: 16px; width: fit-content; max-width: calc(100% - 32px); font-size: .6rem; line-height: 1.25; }
       .poster-copy { order: 2; width: calc(100% - 32px); align-self: center; padding: 26px 0 38px; }
       .eyebrow { margin-bottom: 13px; font-size: .64rem; }
       h1 { font-size: clamp(3.5rem, 18vw, 5.2rem); line-height: .84; }
@@ -298,7 +283,7 @@
       .button:hover { transform: none; }
     }
     @media (forced-colors: active) {
-      .poster, .button, .driver-route, .skip, .art-note { border: 2px solid ButtonText; }
+      .poster, .button, .driver-route, .skip { border: 2px solid ButtonText; }
       .button, .driver-route, .skip { forced-color-adjust: auto; }
     }
   </style>
@@ -331,7 +316,6 @@
             fetchpriority="high" decoding="async"
             alt="Screenprint illustration of a singing bird above a field observer conducting a dawn point count.">
         </picture>
-        <figcaption class="art-note">Generated editorial illustration · not field documentation or measured data</figcaption>
       </figure>
     </div>
   </main>
