@@ -642,7 +642,7 @@ server <- function(input, output, session) {
     # warm field-guide ramp (parchment -> goldfinch -> rust -> deep) = "more birds, warmer"
     pal <- leaflet::colorNumeric(c("#f3e9d2","#e8a317","#c1502e","#7a2e16"), domain=dom)
     rr <- range(g$richness, na.rm=TRUE); g$radius <- if (diff(rr)>0) 7 + 13*(g$richness-rr[1])/diff(rr) else 11
-    leaflet::leaflet(g) %>% leaflet::addProviderTiles(input$view %||% "Esri.WorldTopoMap") %>%
+    leaflet::leaflet(g) %>% add_suite_basemap(input$view %||% "Esri.WorldTopoMap") %>%
       leaflet::addCircleMarkers(lng=~lng, lat=~lat, radius=~radius, fillColor=pal(val), color="#fff", weight=1, fillOpacity=0.85,
         layerId=~plotID,
         label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", short_point(plotID), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
@@ -708,7 +708,7 @@ server <- function(input, output, session) {
   # ---- Splash: national site picker (the continental story, pre-site) -------
   output$nationalPicker <- leaflet::renderLeaflet({
     d <- SEARCH_SITES
-    if (is.null(d) || !nrow(d)) return(leaflet::leaflet() %>% leaflet::addProviderTiles("CartoDB.Positron") %>% leaflet::setView(-96, 40, 3))
+    if (is.null(d) || !nrow(d)) return(leaflet::leaflet() %>% add_suite_basemap("CartoDB.Positron") %>% leaflet::setView(-96, 40, 3))
     meta <- neon_sites[match(d$site, neon_sites$site), , drop = FALSE]
     d$lat <- meta$lat; d$lng <- meta$lng
     d$biome <- biome_of(d$site); d$bcol <- biome_col(d$biome); d$blab <- unname(BIOME_LAB[d$biome])
@@ -720,7 +720,7 @@ server <- function(input, output, session) {
                    fmt_int(d$T_counts), fmt_int(d$n_points_window), d$birds_per_count_window,
                    ifelse(is.finite(d$coverage), paste0(round(100 * d$coverage), "%"), "unavailable"),
                    gsub("'", "", d$name), d$site, d$site)
-    leaflet::leaflet(d) %>% leaflet::addProviderTiles("CartoDB.Positron") %>% leaflet::setView(-96, 41, 3) %>%
+    leaflet::leaflet(d) %>% add_suite_basemap("CartoDB.Positron") %>% leaflet::setView(-96, 41, 3) %>%
       leaflet::addCircleMarkers(lng = ~lng, lat = ~lat, radius = ~rad, fillColor = ~bcol, color = "#fff", weight = 1, fillOpacity = 0.85,
         label = ~lapply(sprintf("<b>%s</b> · %s<br>%s · %s rarefied species · 2017–2024", site, name, blab, S_rare), htmltools::HTML), popup = pop) %>%
       leaflet::addLegend("bottomright", colors = unname(BIOME_COL), labels = unname(BIOME_LAB), title = "Biome", opacity = 0.9)
