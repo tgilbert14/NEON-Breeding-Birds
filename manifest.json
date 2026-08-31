@@ -3370,22 +3370,22 @@
       "checksum": "bd375175c96242c45b4530eac233570d"
     },
     "R/bird_helpers.R": {
-      "checksum": "c0013bd99faa32d59cc84832fcad2c54"
+      "checksum": "41a04b13e5215048deb3eed8a918b0b4"
     },
     "R/site_metadata.R": {
       "checksum": "876fb1ddf81b732313aa763ce1fa6023"
     },
     "server.R": {
-      "checksum": "8da81f97edeb31a312d0ef24f6bbfebc"
+      "checksum": "07ab150dae86942cddd571f124a44099"
     },
     "ui.R": {
-      "checksum": "8538702eebde1f412b3279dc52c24f85"
+      "checksum": "2c67cf4f69fe27b501c8ffe67c3ef939"
     },
     "www/app.js": {
       "checksum": "a24a0bf07773a3f6afe4d16b47be4fd4"
     },
     "www/bird.css": {
-      "checksum": "81ce12924cc8491303830588ffd8abdf"
+      "checksum": "8bc5805047bd2901188ac9887996570d"
     },
     "www/pincards.js": {
       "checksum": "b89f15694261a4d17a440121d8026c37"
