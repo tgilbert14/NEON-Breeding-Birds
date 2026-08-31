@@ -3257,7 +3257,7 @@
       "checksum": "7a11ae0899e9b06b817785f5c82f242b"
     },
     "data/release_stamp.json": {
-      "checksum": "64d8fa869b71c2d105c1936cd81e2a5d"
+      "checksum": "75edfbaa9364c0c6734eb4aacfc19e67"
     },
     "data/search_index.rds": {
       "checksum": "12352f494ef85add7a7527c1bd52c914"
@@ -3416,7 +3416,7 @@
       "checksum": "2375f1d67725e095e4f94d93675cc539"
     },
     "global.R": {
-      "checksum": "c6902c13b769e9faa10e705350feddf4"
+      "checksum": "bcc3c307eb6d072faa7e8dfd9d89521a"
     },
     "R/bird_evidence_contract.R": {
       "checksum": "500a830abb447bb37ac104c7d362e555"
@@ -3431,7 +3431,7 @@
       "checksum": "810a3dbc4898e3124c3ae1d1bcbf0297"
     },
     "server.R": {
-      "checksum": "af997709f93443ab21b9e10f9544ed0d"
+      "checksum": "6270d2eab236e0499488cc3d9b8d6dd4"
     },
     "ui.R": {
       "checksum": "081b03535634cd35b9a2ef782e81c969"
