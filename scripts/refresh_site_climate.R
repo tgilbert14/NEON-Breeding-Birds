@@ -1,135 +1,133 @@
-# ===========================================================================
-# refresh_site_climate.R — precompute the cross-site CLIMATE tables the app
-# loads at boot, so it never scans 46 env files inside a reactive.
-#
-# Reads, per site:
-#   data/env/<SITE>.rds            — monthly precip/temp/phenology (refresh_env_data.R)
-#   ../bird-data-fetch/<SITE>_raw.rds — raw brd_countdata, for the REALIZED count
-#                                       months (the bundled obs keeps only year+bout)
-#
-# Writes two tiny tables:
-#   data/site_climate.rds   — ONE row per site (the gradient + headline climate):
-#     site, lat, lng, mat_c (mean annual air temp, 46/46 sites),
-#     breeding_temp_c (mean temp over the site's realized count months),
-#     temp_amp_c (warmest-minus-coldest month, annual amplitude),
-#     peak_greenup_pct, greenup_peak_month, greenup_peak_lab,
-#     precip_annual_mm (NA where NEON has no gauge), n_precip_months,
-#     count_month_min/max, count_months_lab (the realized breeding window),
-#     env_year_min/max (so the UI can say "NEON record", not "30-yr normal").
-#   data/site_month_clim.rds — site x month (1-12) climatology for the seasonal
-#     band: temp_c, greenup_pct (averaged across years; NA where <2 obs).
-#
-# DEFENSIVE per the Fauna/playbook review: precip is present at only ~19/46
-# sites, so it is OPTIONAL and never imputed; a missing env or raw file degrades
-# to NA, never a crash. Run:  Rscript scripts/refresh_site_climate.R
-# ===========================================================================
-suppressMessages({ library(dplyr); library(tibble) })
+# Build cross-site contextual climate tables from the immutable RELEASE-2026
+# environmental bundles and the validated bird visit ledger. Environmental
+# values are context, never bird measurements or causal drivers.
+
+suppressPackageStartupMessages({ library(dplyr); library(tibble) })
 source("R/site_metadata.R")
+source("R/env_helpers.R")
 
-ENV_DIR <- "data/env"; RAW_DIR <- "../bird-data-fetch"
-MON_LAB <- c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+ROOT <- Sys.getenv("BIRD_OUTPUT_ROOT", ".")
+ENV_DIR <- file.path(ROOT, "data", "env")
+SITE_DIR <- file.path(ROOT, "data", "sites")
+CLIMATE_OUT <- file.path(ROOT, "data", "site_climate.rds")
+MONTH_OUT <- file.path(ROOT, "data", "site_month_clim.rds")
+MONTH_LABELS <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-env_files <- list.files(ENV_DIR, pattern = "\\.rds$", full.names = TRUE)
-if (!length(env_files)) stop("No env files in ", ENV_DIR, " — copy data/env/<SITE>.rds first.")
+env_files <- list.files(ENV_DIR, pattern = "^[A-Z]{4}[.]rds$", full.names = TRUE)
+env_codes <- sort(sub("[.]rds$", "", basename(env_files)))
+expected <- sort(as.character(neon_sites$site))
+if (!identical(env_codes, expected) || length(env_codes) != 47L)
+  stop("Climate build requires the exact 47-site RELEASE-2026 environmental roster.", call. = FALSE)
 
-# CI-safety: keep the realized count window from the last build when the raw
-# bird files aren't present this run (e.g. an env-only monthly top-up). Bird
-# point counts are annual, so the window doesn't drift month-to-month.
-PREV <- tryCatch(as.data.frame(readRDS("data/site_climate.rds")), error = function(e) NULL)
-
-# realized count months for a site, from the raw countdata startDate (build-time
-# only; the runtime bundle deliberately doesn't carry the date). Returns integer
-# months present, or NULL if the raw file is missing.
 count_months <- function(site) {
-  f <- file.path(RAW_DIR, paste0(site, "_raw.rds"))
-  if (!file.exists(f)) return(NULL)
-  cd <- tryCatch(readRDS(f)$brd_countdata, error = function(e) NULL)
-  if (is.null(cd) || !"startDate" %in% names(cd) || !nrow(cd)) return(NULL)
-  m <- suppressWarnings(as.integer(substr(as.character(cd$startDate), 6, 7)))
-  m <- m[is.finite(m)]; if (!length(m)) return(NULL)
-  m
+  path <- file.path(SITE_DIR, paste0(site, ".rds"))
+  if (!file.exists(path)) stop("Missing site bundle for climate window: ", site, call. = FALSE)
+  visits <- readRDS(path)$visits
+  tryCatch(
+    env_realized_visit_months(
+      visits, BIRD_CROSS_SITE_YEAR_MIN, BIRD_CROSS_SITE_YEAR_MAX),
+    error = function(error) stop(site, ": ", conditionMessage(error), call. = FALSE))
 }
 
-# label a contiguous-ish month set, e.g. c(5,6,7) -> "May-Jul". Use – (en-dash)
-# via Unicode escape so the literal is locale-safe: R-4.1.1 reading this UTF-8 source
-# under a Windows-1252 locale would otherwise mojibake a raw "–" into "â€“".
-month_span_lab <- function(mons) {
-  if (is.null(mons) || !length(mons)) return(NA_character_)
-  r <- range(mons); if (r[1] == r[2]) MON_LAB[r[1]] else paste0(MON_LAB[r[1]], intToUtf8(8211L), MON_LAB[r[2]])
+month_set_label <- function(months) {
+  labels <- MONTH_LABELS[sort(unique(months))]
+  if (length(labels) == 1L) return(labels)
+  if (length(labels) == 2L) return(paste(labels, collapse = " & "))
+  paste0(paste(labels[-length(labels)], collapse = ", "), " & ", labels[[length(labels)]])
 }
 
-clim_rows <- list(); month_rows <- list()
-for (f in env_files) {
-  s <- sub("\\.rds$", "", basename(f))
-  e <- tryCatch(tibble::as_tibble(readRDS(f)), error = function(ee) NULL)
-  if (is.null(e) || !nrow(e)) next
-  e$mon <- suppressWarnings(as.integer(substr(e$ym, 6, 7)))
-  e$yr  <- substr(e$ym, 1, 4)
+climate_rows <- list(); month_rows <- list()
+for (path in env_files) {
+  site <- sub("[.]rds$", "", basename(path))
+  env <- tibble::as_tibble(readRDS(path))
+  required <- c("ym", "temp_c", "greenup_pct", "precip_mm")
+  if (!nrow(env) || !all(required %in% names(env)))
+    stop(site, " has an empty or malformed environmental bundle.", call. = FALSE)
+  env$mon <- suppressWarnings(as.integer(substr(env$ym, 6, 7)))
+  env$year <- suppressWarnings(as.integer(substr(env$ym, 1, 4)))
 
-  # month climatology (average across years); NA where <2 observations
-  mc <- e %>% group_by(mon) %>% summarise(
-      temp_c = if (sum(!is.na(temp_c)) >= 2) mean(temp_c, na.rm = TRUE) else NA_real_,
-      greenup_pct = if (sum(!is.na(greenup_pct)) >= 2) mean(greenup_pct, na.rm = TRUE) else NA_real_,
-      .groups = "drop") %>%
-    right_join(tibble(mon = 1:12), by = "mon") %>% arrange(mon)
-  mc$site <- s; mc$month_lab <- MON_LAB[mc$mon]
-  month_rows[[s]] <- mc[, c("site","mon","month_lab","temp_c","greenup_pct")]
+  monthly <- env %>%
+    dplyr::group_by(.data$mon) %>%
+    dplyr::summarise(
+      temp_c = if (sum(!is.na(.data$temp_c)) >= 2) mean(.data$temp_c, na.rm = TRUE) else NA_real_,
+      greenup_pct = if (sum(!is.na(.data$greenup_pct)) >= 2) mean(.data$greenup_pct, na.rm = TRUE) else NA_real_,
+      .groups = "drop"
+    ) %>%
+    dplyr::right_join(tibble::tibble(mon = 1:12), by = "mon") %>%
+    dplyr::arrange(.data$mon)
+  monthly$site <- site
+  monthly$month_lab <- MONTH_LABELS[monthly$mon]
+  month_rows[[site]] <- monthly[, c("site", "mon", "month_lab", "temp_c", "greenup_pct")]
 
-  # annual climate
-  mat <- mean(e$temp_c, na.rm = TRUE)
-  temp_amp <- if (any(!is.na(mc$temp_c))) diff(range(mc$temp_c, na.rm = TRUE)) else NA_real_
-  gp_i <- if (any(!is.na(mc$greenup_pct))) which.max(replace(mc$greenup_pct, is.na(mc$greenup_pct), -Inf)) else NA_integer_
-  peak_gp  <- if (!is.na(gp_i)) mc$greenup_pct[gp_i] else NA_real_
-  peak_gpm <- if (!is.na(gp_i)) mc$mon[gp_i] else NA_integer_
+  if (!any(is.finite(monthly$temp_c))) stop(site, " has no usable RELEASE-2026 temperature context.")
+  mat <- mean(env$temp_c, na.rm = TRUE)
+  amplitude <- diff(range(monthly$temp_c, na.rm = TRUE))
+  peak_index <- if (any(!is.na(monthly$greenup_pct)))
+    which.max(replace(monthly$greenup_pct, is.na(monthly$greenup_pct), -Inf)) else NA_integer_
+  peak_greenup <- if (is.na(peak_index)) NA_real_ else monthly$greenup_pct[[peak_index]]
+  peak_month <- if (is.na(peak_index)) NA_integer_ else monthly$mon[[peak_index]]
 
-  # annual precip: only where NEON actually has a gauge (>=6 months of data)
-  pr_by_yr <- e %>% group_by(yr) %>% summarise(n = sum(!is.na(precip_mm)),
-                 tot = sum(precip_mm, na.rm = TRUE), .groups = "drop") %>% filter(n >= 6)
-  precip_annual <- if (nrow(pr_by_yr)) round(mean(pr_by_yr$tot)) else NA_real_
-  n_precip <- sum(!is.na(e$precip_mm))
+  annual_precip <- env_complete_annual_precip(env$year, env$mon, env$precip_mm)
+  precip <- if (nrow(annual_precip)) round(mean(annual_precip$total)) else NA_real_
 
-  # realized count window + breeding-season temp from those months
-  cm <- count_months(s)
-  pr <- if (!is.null(PREV)) PREV[PREV$site == s, , drop = FALSE] else NULL
-  if (is.null(cm) && !is.null(pr) && nrow(pr) && !is.na(pr$count_month_min)) {
-    cm_min <- as.integer(pr$count_month_min); cm_max <- as.integer(pr$count_month_max)
-    cm_lab <- as.character(pr$count_months_lab); bwin <- seq(cm_min, cm_max)   # raw absent -> keep last window
-  } else {
-    cm_min <- if (!is.null(cm)) min(cm) else NA_integer_
-    cm_max <- if (!is.null(cm)) max(cm) else NA_integer_
-    cm_lab <- month_span_lab(cm)
-    bwin <- if (!is.null(cm)) sort(unique(cm)) else 5:7   # fallback: protocol window
-  }
-  breeding_temp <- if (any(!is.na(mc$temp_c[mc$mon %in% bwin]))) mean(mc$temp_c[mc$mon %in% bwin], na.rm = TRUE) else NA_real_
-
-  meta <- neon_sites[neon_sites$site == s, ]
-  clim_rows[[s]] <- tibble(
-    site = s,
-    lat = if (nrow(meta)) meta$lat[1] else NA_real_,
-    lng = if (nrow(meta)) meta$lng[1] else NA_real_,
-    domain = if (nrow(meta)) meta$domain[1] else NA_character_,
+  realized <- count_months(site)
+  breeding_months <- sort(unique(realized))
+  breeding_support <- env_realized_window_temperature(monthly, breeding_months)
+  meta <- neon_sites[neon_sites$site == site, , drop = FALSE]
+  climate_rows[[site]] <- tibble::tibble(
+    site = site,
+    lat = meta$lat[[1]],
+    lng = meta$lng[[1]],
+    domain = meta$domain[[1]],
     mat_c = round(mat, 1),
-    breeding_temp_c = round(breeding_temp, 1),
-    temp_amp_c = round(temp_amp, 1),
-    peak_greenup_pct = round(peak_gp),
-    greenup_peak_month = peak_gpm,
-    greenup_peak_lab = if (!is.na(peak_gpm)) MON_LAB[peak_gpm] else NA_character_,
-    precip_annual_mm = precip_annual,
-    n_precip_months = n_precip,
-    count_month_min = cm_min,
-    count_month_max = cm_max,
-    count_months_lab = cm_lab,
-    env_year_min = suppressWarnings(min(as.integer(e$yr), na.rm = TRUE)),
-    env_year_max = suppressWarnings(max(as.integer(e$yr), na.rm = TRUE)))
+    breeding_temp_c = round(breeding_support$temp_c, 1),
+    n_realized_months = breeding_support$n_realized_months,
+    n_supported_realized_months = breeding_support$n_supported_realized_months,
+    analysis_year_min = BIRD_CROSS_SITE_YEAR_MIN,
+    analysis_year_max = BIRD_CROSS_SITE_YEAR_MAX,
+    temp_amp_c = round(amplitude, 1),
+    peak_greenup_pct = round(peak_greenup),
+    greenup_peak_month = peak_month,
+    greenup_peak_lab = if (is.na(peak_month)) NA_character_ else MONTH_LABELS[[peak_month]],
+    precip_annual_mm = precip,
+    n_precip_months = sum(!is.na(env$precip_mm)),
+    n_complete_precip_years = nrow(annual_precip),
+    count_months = paste(breeding_support$realized_months, collapse = ","),
+    count_month_min = min(realized),
+    count_month_max = max(realized),
+    count_months_lab = month_set_label(breeding_support$realized_months),
+    env_year_min = min(env$year, na.rm = TRUE),
+    env_year_max = max(env$year, na.rm = TRUE)
+  )
 }
 
-clim <- bind_rows(clim_rows)
-mclim <- bind_rows(month_rows)
-saveRDS(clim,  "data/site_climate.rds",    compress = "xz")
-saveRDS(mclim, "data/site_month_clim.rds", compress = "xz")
-
-cat(sprintf("site_climate.rds: %d sites | temp 46/46, precip %d sites, greenup %d sites\n",
-            nrow(clim), sum(!is.na(clim$precip_annual_mm)), sum(!is.na(clim$peak_greenup_pct))))
-cat(sprintf("realized count window known for %d/%d sites\n",
-            sum(!is.na(clim$count_months_lab)), nrow(clim)))
-print(clim[order(clim$mat_c), c("site","mat_c","breeding_temp_c","peak_greenup_pct","greenup_peak_lab","count_months_lab","precip_annual_mm")], n = nrow(clim))
+climate <- dplyr::bind_rows(climate_rows)
+monthly_climate <- dplyr::bind_rows(month_rows)
+breeding_complete <-
+  climate$n_supported_realized_months == climate$n_realized_months
+if (nrow(climate) != 47L ||
+    any(climate$n_realized_months < 1L) ||
+    any(climate$n_supported_realized_months < 0L |
+          climate$n_supported_realized_months > climate$n_realized_months) ||
+    any(breeding_complete & !is.finite(climate$breeding_temp_c)) ||
+    any(!breeding_complete &
+          (!is.na(climate$breeding_temp_c) | is.nan(climate$breeding_temp_c))) ||
+    any(is.na(climate$count_months) | !nzchar(climate$count_months)) ||
+    any(is.na(climate$count_months_lab) | !nzchar(climate$count_months_lab)))
+  stop("Climate output failed exact roster, temperature, or realized-window validation.", call. = FALSE)
+attr(climate, "release") <- "RELEASE-2026"
+attr(monthly_climate, "release") <- "RELEASE-2026"
+saveRDS(climate, CLIMATE_OUT, compress = "xz", version = 3)
+saveRDS(monthly_climate, MONTH_OUT, compress = "xz", version = 3)
+unsupported <- as.character(climate$site[!breeding_complete])
+cat(sprintf(
+  paste0(
+    "OK: wrote climate context for 47 sites; complete realized-month temperature ",
+    "at %d sites; precipitation summaries at %d sites; green-up at %d sites; ",
+    "temperature unavailable without imputation at: %s.\n"
+  ),
+  sum(breeding_complete), sum(!is.na(climate$precip_annual_mm)),
+  sum(!is.na(climate$peak_greenup_pct)),
+  if (length(unsupported)) paste(unsupported, collapse = ", ") else "none"
+))

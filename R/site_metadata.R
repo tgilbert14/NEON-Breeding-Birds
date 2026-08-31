@@ -5,6 +5,12 @@
 # Source: NEON field site descriptions (https://www.neonscience.org/field-sites)
 # ---------------------------------------------------------------------------
 
+# Shared cross-site analysis window. RELEASE-2026 includes earlier startup
+# years, but NEON's own occupancy workflow excludes pre-2017 surveys because
+# point counts were not conducted consistently at all sites then.
+BIRD_CROSS_SITE_YEAR_MIN <- 2017L
+BIRD_CROSS_SITE_YEAR_MAX <- 2024L
+
 neon_sites <- tibble::tribble(
   ~site,  ~domain, ~name,                                          ~state, ~lat,     ~lng,      ~bio,
   "HARV", "D01",  "Harvard Forest",                                "MA",   42.5369,  -72.1727,  "Transition hardwood forest of central Massachusetts, with maple, oak, and hemlock; NEON's flagship Northeast forest.",
@@ -52,14 +58,15 @@ neon_sites <- tibble::tribble(
   "TOOL", "D18",  "Toolik Lake",                                   "AK",   68.6611, -149.3705,  "Arctic foothills tundra on Alaska's North Slope.",
   "BONA", "D19",  "Caribou-Poker Creeks Research Watershed",       "AK",   65.1540, -147.5026,  "Boreal black-spruce forest and permafrost of interior Alaska.",
   "DEJU", "D19",  "Delta Junction",                                "AK",   63.8811, -145.7514,  "Boreal forest and fire mosaic of interior Alaska.",
-  "HEAL", "D19",  "Healy",                                         "AK",   63.8758, -149.2133,  "Boreal-to-tundra transition near Denali, Alaska."
+  "HEAL", "D19",  "Healy",                                         "AK",   63.8758, -149.2133,  "Boreal-to-tundra transition near Denali, Alaska.",
+  "PUUM", "D20",  "Pu'u Maka'ala Natural Area Reserve",             "HI",   19.5531, -155.3173,  "Montane wet forest on Hawai'i Island, with native 'ohi'a canopy, tree ferns, and frequent cloud and rain."
 )
 
 # full state name for grouping the picker
 state_names <- c(
   AK = "Alaska", AL = "Alabama", AZ = "Arizona", CA = "California", CO = "Colorado",
   FL = "Florida", GA = "Georgia", KS = "Kansas", MA = "Massachusetts", MD = "Maryland",
-  MI = "Michigan", ND = "North Dakota", NH = "New Hampshire", NM = "New Mexico",
+  HI = "Hawai'i", MI = "Michigan", ND = "North Dakota", NH = "New Hampshire", NM = "New Mexico",
   OK = "Oklahoma", PR = "Puerto Rico", TN = "Tennessee", TX = "Texas", UT = "Utah",
   VA = "Virginia", WA = "Washington", WI = "Wisconsin", WY = "Wyoming"
 )

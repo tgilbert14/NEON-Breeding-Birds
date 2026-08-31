@@ -1,0 +1,323 @@
+/* In-app Living Poster: a compact, static echo of the public Birds cover. */
+:root {
+  --brd-poster-night: #152531;
+  --brd-poster-night-2: #203746;
+  --brd-poster-paper: #f5e8c8;
+  --brd-poster-paper-2: #ddcfad;
+  --brd-poster-gold: #f2bc58;
+  --brd-poster-gold-soft: #ffd986;
+  --brd-poster-rust: #df7042;
+  --brd-poster-sky: #8bb9d1;
+  --brd-poster-line: rgba(245, 232, 200, .2);
+}
+
+.app-skip {
+  position: fixed;
+  z-index: 5000;
+  top: -80px;
+  left: 16px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: var(--brd-poster-night);
+  background: var(--brd-poster-paper);
+  font-weight: 800;
+  text-decoration: none;
+  transition: top .16s ease;
+}
+.app-skip:focus { top: 16px; }
+.app-main:focus { outline: none; }
+
+/* Remove the old centered card around the first-run experience. */
+.splash.splash-map {
+  max-width: 1120px;
+  padding: 0 24px 28px;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.brd-poster {
+  min-height: 470px;
+  display: grid;
+  grid-template-columns: minmax(0, .42fr) minmax(0, .58fr);
+  overflow: hidden;
+  isolation: isolate;
+  text-align: left;
+  color: var(--brd-poster-paper);
+  background:
+    radial-gradient(circle at 10% 90%, rgba(242, 188, 88, .13), transparent 29%),
+    linear-gradient(150deg, var(--brd-poster-night-2), var(--brd-poster-night) 52%);
+  border: 1px solid rgba(21, 37, 49, .2);
+  border-radius: 24px;
+  box-shadow: 0 28px 72px rgba(21, 37, 49, .24);
+}
+
+.brd-poster-copy {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+  padding: 28px 38px 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.brd-poster-topline {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 30px;
+  border-bottom: 1px solid var(--brd-poster-line);
+}
+
+.brd-poster-brand {
+  color: var(--brd-poster-paper);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.brd-poster-brand::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  margin-right: 8px;
+  border: 1px solid var(--brd-poster-gold);
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+.brd-poster-nav { display: flex; }
+.brd-poster-suite-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--brd-poster-paper-2);
+  font-size: 9.5px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brd-poster-suite-link strong { margin-left: 3px; color: var(--brd-poster-sky); }
+.brd-poster-suite-link span { color: var(--brd-poster-rust); }
+.brd-poster-suite-link:hover strong { color: #cce8f2; }
+.brd-poster-suite-link:focus-visible {
+  outline: 3px solid var(--brd-poster-gold);
+  outline-offset: 3px;
+}
+
+.brd-poster-app {
+  margin-bottom: 13px;
+  color: var(--brd-poster-sky);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.brd-poster h1 {
+  max-width: 520px;
+  margin: 0 0 22px;
+  color: var(--brd-poster-paper);
+  font-family: "Fraunces", Iowan Old Style, Palatino Linotype, Book Antiqua, Palatino, Georgia, serif;
+  font-size: clamp(48px, 5.6vw, 76px);
+  font-weight: 600;
+  line-height: .84;
+  letter-spacing: -.06em;
+  text-wrap: balance;
+}
+.brd-poster h1 span,
+.brd-poster h1 em { display: block; }
+.brd-poster h1 em {
+  color: var(--brd-poster-gold);
+  font-style: normal;
+  font-weight: 600;
+}
+.splash .brd-poster-promise {
+  max-width: 430px;
+  margin: 0 0 24px;
+  color: var(--brd-poster-paper-2);
+  font-size: 16px;
+  line-height: 1.45;
+}
+.brd-poster-cta {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35em;
+  box-sizing: border-box;
+  padding: 0 22px;
+  border-radius: 999px;
+  color: var(--brd-poster-night);
+  background: var(--brd-poster-gold);
+  box-shadow: 0 10px 28px rgba(242, 188, 88, .18);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform .16s ease, background .16s ease;
+}
+.brd-poster-cta:hover {
+  color: var(--brd-poster-night);
+  background: var(--brd-poster-gold-soft);
+  transform: translateY(-2px);
+}
+.brd-poster-cta:focus-visible {
+  outline: 3px solid var(--brd-poster-paper);
+  outline-offset: 4px;
+}
+.splash .brd-poster-note {
+  margin: 15px 0 0;
+  color: rgba(245, 232, 200, .64);
+  font-size: 10.5px;
+  line-height: 1.35;
+  letter-spacing: .02em;
+}
+
+.brd-poster-art {
+  position: relative;
+  min-width: 0;
+  min-height: 470px;
+  margin: 0 0 0 -4vw;
+  overflow: hidden;
+  background: var(--brd-poster-night-2);
+}
+.brd-poster-art::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--brd-poster-night) 0%, rgba(21, 37, 49, .76) 11%, transparent 38%),
+    linear-gradient(0deg, rgba(21, 37, 49, .38), transparent 27%);
+}
+.brd-poster-art picture {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.brd-poster-art img {
+  width: 100%;
+  height: 100%;
+  min-height: 470px;
+  display: block;
+  object-fit: cover;
+  object-position: 64% 52%;
+  filter: saturate(.98) contrast(1.02);
+}
+.picker-start {
+  max-width: 760px;
+  margin: 34px auto 8px;
+  text-align: center;
+}
+.picker-start:focus-visible {
+  outline: 3px solid var(--rust);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+.picker-start-kicker {
+  margin-bottom: 8px;
+  color: var(--gold-ink);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+.picker-start h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(27px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+.splash .picker-start p {
+  max-width: 620px;
+  margin: 10px auto 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .splash.splash-map { padding: 0 12px 18px; }
+  .brd-poster {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .brd-poster-art {
+    order: 1;
+    width: 100%;
+    min-height: 300px;
+    height: 42svh;
+    margin: 0;
+  }
+  .brd-poster-art img { min-height: 300px; height: 42svh; object-position: 69% 53%; }
+  .brd-poster-art::after {
+    background: linear-gradient(0deg, var(--brd-poster-night) 0%, transparent 30%);
+  }
+  .brd-poster-copy {
+    order: 2;
+    width: 100%;
+    padding: 28px 24px 28px;
+  }
+  .brd-poster-topline { margin-bottom: 20px; }
+  .brd-poster h1 { max-width: 590px; font-size: clamp(48px, 13vw, 70px); }
+  .picker-start { margin-top: 28px; }
+}
+
+@media (max-width: 420px) and (max-height: 860px) {
+  .brd-poster { border-radius: 19px; }
+  .brd-poster-art,
+  .brd-poster-art img { min-height: 34svh; height: 34svh; }
+  .brd-poster-copy { padding: 23px 20px 24px; }
+  .brd-poster-topline { gap: 10px; margin-bottom: 18px; }
+  .brd-poster-brand,
+  .brd-poster-suite-link { font-size: 8.7px; }
+  .brd-poster h1 { margin-bottom: 16px; font-size: clamp(44px, 14vw, 56px); }
+  .splash .brd-poster-promise { margin-bottom: 20px; font-size: 14px; }
+  .brd-poster-cta { width: 100%; }
+  .picker-start h2 { font-size: 30px; }
+}
+
+@media (max-width: 340px) {
+  .brd-poster-copy { padding-right: 16px; padding-left: 16px; }
+  .brd-poster-brand { font-size: 8.1px; }
+  .brd-poster-brand::before { margin-right: 5px; }
+  .brd-poster-suite-link {
+    max-width: 122px;
+    font-size: 8.1px;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: right;
+  }
+  .brd-poster h1 { font-size: 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-skip,
+  .brd-poster-cta { transition: none; }
+  .brd-poster-cta:hover { transform: none; }
+}
+
+@media (prefers-contrast: more) {
+  .brd-poster-promise { color: var(--brd-poster-paper); }
+}
+
+@media (forced-colors: active) {
+  .app-skip,
+  .brd-poster-suite-link,
+  .brd-poster-cta { border: 2px solid ButtonText; }
+}

@@ -1,0 +1,2482 @@
+{
+  "schema_version": 2,
+  "release": "RELEASE-2026",
+  "window": {
+    "start_month": "2013-01",
+    "end_month": "2024-12"
+  },
+  "retrieval": {
+    "tool": "neonUtilities::loadByProduct",
+    "package": "basic",
+    "neonUtilities_version": "4.0.1",
+    "r_version": "4.5.2",
+    "token_required": true
+  },
+  "products": {
+    "air_temperature": {
+      "id": "DP1.00002.001",
+      "doi": "10.48443/p69b-5e50",
+      "supported_sites": 47
+    },
+    "precipitation": {
+      "id": "DP1.00044.001",
+      "doi": "10.48443/v29j-eg88",
+      "supported_sites": 20
+    },
+    "plant_phenology": {
+      "id": "DP1.10055.001",
+      "doi": "10.48443/p75s-7p48",
+      "supported_sites": 47
+    }
+  },
+  "validation_evidence": {
+    "schema_version": 1,
+    "file_count": 47,
+    "total_bytes": 52704712,
+    "format": "canonical privacy-minimized selected-stream rows plus digest-bound all-stream month support; validation-only; not deployed"
+  },
+  "files": [
+    {
+      "site": "HARV",
+      "rows": 121,
+      "month_min": "2013-11",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 73,
+          "finite_values": 76708,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 102140,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 89,
+          "finite_values": 2547,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 334,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "HARV.rds",
+      "sha256": "14a5ce695e5504ad4ed21ee236004bd1958d11e5594ab1367bc674263ac34805",
+      "bytes": 1261564,
+      "evidence_file": "HARV.rds",
+      "evidence_sha256": "c2c78e82567b8f9714d4ab6a2582b70708f09eda2bc74414b5d21909846e4b3a",
+      "evidence_bytes": 1237052
+    },
+    {
+      "site": "BART",
+      "rows": 89,
+      "month_min": "2014-04",
+      "month_max": "2024-11",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 78,
+          "finite_values": 86185,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 92663,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "BART.rds",
+      "sha256": "21f0f28c2abfbf4164c3b93d81ea69d2bcd862c93da5f71be9f825e6b2136fdb",
+      "bytes": 1046200,
+      "evidence_file": "BART.rds",
+      "evidence_sha256": "c49e73bf4d7f4b93cca5e07cf9e8af044c092b431d607d3d5eccf6e2183e5f85",
+      "evidence_bytes": 1054164
+    },
+    {
+      "site": "BLAN",
+      "rows": 112,
+      "month_min": "2015-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 91,
+          "finite_values": 124981,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 55595,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "BLAN.rds",
+      "sha256": "c215598dcac93360526c2adc51bb6779efbfb5427fc81778ca7c842b7b9c72ba",
+      "bytes": 1461440,
+      "evidence_file": "BLAN.rds",
+      "evidence_sha256": "b7eec2f1d5543716797bc285d44d86e6e6c5b29c6eb73331a50a42c1812e80c1",
+      "evidence_bytes": 1481476
+    },
+    {
+      "site": "SCBI",
+      "rows": 120,
+      "month_min": "2014-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 85,
+          "finite_values": 87525,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 88395,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 92,
+          "finite_values": 2424,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 540,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "SCBI.rds",
+      "sha256": "16d33ce045bc7b08645c98565fa3497793f700457b4bf7400ecf9cfaca50a3f3",
+      "bytes": 1301124,
+      "evidence_file": "SCBI.rds",
+      "evidence_sha256": "5d008d331fa0b5c61b97ede3fc4b2234639798101e236866b1b2efe16c9b302d",
+      "evidence_bytes": 1301272
+    },
+    {
+      "site": "SERC",
+      "rows": 106,
+      "month_min": "2015-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 72,
+          "finite_values": 96568,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 58760,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "SERC.rds",
+      "sha256": "4f8d27ecb9d77b1b541f2b3b5cab48051ff66eef7f9a797ff3df108beeb7b1af",
+      "bytes": 1230284,
+      "evidence_file": "SERC.rds",
+      "evidence_sha256": "70233e89ec2b7d581105f6d77ae5b7970a7df6e1be992e4990e546ad12a805d7",
+      "evidence_bytes": 1244312
+    },
+    {
+      "site": "DSNY",
+      "rows": 129,
+      "month_min": "2014-02",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 82,
+          "finite_values": 95206,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 85514,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "DSNY.rds",
+      "sha256": "405c5291aa87a79ada8cbb814b11771030c99c7b5413efca8b5ad63beb7716a4",
+      "bytes": 1425748,
+      "evidence_file": "DSNY.rds",
+      "evidence_sha256": "52e8f82d4b54f0e026232314e0aee7caca69899a67559a6a11f4783144c0c660",
+      "evidence_bytes": 1420880
+    },
+    {
+      "site": "JERC",
+      "rows": 123,
+      "month_min": "2014-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 86,
+          "finite_values": 105979,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 74741,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "JERC.rds",
+      "sha256": "d3d08d2cb5da184bb756c9447bbaab6450f36c61987045587d45669d740979dc",
+      "bytes": 1379056,
+      "evidence_file": "JERC.rds",
+      "evidence_sha256": "85cd2cbc3f72cbb0acd2c152c7795f4d6b2158079e2bc71843a1aef49744b385",
+      "evidence_bytes": 1411456
+    },
+    {
+      "site": "OSBS",
+      "rows": 135,
+      "month_min": "2013-10",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 95,
+          "finite_values": 121000,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 61400,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 95,
+          "finite_values": 2685,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 334,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "OSBS.rds",
+      "sha256": "8f4c3eb50f6f62ddb4d9ef88971971dc39a806404985b4d381ff57479f786bbb",
+      "bytes": 1450764,
+      "evidence_file": "OSBS.rds",
+      "evidence_sha256": "153d34df612de78eee91e9ad3f19d450ffeb15c85fd70e8c422a204f2c9e4f99",
+      "evidence_bytes": 1438320
+    },
+    {
+      "site": "GUAN",
+      "rows": 113,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 78,
+          "finite_values": 103947,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 11829,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 78,
+          "finite_values": 2178,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 224,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "GUAN.rds",
+      "sha256": "07975f4f07cc8e29edcca907c4f1ff1a06becfc6532c5e400f6f0756a278ef3f",
+      "bytes": 924176,
+      "evidence_file": "GUAN.rds",
+      "evidence_sha256": "87a9e51d005227059b45c70a1db2f90e5bfd31cf05a4bbbd41608572213589d9",
+      "evidence_bytes": 907488
+    },
+    {
+      "site": "LAJA",
+      "rows": 103,
+      "month_min": "2016-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 87,
+          "finite_values": 95847,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 72105,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "LAJA.rds",
+      "sha256": "86a695bb3c7c51fcae8d77a4bedf8dc8358ee48042bb8e848d121cab2b91cf7f",
+      "bytes": 1263028,
+      "evidence_file": "LAJA.rds",
+      "evidence_sha256": "be2bf9feaaa61ad8a7ebb340c152dbaf3bd5df61553834f3985e4fac7c2b9d27",
+      "evidence_bytes": 1233040
+    },
+    {
+      "site": "STEI",
+      "rows": 79,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 75,
+          "finite_values": 94200,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 37032,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "STEI.rds",
+      "sha256": "d0e60ae4cd51c6e13a3379294fadce7d171ef06b52dcd22d30d5160a1cb8a287",
+      "bytes": 812884,
+      "evidence_file": "STEI.rds",
+      "evidence_sha256": "21c38e0bbc0e7dd1f6ffd2b2a9efdd3327b5400d5e578b3be52e6c755a6724ef",
+      "evidence_bytes": 798280
+    },
+    {
+      "site": "TREE",
+      "rows": 88,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 75,
+          "finite_values": 94671,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 37617,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "TREE.rds",
+      "sha256": "316a6a1558a7dfaabeb4fd35e77c64886373a047e7d5773333abf19243815d18",
+      "bytes": 858956,
+      "evidence_file": "TREE.rds",
+      "evidence_sha256": "004bafa505152d435841c36e16de95106b988d38564517749ac432a1fb9b3070",
+      "evidence_bytes": 856352
+    },
+    {
+      "site": "UNDE",
+      "rows": 114,
+      "month_min": "2014-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 87,
+          "finite_values": 106066,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 69854,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 93,
+          "finite_values": 2730,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 140,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "UNDE.rds",
+      "sha256": "10284909269135e9088b6275e2196a9977343d7c2cc84f1b35b122322cca395c",
+      "bytes": 1111172,
+      "evidence_file": "UNDE.rds",
+      "evidence_sha256": "d0e97e345e5f57ca192d9e2c49a37ae8ffdf1364f5e267461df2046a2a3ed484",
+      "evidence_bytes": 1130424
+    },
+    {
+      "site": "KONA",
+      "rows": 82,
+      "month_min": "2016-05",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 90,
+          "finite_values": 120625,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 31343,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "KONA.rds",
+      "sha256": "0cd06dee3b3b4506c8bb4cd739292b7e7216b198510c039043dc09c5b7128bd7",
+      "bytes": 1169028,
+      "evidence_file": "KONA.rds",
+      "evidence_sha256": "c1bf2895b37bba7e5511be3dbd618047f07e778f94b4eb0ec3ed475747903755",
+      "evidence_bytes": 1160364
+    },
+    {
+      "site": "KONZ",
+      "rows": 105,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 85,
+          "finite_values": 107637,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 60459,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 90,
+          "finite_values": 2553,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 197,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "KONZ.rds",
+      "sha256": "979964ec446b1b8c386f12b68cb77f4a05096749dd55a20bb8429b0764537ae3",
+      "bytes": 1262296,
+      "evidence_file": "KONZ.rds",
+      "evidence_sha256": "e1e537511abf0040eb3efe51d2e515782415858584171ff3299a1c7baeddc591",
+      "evidence_bytes": 1251656
+    },
+    {
+      "site": "UKFS",
+      "rows": 105,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 89,
+          "finite_values": 121165,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 35459,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "UKFS.rds",
+      "sha256": "9b52da3b015a34a8bb4e2e758c8f88c29633410349ecdb263f3d97e1e1afbb9a",
+      "bytes": 1296472,
+      "evidence_file": "UKFS.rds",
+      "evidence_sha256": "23287839afc09d512d07e435979eb8d5ccd71a1451916e5d15780ef216e0079e",
+      "evidence_bytes": 1296484
+    },
+    {
+      "site": "GRSM",
+      "rows": 110,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 87,
+          "finite_values": 122087,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 7081,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "GRSM.rds",
+      "sha256": "2f06fde48a9831f7746afb8ca33ea817a5444f14231dc02bd8322b5724e17313",
+      "bytes": 1044956,
+      "evidence_file": "GRSM.rds",
+      "evidence_sha256": "0eb10acab4793c7d5ed1edfab282b44122ae67625edf1befe0511824842e7c23",
+      "evidence_bytes": 1040020
+    },
+    {
+      "site": "MLBS",
+      "rows": 88,
+      "month_min": "2015-12",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 89,
+          "finite_values": 117548,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 45652,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "MLBS.rds",
+      "sha256": "3338fbddb11b6c7dec7f8969a8bb7254b1cdaa05d2be86fc9dc9e20feaa71f25",
+      "bytes": 1279284,
+      "evidence_file": "MLBS.rds",
+      "evidence_sha256": "fd15e60eaba42d9515b3e64a0c1c4780728836e40ead3c6ba030cbad945db6a8",
+      "evidence_bytes": 1276260
+    },
+    {
+      "site": "ORNL",
+      "rows": 118,
+      "month_min": "2014-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 92,
+          "finite_values": 122164,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 47804,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 80,
+          "finite_values": 2089,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 714,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "ORNL.rds",
+      "sha256": "f9b2c24b594291ac18f522f4f9ece150817545c05f10a68cedb3e04f0fc644cf",
+      "bytes": 1285072,
+      "evidence_file": "ORNL.rds",
+      "evidence_sha256": "2153287fef65ac87be4db0b64ae84acd800bc72e3b641f220de4863d43799750",
+      "evidence_bytes": 1324716
+    },
+    {
+      "site": "DELA",
+      "rows": 104,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 65,
+          "finite_values": 83601,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 92319,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "DELA.rds",
+      "sha256": "bab337d5e3a1936cc7275f43f877acfabe99b7769dbf17bad4bd82f189781c48",
+      "bytes": 1132380,
+      "evidence_file": "DELA.rds",
+      "evidence_sha256": "c6573a399bd8a9789cccfa78631f1cc292cffb55ff604159ff9ff7ef07fe5a49",
+      "evidence_bytes": 1116392
+    },
+    {
+      "site": "LENO",
+      "rows": 94,
+      "month_min": "2016-03",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 81,
+          "finite_values": 100274,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 51742,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "LENO.rds",
+      "sha256": "6dd5b4bbe3b4562eed649c19a07d2e51f775dffed9834908def236ce3247686a",
+      "bytes": 1085056,
+      "evidence_file": "LENO.rds",
+      "evidence_sha256": "4bbd9db7c89da4391cf008b2a1635ba52dcdd7c066c73a3c7659ae401b46087c",
+      "evidence_bytes": 1103112
+    },
+    {
+      "site": "TALL",
+      "rows": 125,
+      "month_min": "2014-08",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 86,
+          "finite_values": 107755,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 62213,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 64,
+          "finite_values": 1615,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 1110,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "TALL.rds",
+      "sha256": "913601ed7af94b86a3b5c9cde2cebf4d12897ad490571dc7d6f6dddc778d3d3b",
+      "bytes": 1290664,
+      "evidence_file": "TALL.rds",
+      "evidence_sha256": "ee8a4ce8ce66eae7fdc614e4a78eedb4e4b81baa501dbc91ca6b831d20160e85",
+      "evidence_bytes": 1269864
+    },
+    {
+      "site": "DCFS",
+      "rows": 79,
+      "month_min": "2017-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 84,
+          "finite_values": 113565,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 17667,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "DCFS.rds",
+      "sha256": "edf81ee10f0f74c0fc7d875906a8fb14a8c5dbcba6e53fe02c70d7159442284a",
+      "bytes": 974380,
+      "evidence_file": "DCFS.rds",
+      "evidence_sha256": "2e0eddabd70407f1e051e4b6229fda4440e9d3ee6144b57d78a38754f02390a4",
+      "evidence_bytes": 952304
+    },
+    {
+      "site": "NOGP",
+      "rows": 94,
+      "month_min": "2016-05",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 83,
+          "finite_values": 109537,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 19391,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "NOGP.rds",
+      "sha256": "e9ad58973d70a82d33cf65f1795a8ed4a71eecc1229a4facc2a05ba2471bad80",
+      "bytes": 1008456,
+      "evidence_file": "NOGP.rds",
+      "evidence_sha256": "dc9984458ae4d788b0aaed0ade27d7cbe935ffa54091b6ccfbf8af74e39f957c",
+      "evidence_bytes": 995340
+    },
+    {
+      "site": "WOOD",
+      "rows": 115,
+      "month_min": "2014-05",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 98,
+          "finite_values": 129029,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 38971,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 85,
+          "finite_values": 2300,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 321,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "WOOD.rds",
+      "sha256": "f3b8a213e93a55d78f7bac08e9d7aa22838182d80d5ce53e1c88dc2784eb33a0",
+      "bytes": 1230748,
+      "evidence_file": "WOOD.rds",
+      "evidence_sha256": "ffaa89d8d80cea22496e5497b72d2240842ae147d68c301556ddca68c6c89bc3",
+      "evidence_bytes": 1231040
+    },
+    {
+      "site": "CPER",
+      "rows": 128,
+      "month_min": "2014-03",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 109,
+          "finite_values": 146094,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 44466,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 102,
+          "finite_values": 2440,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 642,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "CPER.rds",
+      "sha256": "6bc6237624ee3c784d9ef6a253a62b0518dfb6b366835d036e177d5190c26704",
+      "bytes": 1578544,
+      "evidence_file": "CPER.rds",
+      "evidence_sha256": "0bb7e05f25780af8530c3b0b1b6369b09b135cb3d06223b6cf88d59a1ee13fc2",
+      "evidence_bytes": 1599480
+    },
+    {
+      "site": "RMNP",
+      "rows": 97,
+      "month_min": "2015-12",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 100,
+          "finite_values": 137036,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 32164,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "RMNP.rds",
+      "sha256": "cdade443da7be5c297e25fe568642821342501604bc3a857eb835464e4404fc2",
+      "bytes": 1359316,
+      "evidence_file": "RMNP.rds",
+      "evidence_sha256": "8dbc9922f7e1132b77d2c676e9aca9b156ddff88f3a5722af87837a33f1464b9",
+      "evidence_bytes": 1361524
+    },
+    {
+      "site": "STER",
+      "rows": 118,
+      "month_min": "2013-12",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 126,
+          "finite_values": 167533,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 26579,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "STER.rds",
+      "sha256": "c8d1cdb5cc6e1455031687984a401e7271df4d9f511029141f0eb3a332f4cdac",
+      "bytes": 1543220,
+      "evidence_file": "STER.rds",
+      "evidence_sha256": "719e0ed738f865d8c180760be8c61c7d02b9f3073c935f25623357786bc5be7f",
+      "evidence_bytes": 1532608
+    },
+    {
+      "site": "CLBJ",
+      "rows": 101,
+      "month_min": "2016-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 89,
+          "finite_values": 121520,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 9088,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 86,
+          "finite_values": 2489,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 228,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "CLBJ.rds",
+      "sha256": "c733c6f8d6aa4e0a5170e97234da96d2b07304046f215ffaa76b791b522e4400",
+      "bytes": 1092764,
+      "evidence_file": "CLBJ.rds",
+      "evidence_sha256": "6ed11f3e36ccd6898f3f6b9bc0cf3b3e51ecd91cb7c1dfeb15abe67a56983678",
+      "evidence_bytes": 1069652
+    },
+    {
+      "site": "OAES",
+      "rows": 111,
+      "month_min": "2015-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 96,
+          "finite_values": 124774,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 49514,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "OAES.rds",
+      "sha256": "691be1bf1e74e10d8e72085fc722364d54b6c311df1d7d1edebfceb1ae62891e",
+      "bytes": 1409784,
+      "evidence_file": "OAES.rds",
+      "evidence_sha256": "118e72fbc65e7e62991f76b26cc8d33562c1bd83bed0b94ad8d742c2ed59a3bf",
+      "evidence_bytes": 1414336
+    },
+    {
+      "site": "YELL",
+      "rows": 77,
+      "month_min": "2018-08",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 76,
+          "finite_values": 106275,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 3549,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 63,
+          "finite_values": 1417,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 866,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "YELL.rds",
+      "sha256": "2ee42f794d0bdd599177ad05b3ae88fdd8801f19c8600f00ba8e428ae95135a6",
+      "bytes": 952352,
+      "evidence_file": "YELL.rds",
+      "evidence_sha256": "da210c2ef98fe74b9dc9f347c9ad6736aa6538878ee6992e22b630c8a7ddfbb3",
+      "evidence_bytes": 923444
+    },
+    {
+      "site": "MOAB",
+      "rows": 112,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 109,
+          "finite_values": 153281,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 14767,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "MOAB.rds",
+      "sha256": "6768567fadd86a6e618348e83dbc79f7fbb3ccc249b5ae298b62b9d3e1812011",
+      "bytes": 1402068,
+      "evidence_file": "MOAB.rds",
+      "evidence_sha256": "a392bbff31e0cbf1d28ef65aa68102a5041dfe7a885537e1ec6ef2952f591a6d",
+      "evidence_bytes": 1384800
+    },
+    {
+      "site": "NIWO",
+      "rows": 78,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 76,
+          "finite_values": 87284,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 43660,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 45,
+          "finite_values": 815,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 1263,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "NIWO.rds",
+      "sha256": "69b5d5bddd1d6fd15b7089a65fadfc553bba874479a45a981f5731c57e349566",
+      "bytes": 983296,
+      "evidence_file": "NIWO.rds",
+      "evidence_sha256": "9096f2f72af90d96a183843abee398676bd85591c3688501699bda6152925293",
+      "evidence_bytes": 983500
+    },
+    {
+      "site": "JORN",
+      "rows": 114,
+      "month_min": "2015-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "science_review_flags_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 108,
+          "finite_values": 151476,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 29244,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "JORN.rds",
+      "sha256": "4634d914a457329844b9313c9b39566a3b18f91431f01301eefd459dea148f4c",
+      "bytes": 1488684,
+      "evidence_file": "JORN.rds",
+      "evidence_sha256": "6e057c13555bb5f44704c69587b7c101ffa80c8c1c5c77148e3d540ead45bef9",
+      "evidence_bytes": 1531984
+    },
+    {
+      "site": "SRER",
+      "rows": 104,
+      "month_min": "2015-02",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 90,
+          "finite_values": 124298,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 6646,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 87,
+          "finite_values": 2502,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 222,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "SRER.rds",
+      "sha256": "0a8e486aac04aa54f4e5c3f0aac0bba506e9dab742fcf1769608e3a2cdb15db0",
+      "bytes": 1115236,
+      "evidence_file": "SRER.rds",
+      "evidence_sha256": "bb5181234bb09c4fd5a89734eb4d0441171b330d4e4e29e44311b06abde7ab44",
+      "evidence_bytes": 1108248
+    },
+    {
+      "site": "ONAQ",
+      "rows": 119,
+      "month_min": "2014-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 106,
+          "finite_values": 143529,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 24519,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 82,
+          "finite_values": 2312,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 418,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "ONAQ.rds",
+      "sha256": "97e033df46687c63b988f0610d737c31089336ca422c91afbff72e20716dea8b",
+      "bytes": 1409288,
+      "evidence_file": "ONAQ.rds",
+      "evidence_sha256": "2de363c81e8514360dd2bc3167ef21ef8c120e73b292c8b2decece5c10e3b5e1",
+      "evidence_bytes": 1398596
+    },
+    {
+      "site": "ABBY",
+      "rows": 101,
+      "month_min": "2016-04",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 90,
+          "finite_values": 121316,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 30748,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "ABBY.rds",
+      "sha256": "28471eef7547e645afbbde33cb180346f25c2f43309e295872190a28732ee5e9",
+      "bytes": 1229064,
+      "evidence_file": "ABBY.rds",
+      "evidence_sha256": "83cf981b0fe7f66b98965d5952dc164042a9b34488ec88aa2f14a9b52fe3d916",
+      "evidence_bytes": 1200956
+    },
+    {
+      "site": "WREF",
+      "rows": 79,
+      "month_min": "2018-04",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 74,
+          "finite_values": 98613,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 17835,
+          "candidate_streams": 7,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 80,
+          "finite_values": 2331,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 91,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "WREF.rds",
+      "sha256": "0f37d64f4250a51b9a62387ed0f4bab264c5c3c8ae0f9fcd0b2b0046da786be3",
+      "bytes": 921552,
+      "evidence_file": "WREF.rds",
+      "evidence_sha256": "f7f314cc752bd8acd6bbecca0b21b24d8755fb56f2c4917170124aa55e55c010",
+      "evidence_bytes": 926564
+    },
+    {
+      "site": "SJER",
+      "rows": 99,
+      "month_min": "2016-10",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 76,
+          "finite_values": 107749,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 3083,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 74,
+          "finite_values": 2024,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 281,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "SJER.rds",
+      "sha256": "bff47770a4bd0e18f4394b1d682ff5f634343ac20667db2559e593fe0d3264f5",
+      "bytes": 963868,
+      "evidence_file": "SJER.rds",
+      "evidence_sha256": "b8f7ca67ffc75615ac5bb4b7646ce8e62d481bb46ab74de5c4b115ecc3f24622",
+      "evidence_bytes": 948232
+    },
+    {
+      "site": "SOAP",
+      "rows": 85,
+      "month_min": "2017-08",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 89,
+          "finite_values": 119539,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 10445,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "SOAP.rds",
+      "sha256": "74c27f19fda1ed5fa54d62ebce0ab7821277e2d913d336bfc0cda92bc73c861f",
+      "bytes": 1042268,
+      "evidence_file": "SOAP.rds",
+      "evidence_sha256": "f72411d706cc0b683ebce72cdaea371a35cc513730c77b01351417cfdf96f44c",
+      "evidence_bytes": 1014608
+    },
+    {
+      "site": "TEAK",
+      "rows": 55,
+      "month_min": "2018-07",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 58,
+          "finite_values": 71741,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 42931,
+          "candidate_streams": 6,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "TEAK.rds",
+      "sha256": "d37be5fab303781b8b2851ee25d653310ec753f1c1aafa37cabbb1130c21d602",
+      "bytes": 658760,
+      "evidence_file": "TEAK.rds",
+      "evidence_sha256": "05b15919884d4b3679c4b458707c630d0c5162e984af2c9bfe3ca2e6f2c8804e",
+      "evidence_bytes": 651708
+    },
+    {
+      "site": "BARR",
+      "rows": 28,
+      "month_min": "2017-08",
+      "month_max": "2024-09",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 32,
+          "finite_values": 32785,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 49583,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "BARR.rds",
+      "sha256": "fbc6219af431e54695114c46164378c4016d6a366786080ee5d32e1f3e200ba9",
+      "bytes": 424740,
+      "evidence_file": "BARR.rds",
+      "evidence_sha256": "55e8d6c3572daf2b7e70490815b860ee7ae4a094495c323ba6e73b448f6e63b5",
+      "evidence_bytes": 420936
+    },
+    {
+      "site": "TOOL",
+      "rows": 38,
+      "month_min": "2017-07",
+      "month_max": "2024-09",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 33,
+          "finite_values": 28227,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 53469,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 90,
+          "finite_values": 2140,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 589,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "TOOL.rds",
+      "sha256": "11ebdafeef4e7d6ccd1ec22d22b8c2a379bc58b30a425c8c5c88e9be3924ee08",
+      "bytes": 434056,
+      "evidence_file": "TOOL.rds",
+      "evidence_sha256": "386ff4dfc1e0dc29cde36703c666dafcc774295f3a44cd1cf8a2ce9be5f57325",
+      "evidence_bytes": 432132
+    },
+    {
+      "site": "BONA",
+      "rows": 74,
+      "month_min": "2017-06",
+      "month_max": "2024-10",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 68,
+          "finite_values": 88260,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 13644,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 62,
+          "finite_values": 1356,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 1274,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "BONA.rds",
+      "sha256": "fbd19752ac3e24baae8a6d942b7a046fde53b2b0f0cb03e8bdd4ac3015d5d1b5",
+      "bytes": 810784,
+      "evidence_file": "BONA.rds",
+      "evidence_sha256": "7ca3c3a60f16db3d3f26cc3be4c4f69d330c39507729b1ed5bdaf9b418f65711",
+      "evidence_bytes": 797444
+    },
+    {
+      "site": "DEJU",
+      "rows": 77,
+      "month_min": "2016-08",
+      "month_max": "2024-10",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_identificationHistory", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 76,
+          "finite_values": 101389,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 6563,
+          "candidate_streams": 4,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "DEJU.rds",
+      "sha256": "58679d1b283ac5f5c900bb7825c43da28b262d666d9834a68d5332c1e8f57a9b",
+      "bytes": 917376,
+      "evidence_file": "DEJU.rds",
+      "evidence_sha256": "5795a0e1143d7c630579c1689dfe61d8fa66d59655717a8eea3ccc3d9c928bca",
+      "evidence_bytes": 913564
+    },
+    {
+      "site": "HEAL",
+      "rows": 66,
+      "month_min": "2015-07",
+      "month_max": "2024-10",
+      "air_temperature_supported": true,
+      "precipitation_supported": false,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": [],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 70,
+          "finite_values": 79145,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 30679,
+          "candidate_streams": 3,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": null
+      },
+      "file": "HEAL.rds",
+      "sha256": "8c834a2a283d856297874a47398b47ceb2e61e40ba74d311b2b3f4e2aaadedd7",
+      "bytes": 769216,
+      "evidence_file": "HEAL.rds",
+      "evidence_sha256": "653aaab11aecfde4b25b9c435bab16cc7f7ce81ffb470767b47210aa6aac9863",
+      "evidence_bytes": 774932
+    },
+    {
+      "site": "PUUM",
+      "rows": 79,
+      "month_min": "2018-06",
+      "month_max": "2024-12",
+      "air_temperature_supported": true,
+      "precipitation_supported": true,
+      "plant_phenology_supported": true,
+      "source_tables": {
+        "air_temperature": ["SAAT_30min", "citation_00002_RELEASE-2026", "issueLog_00002", "readme_00002", "sensor_positions_00002", "variables_00002"],
+        "precipitation": ["WEIPRE_60min", "WEIPRE_daily", "citation_00044_RELEASE-2026", "issueLog_00044", "readme_00044", "science_review_flags_00044", "sensor_positions_00044", "variables_00044"],
+        "plant_phenology": ["categoricalCodes_10055", "citation_10055_RELEASE-2026", "issueLog_10055", "phe_perindividual", "phe_perindividualperyear", "phe_statusintensity", "readme_10055", "validation_10055", "variables_10055"]
+      },
+      "stream_selection": {
+        "air_temperature": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "000|010",
+          "value_column": "tempSingleMean",
+          "timestamp_column": "startDateTime",
+          "supported_months": 67,
+          "finite_values": 92745,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 6711,
+          "candidate_streams": 5,
+          "vertical_position_rule": "lowest_recorded",
+          "selected_vertical_position": 10,
+          "vertical_position_basis": "NEON variables metadata defines verticalPosition as the site vertical-location index; NEON.DOC.000646 defines index 001 as the lowest SAAT/boom",
+          "rule": "minimum finite recorded verticalPosition (ordering metadata, not metres); max supported months; max finalQF-passing finite values; lexical signature",
+          "monthly_coverage": {
+            "interval_minutes": 30,
+            "expected_intervals_per_day": 48,
+            "minimum_interval_coverage": 0.75,
+            "threshold_type": "analysis eligibility rule, not a NEON completeness designation",
+            "quality_gate": "selected finalQF == 0 and finite channel value",
+            "rule": "report a monthly channel only at or above its 75.0% expected-interval threshold"
+          }
+        },
+        "precipitation": {
+          "columns": ["horizontalPosition", "verticalPosition"],
+          "signature": "900|000",
+          "value_column": "precipBulk",
+          "timestamp_column": "startDateTime",
+          "supported_months": 66,
+          "finite_values": 1819,
+          "quality_flag_column": "finalQF",
+          "rejected_by_final_qf": 249,
+          "candidate_streams": 1,
+          "vertical_position_rule": "none",
+          "selected_vertical_position": null,
+          "vertical_position_basis": null,
+          "rule": "max supported months; max finalQF-passing finite values; lexical signature"
+        }
+      },
+      "file": "PUUM.rds",
+      "sha256": "6ce3f524745d93be59d39404009a2669577a9189aa98ebfb7dd23b942a7f2dd5",
+      "bytes": 784468,
+      "evidence_file": "PUUM.rds",
+      "evidence_sha256": "f52e87610e5b8d45a6d5da6fd6cd01bd46ccbc57d13b95237ef75de7c27bfc33",
+      "evidence_bytes": 783396
+    }
+  ]
+}
