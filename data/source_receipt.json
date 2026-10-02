@@ -7,7 +7,7 @@
   "retrieval": {
     "package": "basic",
     "tool": "neonUtilities::loadByProduct",
-    "neonUtilities_version": "4.0.1",
+    "neonUtilities_version": "4.0.2",
     "r_version": "4.5.2",
     "token_required": true,
     "staging_was_empty": true

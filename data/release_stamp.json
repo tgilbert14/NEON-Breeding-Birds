@@ -4,9 +4,9 @@
   "product": "DP1.10003.001",
   "release": "RELEASE-2026",
   "doi": "10.48443/v6hs-mx57",
-  "source_receipt_sha256": "55f30d251428cb932ce4fb474bd394ed5a14f3f7c0d077bfb6b7fa9193db88bc",
-  "environment_receipt_sha256": "03f4bc77a8cea49cc5160e250aff50ffb717093fe1b5dd02b73006e9da85662e",
-  "payload_sha256": "d62ebd6db6c60572e72269b7c146a7e67e585799bd406d467ee04b391c3e5d85",
+  "source_receipt_sha256": "f31a6a1e411fb2e48b331273cee84568f8cc7225b4dd9656da407f40882fc4ed",
+  "environment_receipt_sha256": "3e0e4cfe173d806c7c8e196f8ca4e16f0395dc32bd59f131e8e256d49a517c11",
+  "payload_sha256": "a1c11c3d4d4a3345dabdc9b31fa65c763f7085602e886a19f173d661ffa6b51d",
   "manifest_contract_sha256": "cf90c33b23e477964a29d1bd15abf6402819e0a40dc1f007ae8e9688bef49a43",
-  "release_id": "sha256:243036a925139c10209daa04e77ab97e9b3a37080f462dd38b3804a5f46fdd5e"
+  "release_id": "sha256:3bb363868ff826e3e8f8a4881d4a4a4a500dda7c090176acf9aebabe849a8035"
 }
