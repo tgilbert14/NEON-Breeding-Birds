@@ -15,3 +15,10 @@ Thumbs.db
 # transient fetch staging
 /bird-data-fetch/
 /build/
+
+# local secrets (.env.example is the committed template)
+.env
+*.env
+!.env.example
+.Renviron
+.Renviron.*

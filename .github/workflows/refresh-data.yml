@@ -27,7 +27,43 @@ env:
   BIRD_RELEASE: RELEASE-2026
 
 jobs:
+  # Fails the run, named, when the NEON token is missing or rejected; the fetch
+  # needs it, and every other path still turns red on a bad token.
+  probe_token:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Probe a NEON data endpoint with the token
+        shell: bash
+        env:
+          NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
+          PROBE_URL: https://data.neonscience.org/api/v0/data/DP1.10003.001/SRER/2023-05
+        run: |
+          # Shared NEON-suite token probe. Keep this block byte-identical in every repo;
+          # only PROBE_URL differs. NEON data endpoints refuse anonymous requests, so a
+          # missing or rejected token fails here, named, before any download starts.
+          set -euo pipefail
+          if [ -z "${NEON_TOKEN:-}" ]; then
+            echo "::error title=Missing NEON token::Set the NEON_TOKEN repository secret; NEON data endpoints refuse anonymous requests."
+            echo "NEON token probe: the NEON_TOKEN secret is missing." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          body=$(mktemp)
+          code=$(curl -sS --retry 3 --retry-all-errors --max-time 60 -o "$body" -w '%{http_code}' \
+            -H "X-API-Token: $NEON_TOKEN" "$PROBE_URL") || code=000
+          files=$(jq -r '.data.files | length' "$body" 2>/dev/null) || files=0
+          rm -f "$body"
+          if [ "$code" != "200" ] || ! [ "$files" -ge 1 ] 2>/dev/null; then
+            echo "::error title=NEON token rejected::HTTP $code with $files files from $PROBE_URL; check or rotate the NEON_TOKEN secret."
+            echo "NEON token probe: HTTP $code, $files files from $PROBE_URL." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "NEON token probe: HTTP 200, $files files from $PROBE_URL." | tee -a "$GITHUB_STEP_SUMMARY"
+
   produce_candidate:
+    needs: probe_token
     runs-on: ubuntu-22.04
     timeout-minutes: 360
     env:
