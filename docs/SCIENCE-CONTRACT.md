@@ -45,6 +45,22 @@ Only a visit with `samplingImpractical == "OK"` is a valid six-minute count.
 Missing, impractical, conflicting, duplicated, or otherwise ambiguous visits do
 not enter denominators. They fail the build or remain explicitly held.
 
+A protocol-valid count is also withdrawn when it has no eligible detection but at
+least one otherwise-eligible detection (matched visit, minute 1-6, safely
+canonicalized species, known non-flyover method) that lacks a positive integer
+`clusterSize`. Such a count is not evidence of zero birds. It is held with
+`count_hold_reason = "detections_without_cluster_size"`, its outcome is
+`unavailable`, and it leaves every analysis denominator: Chao2, coverage,
+rarefaction, accumulation, detection frequency, and birds per count. Its
+detections stay in the held ledger (`invalid_cluster_size`, or
+`detection_on_unusable_visit` for otherwise clean rows). Impractical visits carry
+`count_hold_reason = "sampling_impractical"`; valid counts carry `NA`. This is the
+audit 2026-10-18 item 16 stopgap. In RELEASE-2026 it withdraws 51 of PUUM's 90
+counts and no count at any other site. The raw `clusterSize` token is retained as
+`clusterSizeRaw` so a blank source field can be told from a parse loss; that
+evidence decides the next step (a parser fix, or splitting the predicate so
+incidence no longer needs a count while the detection index still does).
+
 The sample-incidence unit is one authoritative valid physical six-minute count,
 keyed by `visits$survey_id`. One or two bouts at a point-year remain separate
 sample units for Chao2, coverage, rarefaction, accumulation, and Board detection
@@ -60,8 +76,8 @@ authority for annual support and audit summaries. Therefore:
   grain.
 - `supported_zero`: valid survey support and no eligible in-window non-flyover
   detection, including flyover-only or coarse-identification-only records.
-- `unavailable`: no valid count at the stated grain. This is missing support,
-  never zero.
+- `unavailable`: no valid count at the stated grain, including a protocol-valid
+  count withdrawn for missing `clusterSize`. This is missing support, never zero.
 
 A point-year with one positive count and one supported-zero count is positive in
 the annual/audit ledger while retaining both physical-count outcomes. The two zero
@@ -109,7 +125,9 @@ accumulation, maps, search ranks, and the birds-per-count numerator. This filter
 does not infer territory or breeding status. Out-of-window incidentals,
 missing/unknown minute rows, missing/unknown detection methods, unsafe taxonomy,
 and invalid cluster counts remain traceable in the held ledger. All source rows
-are conserved.
+are conserved. A count whose only otherwise-eligible detections are held for an
+invalid cluster count is withdrawn as unavailable (see Survey and opportunity
+grains), so a missing count never becomes a supported zero.
 
 ## Metric meanings
 
@@ -139,7 +157,9 @@ are conserved.
 - The cross-site artifact carries its analysis bounds and window-specific support:
   valid counts, positive counts, supported-zero counts, points, eligible birds,
   species-count incidences, singletons, doubletons, and the common rarefaction
-  target. Positive plus supported-zero counts must equal `T_counts`. Contextual
+  target. Positive plus supported-zero counts must equal `T_counts`. The common
+  target is the smallest 2017-2024 valid-count support in the 47-site roster;
+  after the cluster withdrawal that is PUUM's 39 counts (90 before). Contextual
   top species, detection index, Board frequency, and point footprint are recomputed
   inside the same window rather than joined from the lifetime site index.
 - Rarefaction standardizes the number of sample counts only. Residual differences
@@ -224,7 +244,8 @@ counts and point-years, two-bout separation for incidence, point-year aggregatio
 for annual audit, duplicate/conflicting/orphan joins, flyover-only surveys, mixed
 flyover/eligible detections, point-count minute 88, missing and unknown minute
 tokens, row-order invariance, compound and missing methods, noninteger cluster
-counts, parent plus multiple subspecies collapse, parent-name display preference,
+counts, cluster-withdrawn counts (held, unavailable, and named by
+`count_hold_reason`), parent plus multiple subspecies collapse, parent-name display preference,
 all distance states and 0–200 m truncation accounting, empty incidence columns,
 bias-corrected Chao2 point/variance fixtures, the `Q2 == 0` coverage branch,
 2017–2024 cross-site exclusion, positive + supported-zero count conservation,

@@ -433,6 +433,7 @@ bird_validate_opportunity <- function(opportunity, obs = NULL) {
 }
 
 BIRD_VISIT_REQUIRED <- c("survey_id", "pointkey", "year", "bout")
+BIRD_COUNT_HOLD_REASONS <- c("sampling_impractical", "detections_without_cluster_size")
 BIRD_VISIT_SUMMARY_FIELDS <- c(
   "eligible_detection_rows", "eligible_birds", "eligible_species",
   "flyover_rows", "flyover_birds", "support_state", "outcome")
@@ -458,6 +459,24 @@ bird_validate_visits <- function(visits, obs = NULL) {
       stop("bird visit valid_count and support_state fields disagree", call. = FALSE)
   }
   out$support_state <- ifelse(out$valid_count, "supported", "held")
+  if ("count_hold_reason" %in% names(out)) {
+    # A held count names why: the visit was impractical, or (audit item 16) its
+    # only otherwise-eligible species detections lack a usable clusterSize. A
+    # withdrawn count is unavailable, never a supported zero.
+    reason <- as.character(out$count_hold_reason)
+    if (any(!is.na(reason) & !reason %in% BIRD_COUNT_HOLD_REASONS))
+      stop(sprintf("unrecognized count_hold_reason token(s): %s",
+        paste(sort(unique(reason[!is.na(reason) & !reason %in% BIRD_COUNT_HOLD_REASONS])),
+              collapse = ", ")), call. = FALSE)
+    if (any(is.na(reason) != out$valid_count))
+      stop("bird visit count_hold_reason disagrees with valid_count", call. = FALSE)
+    if ("samplingImpractical" %in% names(out)) {
+      protocol_ok <- toupper(trimws(as.character(out$samplingImpractical))) == "OK"
+      protocol_ok[is.na(protocol_ok)] <- FALSE
+      if (any((reason %in% "sampling_impractical") != !protocol_ok))
+        stop("bird visit count_hold_reason disagrees with samplingImpractical", call. = FALSE)
+    }
+  }
   out$pointkey <- as.character(out$pointkey)
   year_num <- suppressWarnings(as.numeric(out$year))
   if (any(!is.finite(year_num) | year_num != floor(year_num)))
@@ -966,6 +985,9 @@ site_detection_audit_export <- function(obs, held = NULL) {
   out <- if (is.null(quarantined) || !nrow(quarantined)) current else
     dplyr::bind_rows(current, quarantined)
   if (!nrow(out)) return(out)
+  # Bundles built before raw clusterSize capture carry no source token; say so
+  # with NA rather than reconstructing a "raw" value from the parsed number.
+  if (!"clusterSizeRaw" %in% names(out)) out$clusterSizeRaw <- rep(NA_character_, nrow(out))
   missing <- setdiff(SITE_AUDIT_KEEP, names(out))
   if (length(missing))
     stop(sprintf("site detection audit lacks required field(s): %s",
@@ -1198,8 +1220,17 @@ bird_qc <- function(obs, sci, points = NULL) {
       add("warn", "Large flock for a typically solitary species", "cluster", which(eligible & is.finite(cs) & cs >= 6),
           "99% of this species' detections are 1–3 birds, yet these report 6+ in one cluster. Review for a possible transcription error, species-identification issue, or genuine unusual flock.")
     } else {
-      l <- log1p(csf); mads <- stats::mad(l); thr <- stats::median(l) + 5 * mads
-      if (is.finite(thr) && mads > 0)
+      # Most flocking species are counted as singletons, so mad(log1p) is 0 and an
+      # unfloored threshold could never fire (audit 2026-10-18: 219 of 238 units,
+      # 0 of 36 clusters of 50+ birds). Floor the scale at half the log step from 1
+      # to 2 birds, and cap the threshold at the larger of 10x the median flock and
+      # the species' own 99.5th percentile.
+      l <- log1p(csf)
+      scale_l <- max(stats::mad(l), stats::IQR(l) / 1.349, log(2) / 2)
+      thr <- stats::median(l) + 5 * scale_l
+      thr <- min(thr, log1p(max(10 * stats::median(csf),
+                                stats::quantile(csf, 0.995, names = FALSE))))
+      if (is.finite(thr))
         add("info", "Unusually large flock (vs this species)", "cluster", which(eligible & is.finite(cs) & log1p(cs) > thr),
             "Flock size far above this species' own typical range (judged on the log scale, so ordinary flocks don't flag). Often genuine for gregarious species, noted for review, not presumed wrong.")
     }
@@ -1221,11 +1252,15 @@ bird_qc <- function(obs, sci, points = NULL) {
   if (!is.null(points) && all(c("n_visits","pointkey") %in% names(points)) && "pointkey" %in% names(d)) {
     nv <- suppressWarnings(as.numeric(points$n_visits)); good <- is.finite(nv)
     if (sum(good) >= 5) {
-      smed <- stats::median(nv[good]); smad <- stats::mad(nv[good])
-      if (is.finite(smad) && smad > 0) {
-        low_pts <- points$pointkey[good & nv < smed - 3 * smad]
+      # Point effort is integer-clumped (most points share one visit count), so
+      # the raw MAD is 0 at 41 of 47 sites and an unfloored rule never fires.
+      # Floor the robust scale at the IQR-based sigma and half a visit.
+      smed <- stats::median(nv[good])
+      s_eff <- max(stats::mad(nv[good]), stats::IQR(nv[good]) / 1.349, 0.5)
+      if (is.finite(smed) && is.finite(s_eff)) {
+        low_pts <- points$pointkey[good & nv < smed - 3 * s_eff]
         add("warn", "Detected at under-sampled point(s)", "loweffort", which(eligible & d$pointkey %in% low_pts),
-            sprintf("Some detections fall on points visited far less than the site norm (< %.0f visits vs a site median of %.0f). Under-effort points under-detect species, biasing richness and any across-point comparison.", smed - 3 * smad, smed))
+            sprintf("Some detections fall on points visited far less than the site norm (< %.1f visits vs a site median of %.0f; robust scale %.2f visits). Under-effort points under-detect species, biasing richness and any across-point comparison.", smed - 3 * s_eff, smed, s_eff))
       }
     }
   }
@@ -1288,7 +1323,7 @@ SITE_AUDIT_KEEP <- c(
   "observerDistanceRaw","observerDistance","distance_state","detectionMethod",
   "detection_method_state","methodCanonical",
   "method_singing","method_calling","method_visual","method_drumming","method_other",
-  "method_unknown","clusterSize","is_flyover","matched_visit","valid_count",
+  "method_unknown","clusterSize","clusterSizeRaw","is_flyover","matched_visit","valid_count",
   "joined_valid_visit","enters_breeding_metrics","enters_index","hold_reason")
 # QC report / inspector exports carry these flag columns (added by bird_qc tidy()):
 QC_KEEP    <- c("scientificName","communityScientificName","community_unit_state",
@@ -1339,15 +1374,16 @@ BIRD_COL_DICT <- list(
   method_drumming = c("logical", "TRUE when the raw detection method contains a drumming component; compound methods can have multiple TRUE flags."),
   method_other    = c("logical", "TRUE for a recorded non-flyover method without singing, calling, visual, or drumming components."),
   method_unknown  = c("logical", "TRUE when detectionMethod is blank, missing, or explicitly unknown."),
+  clusterSizeRaw  = c("source token", "clusterSize exactly as returned by the NEON release fetch, before numeric parsing. NA = blank at source (or a bundle built before raw capture). Lets a reader tell a blank source field from a parse loss."),
   clusterSize     = c("# birds", "Source count of birds in the detection (a flock is one row with clusterSize > 1). Only positive finite integer counts enter metrics; other values remain held."),
   matched_visit   = c("logical", "TRUE when the source detection matched exactly one authoritative brd_perpoint visit."),
-  valid_count     = c("logical", "TRUE when the matched visit has samplingImpractical == OK."),
+  valid_count     = c("logical", "TRUE when the matched visit is a valid analysis count: samplingImpractical == OK and the count was not withdrawn because its only otherwise-eligible species detections lack a usable clusterSize (count_hold_reason detections_without_cluster_size)."),
   is_species      = c("logical", "TRUE only when the reported species/subspecies name can be safely mapped to a canonical binomial community unit."),
   is_flyover      = c("logical", "TRUE if this detection was recorded as a bird passing overhead. It remains auditable but is operationally excluded from every on-point community metric."),
   joined_valid_visit = c("logical", "TRUE when the detection joins unambiguously to a valid brd_perpoint physical visit."),
   enters_breeding_metrics = c("logical", "Shared eligibility predicate: valid joined visit + formal point-count minute 1–6 + safely canonicalized species/subspecies + known detection method + positive finite integer clusterSize + non-flyover."),
   enters_index    = c("logical", "Backwards-compatible alias for enters_breeding_metrics. Re-derive the index as sum(clusterSize[enters_index]) / valid physical visits."),
-  hold_reason     = c("category", "Why a source detection is held outside app metrics. NA denotes an auditable obs row; minute-specific values include incidental_outside_point_count, missing_point_count_minute, and invalid_point_count_minute."),
+  hold_reason     = c("category", "Why a source detection is held outside app metrics. NA denotes an auditable obs row; minute-specific values include incidental_outside_point_count, missing_point_count_minute, and invalid_point_count_minute. detection_on_unusable_visit also covers otherwise-clean rows on a count withdrawn for missing clusterSize."),
   primary_method  = c("category", "Modal canonical detection channel across eligible non-flyover records for a species at the grid. NA = none recorded."),
   method          = c("category", "Modal canonical detection channel across eligible non-flyover records for the species."),
   index           = c("birds / point-count", "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population. Detectability differs by species."),

@@ -76,6 +76,31 @@ values into the comparative surface. Pass 7 binds those artifacts to the same
 and site frames are independently reconstructed, so a pre-window-only detection or
 a stale lifetime richness value fails release validation.
 
+## Audit wave 2 (2026-10-21): cluster-withdrawn counts
+
+- **Evidence:** at PUUM, 1,026 detections are held for a missing `clusterSize`
+  (881 of them otherwise-eligible species detections), and all 51 of its supported-
+  zero counts carried at least one of them. Those were not zero-bird counts. No
+  other release site has a count in this state.
+- **Opportunity contract:** a protocol-OK count whose only otherwise-eligible
+  detections lack a positive integer `clusterSize` is now unavailable
+  (`count_hold_reason = detections_without_cluster_size`) and leaves every
+  denominator. Supported-zero counts fall from 117 to 66 and supported-zero
+  point-years from 79 to 60 (rehearsal; the refresh candidate confirms).
+- **Eligible joins:** unchanged. The predicate still requires a positive integer
+  count, so PUUM's richness (6) and Chao2 (7.5) still rest on 39 counts. The
+  common rarefaction target becomes 39 counts instead of 90, which lowers every
+  site's rarefied richness while keeping the ranks (rho 0.988) and the
+  temperature association (0.351, n = 45).
+- **Engineering learning:** withdrawing support at the network-minimum site moves
+  the comparison grain for every site. Any denominator change must report the new
+  common target and the cross-site deltas before it ships.
+- **Decision:** **CONTEXT / HOLD DRIVER INGESTION / NO DRIVER BYTE CHANGE.** Any
+  pooled Driver context drawn from this app must use the rebuilt cross-site
+  artifact and its stated target, never the superseded t = 90 values. The
+  Driver register and implication backlog entry is pending in the Driver
+  repository.
+
 ## Driver use and prohibitions
 
 The Driver may describe a pooled cross-site association only after exact-release

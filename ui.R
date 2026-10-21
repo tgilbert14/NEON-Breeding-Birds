@@ -75,8 +75,9 @@ bird_poster <- function() {
 }
 
 ui <- bslib::page_fillable(
-  theme = app_theme, fillable = FALSE,
-  window_title = "NEON Bird Explorer",
+  theme = app_theme,
+  title = "NEON Breeding Bird Explorer",
+  lang = "en",
   tags$head(
     tags$meta(name = "ddl-app-ready", content = "breeding-birds-release-2026-v1"),
     tags$meta(name = "ddl-release-instance", content = RELEASE_STAMP_ID),

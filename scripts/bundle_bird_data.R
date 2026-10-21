@@ -223,6 +223,7 @@ build_site <- function(site) {
     samplingImpractical = pp_state_raw,
     sampling_state = pp_state,
     valid_count = pp_valid,
+    count_hold_reason = ifelse(pp_valid, NA_character_, "sampling_impractical"),
     protocol_minutes = ifelse(pp_valid, PROTOCOL_MINUTES, 0),
     samplingProtocolVersion = col_chr(pp, "samplingProtocolVersion"),
     observedHabitat = col_chr(pp, "observedHabitat"),
@@ -278,16 +279,31 @@ build_site <- function(site) {
   reported_taxon_id <- col_chr(cd, "taxonID")
   reported_rank <- col_chr(cd, "taxonRank")
   unit <- community_unit(reported_rank, reported_scientific)
-  cluster <- col_num(cd, "clusterSize")
+  cluster_raw <- col_chr(cd, "clusterSize")
+  cluster <- suppressWarnings(as.numeric(cluster_raw))
   cluster_valid <- is.finite(cluster) & cluster > 0 & cluster == floor(cluster)
   species <- unit$eligible
   flyover <- is_flyover_method(method_raw)
   matched <- !is.na(visit_match)
   visit_index <- ifelse(matched, visit_match, 1L)
+  protocol_valid <- matched & visits$valid_count[visit_index]
+  protocol_valid[!matched] <- FALSE
+  eligible <- protocol_valid & minute$in_window & species & method_known &
+    !flyover & cluster_valid
+
+  # Audit item 16 stopgap. A protocol-valid count whose only otherwise-eligible
+  # species detections lack a positive integer clusterSize is not evidence of
+  # zero birds: it is withdrawn from every analysis denominator as unavailable
+  # (count_hold_reason = detections_without_cluster_size), never a supported zero.
+  cluster_blocked <- protocol_valid & minute$in_window & species & method_known &
+    !flyover & !cluster_valid
+  blocked_surveys <- setdiff(unique(cd_survey[cluster_blocked]), unique(cd_survey[eligible]))
+  visit_blocked <- visits$valid_count & visits$survey_id %in% blocked_surveys
+  visits$count_hold_reason[visit_blocked] <- "detections_without_cluster_size"
+  visits$valid_count <- visits$valid_count & !visit_blocked
+  visits$protocol_minutes <- ifelse(visits$valid_count, PROTOCOL_MINUTES, 0)
   matched_valid <- matched & visits$valid_count[visit_index]
   matched_valid[!matched] <- FALSE
-  eligible <- matched_valid & minute$in_window & species & method_known &
-    !flyover & cluster_valid
 
   # The structural visit ledger owns point, year, and bout. A detection-side
   # timestamp can be stale or formatted differently; once the immutable physical
@@ -347,6 +363,7 @@ build_site <- function(site) {
     method_visual = method_component("visual"),
     method_drumming = method_component("drum"),
     clusterSize = cluster,
+    clusterSizeRaw = cluster_raw,
     sexOrAge = col_chr(cd, "sexOrAge"),
     matched_visit = matched,
     valid_count = matched_valid,
@@ -355,7 +372,7 @@ build_site <- function(site) {
   )
 
   hold_reason <- ifelse(!matched, "orphan_detection_no_visit",
-                 ifelse(!matched_valid, "detection_on_unusable_visit",
+                 ifelse(!protocol_valid, "detection_on_unusable_visit",
                    ifelse(minute$state == "incidental_minute_88", "incidental_outside_point_count",
                      ifelse(minute$state == "source_missing", "missing_point_count_minute",
                        ifelse(!minute$in_window, "invalid_point_count_minute",
@@ -364,7 +381,9 @@ build_site <- function(site) {
                              ifelse(tolower(trimws(reported_rank)) %in% c("species", "subspecies") & !species,
                                     "unsafe_species_canonicalization",
                                ifelse(!method_known,
-                                      "missing_or_unknown_detection_method", NA_character_)))))))))
+                                      "missing_or_unknown_detection_method",
+                                 ifelse(!matched_valid, "detection_on_unusable_visit",
+                                        NA_character_))))))))))
   detection$hold_reason <- hold_reason
   held <- detection[!is.na(hold_reason), , drop = FALSE]
   obs <- detection[is.na(hold_reason), , drop = FALSE]
@@ -458,7 +477,7 @@ build_site <- function(site) {
   if (!is.finite(site_lat) && nrow(meta_row)) site_lat <- meta_row$lat[[1]]
   if (!is.finite(site_lng) && nrow(meta_row)) site_lng <- meta_row$lng[[1]]
   years <- sort(unique(opportunity$year[opportunity$supported]))
-  valid_observer <- pp_valid & !is.na(pp_observer)
+  valid_observer <- visits$valid_count & !is.na(pp_observer)
   observer_at_detection <- rep(NA_character_, nrow(cd))
   observer_at_detection[matched] <- pp_observer[visit_match[matched]]
   eligible_species <- sort(unique(unit$name[eligible]))
@@ -475,9 +494,9 @@ build_site <- function(site) {
   }
   observer_support <- list(
     n_observers = dplyr::n_distinct(pp_observer[valid_observer]),
-    n_valid_visits = sum(pp_valid),
+    n_valid_visits = sum(visits$valid_count),
     n_valid_visits_with_observer = sum(valid_observer),
-    complete = sum(pp_valid) > 0L && all(!is.na(pp_observer[pp_valid])),
+    complete = sum(visits$valid_count) > 0L && all(!is.na(pp_observer[visits$valid_count])),
     by_species = observer_by_species
   )
   meta <- list(
@@ -550,7 +569,7 @@ schema <- list(
   incidence_unit = "valid physical six-minute point-count keyed by visits.survey_id; repeated counts are protocol samples, not independent places",
   annual_audit_unit = "point x year opportunity; one or two valid bouts retained in n_valid_bouts",
   detection_index_denominator = "valid point-count bouts",
-  valid_visit_rule = "samplingImpractical == OK",
+  valid_visit_rule = "samplingImpractical == OK AND not withdrawn as detections_without_cluster_size",
   observer_support = "site/species aggregate counts only; raw measuredBy remains only in producer-local evidence",
   cross_job_evidence = "schema-v2 exact two-table scientific projection; source brd_perpoint has no endDate; public visits.endDate is retained as typed NA; observer identity, personnel, remarks, and source UIDs excluded",
   species_community_unit = "safe normalized genus + species binomial; parent species and subspecies collapse; ambiguous nomenclature fails closed",

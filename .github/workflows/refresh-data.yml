@@ -62,6 +62,45 @@ jobs:
           fi
           echo "NEON token probe: HTTP 200, $files files from $PROBE_URL." | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # Watches NEON's anonymous product metadata for a release newer than the one
+  # this app is pinned to (RELEASE-2027 is expected in late January). It never
+  # changes the pinned build: it only raises a named warning and a summary line
+  # so a person can plan the re-pin.
+  release_watch:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Look for a NEON release newer than the pinned one
+        shell: bash
+        env:
+          PRODUCT_URL: https://data.neonscience.org/api/v0/products/DP1.10003.001
+        run: |
+          set -euo pipefail
+          body=$(mktemp)
+          code=$(curl -sS --retry 3 --retry-all-errors --max-time 60 -o "$body" -w '%{http_code}' \
+            "$PRODUCT_URL") || code=000
+          if [ "$code" != "200" ]; then
+            echo "::warning title=Release watch unavailable::HTTP $code from $PRODUCT_URL; the pinned $BIRD_RELEASE build continues."
+            echo "Release watch: HTTP $code from NEON product metadata; could not check for a newer release." >> "$GITHUB_STEP_SUMMARY"
+            rm -f "$body"
+            exit 0
+          fi
+          releases=$(jq -r '[.data.releases[]?.release // empty] | map(select(test("^RELEASE-[0-9]{4}$"))) | sort | join(" ")' "$body")
+          rm -f "$body"
+          pinned_year=${BIRD_RELEASE#RELEASE-}
+          newer=""
+          for r in $releases; do
+            if [ "${r#RELEASE-}" -gt "$pinned_year" ]; then newer="$newer $r"; fi
+          done
+          if [ -n "$newer" ]; then
+            echo "::warning title=Newer NEON release available::DP1.10003.001 now lists${newer}; this app is pinned to $BIRD_RELEASE. Re-pin deliberately (release, DOI, roster, receipts), never by editing data."
+            echo "Release watch: NEON lists${newer}, newer than the pinned $BIRD_RELEASE. Plan a re-pin." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Release watch: newest listed release is ${releases##* }; pinned $BIRD_RELEASE is current." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
   produce_candidate:
     needs: probe_token
     runs-on: ubuntu-22.04
@@ -97,10 +136,10 @@ jobs:
       - name: Install producer dependencies
         uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
-          packages: neonUtilities, dplyr, tidyr, stringr, tibble, jsonlite, digest
+          packages: neonUtilities@4.0.2, dplyr, tidyr, stringr, tibble, jsonlite, digest
           pak-version: none
           dependencies: '"hard"'
-          cache-version: breeding-birds-producer-pak-0.11.1-v2
+          cache-version: breeding-birds-producer-pak-0.11.1-neonutilities-4.0.2-v3
           install-pandoc: "false"
           install-quarto: "false"
 

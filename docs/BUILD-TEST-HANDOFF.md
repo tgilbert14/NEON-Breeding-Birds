@@ -1,5 +1,86 @@
 # Breeding Birds build and test handoff
 
+## 2026-10-21 · Audit wave 2: PUUM cluster withdrawal, QC keyboard, title, SRER default, QC floors, registry, producer pin, release watch (America/Phoenix)
+
+- **Scope:** NEON suite audit 2026-10-18 items 16 (PUUM false zeros), 21 (page
+  title and lang), 23 (QC flags unreachable by keyboard) and the Wave 2 Breeding
+  Birds line (SRER default, MAD floors on the two dead QC flags, neonUtilities pin,
+  RELEASE-2027 watch, in-app suite registry, keepInView). Source identity is
+  unchanged: `DP1.10003.001`, `RELEASE-2026`, DOI `10.48443/v6hs-mx57`.
+- **Revisions:** base `master` `67b3b3989a004c9a4b59444657bd8e261d6d8093`
+  (after PR #7); branch `fix/birds-wave2-audit-2026-10`.
+- **Item 16 stopgap (science):** a protocol-OK count with no eligible detection
+  but at least one otherwise-eligible species detection lacking a positive integer
+  `clusterSize` is withdrawn: `valid_count = FALSE`, new visit column
+  `count_hold_reason = "detections_without_cluster_size"`, outcome `unavailable`,
+  out of every denominator. Implemented independently in
+  `scripts/bundle_bird_data.R`, `scripts/verify_raw_candidate.R` (raw oracle) and
+  `scripts/verify_bundle.R` (public-ledger oracle), plus a runtime fail-closed
+  check in `bird_validate_visits()`. Schema stays v4 with two additive columns
+  (`visits.count_hold_reason`, detection `clusterSizeRaw`) and a new
+  `valid_visit_rule` string. `fetch_bird_all.R` writes an aggregate per-site
+  clusterSize line (rows, class, NA, blank, non-numeric) to the step summary.
+- **UI and QC:** `title = "NEON Breeding Bird Explorer"` and `lang = "en"` replace
+  the ignored `window_title`/`fillable` arguments; one delegated Enter/Space
+  handler on `.qc-flag-click` (preventDefault, ignores key repeat, synthetic
+  click); the picker opens on AZ / SRER; the under-effort flag floors its scale at
+  `max(MAD, IQR/1.349, 0.5)` visits and the flock flag at
+  `max(MAD, IQR/1.349, log(2)/2)` on the log scale with a cap of
+  `log1p(max(10 x median, p99.5))`; a ten-app "NEON Explorer Suite" card in About
+  (links match Small Mammal's registry). No map in this app sets `keepInView`, so
+  that line needs no change here.
+- **Producer:** `neonUtilities@4.0.2` pinned in the producer install (cache key
+  rolled to `...-neonutilities-4.0.2-v3`), a `>= 4.0.1` floor in the fetch, and a
+  separate `release_watch` job that reads NEON's anonymous product metadata and
+  raises a named warning plus a step-summary line when a release newer than
+  `BIRD_RELEASE` is listed. It never changes the pinned build. Checked live today:
+  newest listed release is `RELEASE-2026`.
+- **Local commands (macOS, R 4.5.2) and outcomes:**
+  `scripts/test_helpers.R` 137 checks passed (128 before; new fixtures cover the
+  flock and under-effort reachability, equal-effort silence, and the withdrawn
+  count validator; the QC fixtures fail against the old helpers);
+  `test_bird_evidence_privacy.R`, `test_release_stamp.R`, `test_env_helpers.R`,
+  `test_env_batching.R`, `test_verify_env_candidate.R` passed; the CI static
+  block, `check_custom_message_handlers.mjs`, `check_cover.mjs`, `git diff
+  --check` passed; `test_server_runtime.R` passed with a new rendered-document
+  guard for `<title>` and `lang="en"`; `actionlint` reports only the four
+  pre-existing shellcheck notes. Expected failure, observed: the branch
+  `verify_bundle.R` rejects the committed bundles at the schema valid-visit rule
+  until the refresh rebuilds them, and the committed manifest and stamp do not
+  cover the changed runtime files. CI on the code PR head is therefore red by
+  design; the automation candidate from the refresh is the mergeable head.
+- **Rehearsal:** a scratch copy of the committed bundles was transformed with the
+  new rule (raw token approximated from the parsed value), derived indexes were
+  rebuilt, the scratch stamp rewritten, and the branch `verify_bundle.R` passed:
+  26,314 valid counts (66 supported zeros) and 24,490 supported point-years (60
+  supported-zero point-years), against 26,365 / 117 / 24,509 / 79 on master. Only
+  PUUM changed (51 counts withdrawn). Tampering one withdrawn PUUM count back to
+  valid was rejected. The Shiny lifecycle passed on the rehearsal.
+- **PUUM before / after (rehearsal; confirm on the refresh candidate):** valid
+  counts 90 / 39; supported-zero counts 51 / 0; richness 6 / 6; Chao2 7.5 / 7.5
+  (Q1 3, Q2 1); birds per count 2.84 / 6.56. Richness and Chao2 do not move
+  because the held detections still cannot enter incidence; that is the next step.
+- **Network side effect:** PUUM was the 47-site minimum, so the common
+  rarefaction target falls from 90 to 39 valid counts. Every site's rarefied
+  richness drops (median 10.7 species, max 18.2; SRER 67.0 to 54.3); rank
+  agreement 0.988; the temperature Spearman stays 0.351 (n = 45). Raised to the
+  lead before dispatch.
+- **Browser check (local Shiny, 1440 and 375 px):** tab title and `lang` correct,
+  no `window_title` body attribute; picker on AZ / SRER; Cactus Wren at SRER now
+  shows the under-effort flag on 24 detections; Space and Enter on the focused
+  flag open the inspector with the default prevented, key repeat ignored; the
+  registry renders nine 44 px links and one column at 375 px with no horizontal
+  overflow.
+- **Residual risks:** the raw oracle path was not executed locally (no token);
+  the rehearsal approximated `clusterSizeRaw`; richness, Chao2 and the index at
+  PUUM still come from the 39 clean counts; the in-app registry duplicates Small
+  Mammal's list by hand.
+- **Next action:** dispatch `Propose immutable NEON breeding-bird refresh` on the
+  exact branch head, confirm the PUUM numbers and the clusterSize summary lines
+  on the published `automation/breeding-birds-release-2026` candidate, and merge
+  only its green exact head. Then record the raw clusterSize finding and choose
+  the parser fix or the enters_incidence / enters_index split.
+
 ## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
 
 - **Trigger/evidence:** the reviewed Birds manifest records exact `bslib`

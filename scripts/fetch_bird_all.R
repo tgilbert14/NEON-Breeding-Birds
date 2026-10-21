@@ -16,6 +16,11 @@ suppressPackageStartupMessages({
   library(jsonlite)
   library(digest)
 })
+# neonUtilities is pinned in the producer install; refuse anything older than the
+# version that added token-header authentication rather than drifting silently.
+if (utils::packageVersion("neonUtilities") < "4.0.1")
+  stop("neonUtilities >= 4.0.1 is required for the release fetch; found ",
+       as.character(utils::packageVersion("neonUtilities")), call. = FALSE)
 
 PRODUCT <- "DP1.10003.001"
 RELEASE <- "RELEASE-2026"
@@ -147,6 +152,21 @@ for (site in sites) {
   # Canonicalize every returned table/value before hashing and saving. The full
   # digest binds the complete job-local response, while a second digest binds
   # the exact privacy-safe evidence projection that may cross jobs.
+  # Audit item 16: record, in aggregate only, how clusterSize arrives from the
+  # release so a blank source field can be told apart from a parse loss.
+  cluster_col <- result$brd_countdata$clusterSize
+  cluster_chr <- trimws(as.character(cluster_col))
+  cluster_line <- sprintf(
+    "clusterSize %s: %d rows, class %s, %d NA, %d blank, %d non-numeric",
+    site, length(cluster_col), paste(class(cluster_col), collapse = "/"),
+    sum(is.na(cluster_col)), sum(!is.na(cluster_chr) & !nzchar(cluster_chr)),
+    sum(!is.na(cluster_chr) & nzchar(cluster_chr) &
+          is.na(suppressWarnings(as.numeric(cluster_chr)))))
+  cat(cluster_line, "\n")
+  summary_path <- Sys.getenv("GITHUB_STEP_SUMMARY", "")
+  if (nzchar(summary_path) && sum(is.na(cluster_col)) > 0L)
+    cat(cluster_line, "\n", file = summary_path, append = TRUE, sep = "")
+
   result <- bird_canonical_source(result)
   path <- file.path(RAW_DIR, paste0(site, "_raw.rds"))
   saveRDS(result, path, compress = "xz", version = 3)

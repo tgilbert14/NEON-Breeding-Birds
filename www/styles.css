@@ -1049,3 +1049,15 @@ svg.smt-pin-lines {
 [data-bs-theme="dark"] .qc-flag.warn { background: #352c12; color: #ecd28a; }
 [data-bs-theme="dark"] .qc-flag.info { background: #16263c; color: #a9c6e6; }
 [data-bs-theme="dark"] .qc-flag.clean { background: #163224; color: #9fd9b3; }
+
+/* NEON Explorer Suite registry card (About tab), shared with Small Mammal. */
+.about-suite-card { grid-column: 1 / -1; }
+.suite-app-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.suite-app-link { display: flex; align-items: center; min-height: 44px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--bg); text-decoration: none; }
+.suite-app-link:hover { border-color: var(--pine); box-shadow: 0 4px 12px var(--shadow); text-decoration: none; }
+.suite-app-link:focus-visible { outline: 3px solid var(--pine); outline-offset: 2px; }
+@media (max-width: 800px) {
+  .about-suite-card { grid-column: auto; }
+  .suite-app-grid { grid-template-columns: 1fr; }
+}

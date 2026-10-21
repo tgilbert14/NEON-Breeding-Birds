@@ -64,7 +64,7 @@ server <- function(input, output, session) {
     opportunity_complete=logical(), flyover_detections=integer(), flyover_birds=numeric(),
     total_birds=numeric(), stringsAsFactors=FALSE)
 
-  observe({ ch <- bird_state_choices(); updateSelectInput(session, "stateSel", choices = ch, selected = if ("MA" %in% ch) "MA" else NULL) })
+  observe({ ch <- bird_state_choices(); updateSelectInput(session, "stateSel", choices = ch, selected = if ("AZ" %in% ch) "AZ" else NULL) })
   # State cascade. When a map dot or browse-list card was tapped, rv$pendingSite
   # holds the picked site so the dropdowns snap to THAT site (not site #1 of the
   # state) and we load it, keeping the sidebar in sync with the map. A plain
@@ -931,6 +931,19 @@ server <- function(input, output, session) {
           "Built with data from the National Ecological Observatory Network (NEON), a U.S. National Science Foundation program operated by Battelle. NEON data are provided under a Creative Commons Attribution 4.0 International (CC BY 4.0) license (",
           tags$a(href="https://creativecommons.org/licenses/by/4.0/", target="_blank", "creativecommons.org/licenses/by/4.0"),
           "). This app aggregates and derives summary metrics from the raw NEON data products; the underlying measurements are unaltered. It is an independent, unofficial tool and is not endorsed by NEON, Battelle, or the NSF.")),
+      div(class="about-card about-suite-card",
+        h4(bs_icon("stars"), " Explore the NEON Explorer Suite"),
+        p("Breeding Birds is one part of a ten-app ecology suite. Open a companion cover page to follow the cascade from environmental conditions through plants and animal communities."),
+        div(class="suite-app-grid",
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Driver-Cascade/", target="_blank", rel="noopener", "Driver Cascade"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Small-Mammal-Tracker-App/", target="_blank", rel="noopener", "Small Mammals"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Ground-Beetle-Tracker/", target="_blank", rel="noopener", "Ground Beetles"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Plant-Diversity/", target="_blank", rel="noopener", "Plant Diversity"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Plant-Phenology-Explorer/", target="_blank", rel="noopener", "Plant Phenology"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Vegetation-Structure-Explorer/", target="_blank", rel="noopener", "Vegetation Structure"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-WaterChemistry-Analyte-Viewer-App/", target="_blank", rel="noopener", "Water Chemistry"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Mosquito-Pulse/", target="_blank", rel="noopener", "Mosquito Pulse"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-My-Little-Inverts/", target="_blank", rel="noopener", "My Little Inverts"))),
       div(class="about-card", h4(bs_icon("envelope"), " Desert Data Labs"),
         p(bs_icon("envelope"), " ", tags$a(href="mailto:desertdatalabs@gmail.com","desertdatalabs@gmail.com"), " · ",
           tags$a(href="https://data.neonscience.org/data-products/DP1.10003.001", target="_blank", "NEON data product"))))
