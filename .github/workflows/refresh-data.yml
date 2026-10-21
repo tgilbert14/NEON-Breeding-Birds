@@ -87,8 +87,13 @@ jobs:
             rm -f "$body"
             exit 0
           fi
-          releases=$(jq -r '[.data.releases[]?.release // empty] | map(select(test("^RELEASE-[0-9]{4}$"))) | sort | join(" ")' "$body")
+          releases=$(jq -r '[.data.releases[]?.release // empty] | map(select(test("^RELEASE-[0-9]{4}$"))) | sort | join(" ")' "$body" 2>/dev/null) || releases=""
           rm -f "$body"
+          if [ -z "$releases" ]; then
+            echo "::warning title=Release watch unavailable::NEON product metadata listed no parsable release; the pinned $BIRD_RELEASE build continues."
+            echo "Release watch: no parsable release list in NEON product metadata; could not check for a newer release." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           pinned_year=${BIRD_RELEASE#RELEASE-}
           newer=""
           for r in $releases; do

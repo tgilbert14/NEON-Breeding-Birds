@@ -42,9 +42,10 @@
   `test_bird_evidence_privacy.R`, `test_release_stamp.R`, `test_env_helpers.R`,
   `test_env_batching.R`, `test_verify_env_candidate.R` passed; the CI static
   block, `check_custom_message_handlers.mjs`, `check_cover.mjs`, `git diff
-  --check` passed; `test_server_runtime.R` passed with a new rendered-document
-  guard for `<title>` and `lang="en"`; `actionlint` reports only the four
-  pre-existing shellcheck notes. Expected failure, observed: the branch
+  --check` passed; `test_server_runtime.R` passed with a new guard that renders
+  the page for `<title>` and checks the page object's `lang` attribute (it is
+  `NULL` on the old UI, so the guard fails there); `actionlint` reports only the
+  four pre-existing shellcheck notes. Expected failure, observed: the branch
   `verify_bundle.R` rejects the committed bundles at the schema valid-visit rule
   until the refresh rebuilds them, and the committed manifest and stamp do not
   cover the changed runtime files. CI on the code PR head is therefore red by
@@ -71,6 +72,25 @@
   flag open the inspector with the default prevented, key repeat ignored; the
   registry renders nine 44 px links and one column at 375 px with no horizontal
   overflow.
+- **Independent review (Opus 5.5 at max; the Fable reviewer hit the account's
+  Fable limit):** a synthetic 47-site raw fixture through the real producer,
+  sanitizer, raw oracle and per-site bundle oracle found no disagreement and no
+  validator failure, across clusterSize stored as double, integer and character,
+  with all tamper cases caught. Fixed after review, all outside the release
+  payload: the fetch summary now reports NA, blank or non-numeric clusterSize
+  (not only NA); the release watch degrades to a warning on an unparsable or
+  empty release list instead of failing the run; the `lang` guard checks the
+  page attribute, because `save_html()` always writes `lang="en"`. Deferred: the
+  flock-floor comment in `R/bird_helpers.R` calls `log(2)/2` half the 1-to-2-bird
+  step (on the log1p scale it is half a doubling of 1 + flock size); it is a
+  payload file, so it waits for the next refresh. Calibration notes for wren: the
+  flock flag now fires in 91 of 238 species-site units (up to 15% of a unit's
+  detections; for singleton-counted species it means more than about 10 birds),
+  and the under-effort flag at 19 of 47 sites, including borderline points
+  (LENO 11 visits against a median of 13, WOOD 6 against 9). Both follow the
+  audit's specified formulas. `neonUtilities@4.0.2` is version-pinned but still
+  comes from live CRAN (published after the dated snapshot); a dated Posit
+  Package Manager URL pin would match the geospatial pins.
 - **Residual risks:** the raw oracle path was not executed locally (no token);
   the rehearsal approximated `clusterSizeRaw`; richness, Chao2 and the index at
   PUUM still come from the 39 clean counts; the in-app registry duplicates Small

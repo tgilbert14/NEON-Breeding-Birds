@@ -156,15 +156,19 @@ for (site in sites) {
   # release so a blank source field can be told apart from a parse loss.
   cluster_col <- result$brd_countdata$clusterSize
   cluster_chr <- trimws(as.character(cluster_col))
+  cluster_na <- sum(is.na(cluster_col))
+  cluster_blank <- sum(!is.na(cluster_chr) & !nzchar(cluster_chr))
+  cluster_text <- sum(!is.na(cluster_chr) & nzchar(cluster_chr) &
+                        is.na(suppressWarnings(as.numeric(cluster_chr))))
   cluster_line <- sprintf(
     "clusterSize %s: %d rows, class %s, %d NA, %d blank, %d non-numeric",
     site, length(cluster_col), paste(class(cluster_col), collapse = "/"),
-    sum(is.na(cluster_col)), sum(!is.na(cluster_chr) & !nzchar(cluster_chr)),
-    sum(!is.na(cluster_chr) & nzchar(cluster_chr) &
-          is.na(suppressWarnings(as.numeric(cluster_chr)))))
+    cluster_na, cluster_blank, cluster_text)
   cat(cluster_line, "\n")
   summary_path <- Sys.getenv("GITHUB_STEP_SUMMARY", "")
-  if (nzchar(summary_path) && sum(is.na(cluster_col)) > 0L)
+  # Any unusable token belongs in the summary: NA, a blank string, or text that
+  # does not parse are the three ways a count can be lost.
+  if (nzchar(summary_path) && cluster_na + cluster_blank + cluster_text > 0L)
     cat(cluster_line, "\n", file = summary_path, append = TRUE, sep = "")
 
   result <- bird_canonical_source(result)
