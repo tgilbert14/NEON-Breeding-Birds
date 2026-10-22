@@ -727,13 +727,16 @@ species_board <- function(obs, points = NULL, nvis = NULL, opportunity = NULL, v
 # excluded operationally. flyover_birds carries the audited
 # count so the UI can disclose it behind a click without altering the headline.
 site_birds <- function(obs, points = NULL, nvis = NULL, opportunity = NULL, visits = NULL,
-                       observer_support = NULL) {
+                       observer_support = NULL, board = NULL) {
   raw <- bird_prepare_obs(obs)
   effort <- bird_validate_effort(opportunity, visits, raw)
   opp <- effort$opportunity; vis <- effort$visits
   n_visits <- bird_valid_visit_count(opp, visits, nvis)
   if (!is.finite(n_visits)) return(NULL)
-  brd <- species_board(raw, points, nvis, opp, vis, observer_support)
+  # A caller that already built species_board() from the same inputs (the app's
+  # ingest) passes it here so the board is not recomputed for the hero summary.
+  brd <- if (!is.null(board)) board else
+    species_board(raw, points, nvis, opp, vis, observer_support)
   sp <- eligible_breeding_detections(raw)
   observer_summary <- bird_validate_observer_support(
     observer_support, unique(sp$communityScientificName), n_visits)
