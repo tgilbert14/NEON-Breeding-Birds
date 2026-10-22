@@ -110,8 +110,9 @@ jobs:
     needs: probe_token
     runs-on: ubuntu-22.04
     timeout-minutes: 360
+    # NEON_TOKEN is mapped only on the two steps that read it, so checkout,
+    # dependency installs and fixtures never see the secret.
     env:
-      NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
       BIRD_ENV_BATCH_SIZE: "4"
     steps:
       - name: Checkout immutable producer revision
@@ -159,6 +160,8 @@ jobs:
           Rscript --vanilla scripts/test_env_batching.R
 
       - name: Require release token
+        env:
+          NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
         run: |
           if [[ -z "${NEON_TOKEN:-}" ]]; then
             echo "::error title=Missing NEON token::A full 47-site release fetch requires NEON_TOKEN."
@@ -166,6 +169,9 @@ jobs:
           fi
 
       - name: Fetch and bundle exact release in empty staging
+        # fetch_bird_all.R and refresh_env_data.R are the only token readers.
+        env:
+          NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p "$BIRD_RAW_DIR" "$BIRD_OUTPUT_ROOT"
