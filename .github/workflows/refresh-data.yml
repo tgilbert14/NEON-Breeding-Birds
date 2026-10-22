@@ -235,6 +235,8 @@ jobs:
     if: needs.produce_candidate.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    outputs:
+      content_changed: ${{ steps.content_key.outputs.content_changed }}
     steps:
       - name: Checkout immutable validator revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -389,6 +391,94 @@ jobs:
           bash -n scripts/post_deploy_smoke.sh
           git diff --check
 
+      # A rebuild of the same release must be a no-op. The byte check in the
+      # publisher is not enough: an October run whose only change was the
+      # neonUtilities version in the receipts touched 53 files with identical data.
+      - name: Compare data content with master, ignoring retrieval tool versions
+        id: content_key
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "+refs/heads/master:refs/remotes/origin/master"
+          master_sha=$(git rev-parse --verify "origin/master^{commit}")
+          master_tree="$RUNNER_TEMP/master-tree"
+          mkdir "$master_tree"
+          git archive "$master_sha" data data-sample docs/release.json | tar -x -C "$master_tree"
+          cat > "$RUNNER_TEMP/content_key.R" <<'RSCRIPT'
+          # Content key over data/ and data-sample/. It ignores what a rebuild of the
+          # same release legitimately moves: retrieval tool versions in the two
+          # receipts, the per-bundle meta$source_receipt_sha256 that hashes those
+          # receipts, and data/release_stamp.json (an identity over code, data and
+          # receipts). manifest.json and docs/release.json sit outside the key, so a
+          # code-only change is not a data change.
+          content_key <- function(root) {
+            rel <- unlist(lapply(c("data", "data-sample"), function(d) {
+              if (!dir.exists(file.path(root, d))) stop("missing ", d, " under ", root)
+              file.path(d, list.files(file.path(root, d), recursive = TRUE,
+                                      all.files = TRUE, no.. = TRUE))
+            }))
+            rel <- sort(setdiff(rel, "data/release_stamp.json"), method = "radix")
+            if (!length(rel)) stop("no data files under ", root)
+            receipts <- c("data/source_receipt.json", "data/environment_source_receipt.json")
+            entry <- vapply(rel, function(r) {
+              path <- file.path(root, r)
+              if (r %in% receipts) {
+                j <- jsonlite::fromJSON(path, simplifyVector = FALSE)
+                if (!is.list(j$retrieval)) stop(r, " has no retrieval block")
+                j$retrieval$neonUtilities_version <- NULL
+                j$retrieval$r_version <- NULL
+                txt <- as.character(jsonlite::toJSON(j, auto_unbox = TRUE, null = "null",
+                                                      digits = NA))
+                h <- digest::digest(txt, algo = "sha256", serialize = FALSE)
+              } else if (grepl("[.]rds$", r)) {
+                x <- readRDS(path)
+                if (is.list(x) && !is.data.frame(x) && is.list(x$meta)) {
+                  x$meta$source_receipt_sha256 <- NULL
+                }
+                # Version-2 serialization writes no ALTREP, so equal objects hash equally.
+                h <- digest::digest(serialize(x, NULL, xdr = TRUE, version = 2L),
+                                    algo = "sha256", serialize = FALSE)
+              } else {
+                h <- digest::digest(file = path, algo = "sha256")
+              }
+              paste(r, h, sep = "\t")
+            }, character(1), USE.NAMES = FALSE)
+            digest::digest(paste0(paste(entry, collapse = "\n"), "\n"),
+                           algo = "sha256", serialize = FALSE)
+          }
+          args <- commandArgs(trailingOnly = TRUE)
+          cat(content_key(args[[1]]), "\n", sep = "")
+          RSCRIPT
+          candidate_key=$(Rscript --vanilla "$RUNNER_TEMP/content_key.R" "$GITHUB_WORKSPACE")
+          if [[ ! "$candidate_key" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error title=Content key failed::Could not compute the candidate data content key."
+            exit 1
+          fi
+          master_key=$(Rscript --vanilla "$RUNNER_TEMP/content_key.R" "$master_tree") || master_key=""
+          if [[ ! "$master_key" =~ ^[0-9a-f]{64}$ ]]; then
+            # Unreadable master data cannot prove a no-op, so the candidate goes to review.
+            echo "::warning title=Master content key failed::Could not key master ${master_sha}; treating the candidate as changed so a reviewer sees it."
+            master_key="unavailable"
+          fi
+          if [[ "$candidate_key" == "$master_key" ]]; then changed=false; else changed=true; fi
+          echo "content_changed=$changed" >> "$GITHUB_OUTPUT"
+          field() { jq -r --arg f "$2" '.[$f] // "missing"' "$1" 2>/dev/null || echo "unreadable"; }
+          {
+            echo "### Data content key"
+            echo ""
+            echo "| | master \`${master_sha:0:12}\` | candidate |"
+            echo "|---|---|---|"
+            echo "| release | $(field "$master_tree/docs/release.json" release) | $(field docs/release.json release) |"
+            echo "| release_id | \`$(field "$master_tree/docs/release.json" release_id)\` | \`$(field docs/release.json release_id)\` |"
+            echo "| content key | \`$master_key\` | \`$candidate_key\` |"
+            echo ""
+            if [[ "$changed" == false ]]; then
+              echo "Content key: content unchanged; nothing published. Retrieval tool versions, receipt hashes, the release stamp, manifest.json and docs/release.json are outside the key."
+            else
+              echo "Content key: data content changed; the review-branch publisher runs next."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "content_changed=$changed (master $master_key, candidate $candidate_key)"
+
       - name: Package immutable validated candidate
         run: tar -czf "$RUNNER_TEMP/breeding-birds-release-2026.tgz" data data-sample docs/release.json manifest.json
 
@@ -402,7 +492,8 @@ jobs:
 
   publish_candidate:
     needs: validate_candidate
-    if: needs.validate_candidate.result == 'success'
+    # Publish only a candidate whose data content differs from master.
+    if: needs.validate_candidate.result == 'success' && needs.validate_candidate.outputs.content_changed == 'true'
     runs-on: ubuntu-22.04
     permissions:
       contents: write
