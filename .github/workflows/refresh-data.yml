@@ -65,30 +65,31 @@ jobs:
   # Watches NEON's anonymous product metadata for a release newer than the one
   # this app is pinned to (RELEASE-2027 is expected in late January). It never
   # changes the pinned build: it only raises a named warning and a summary line
-  # so a person can plan the re-pin.
+  # so a person can plan the re-pin. The same metadata carries NEON's issue and
+  # change log; entries dated after the pinned release's generation date are
+  # surfaced as warnings because the pinned bundle cannot reflect them.
   release_watch:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
       contents: read
     steps:
-      - name: Look for a NEON release newer than the pinned one
+      - name: Look for a NEON release or change-log entry newer than the pinned one
         shell: bash
         env:
           PRODUCT_URL: https://data.neonscience.org/api/v0/products/DP1.10003.001
         run: |
           set -euo pipefail
           body=$(mktemp)
+          trap 'rm -f "$body"' EXIT
           code=$(curl -sS --retry 3 --retry-all-errors --max-time 60 -o "$body" -w '%{http_code}' \
             "$PRODUCT_URL") || code=000
           if [ "$code" != "200" ]; then
             echo "::warning title=Release watch unavailable::HTTP $code from $PRODUCT_URL; the pinned $BIRD_RELEASE build continues."
-            echo "Release watch: HTTP $code from NEON product metadata; could not check for a newer release." >> "$GITHUB_STEP_SUMMARY"
-            rm -f "$body"
+            echo "Release watch: HTTP $code from NEON product metadata; could not check for a newer release or change-log entry." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           releases=$(jq -r '[.data.releases[]?.release // empty] | map(select(test("^RELEASE-[0-9]{4}$"))) | sort | join(" ")' "$body" 2>/dev/null) || releases=""
-          rm -f "$body"
           if [ -z "$releases" ]; then
             echo "::warning title=Release watch unavailable::NEON product metadata listed no parsable release; the pinned $BIRD_RELEASE build continues."
             echo "Release watch: no parsable release list in NEON product metadata; could not check for a newer release." >> "$GITHUB_STEP_SUMMARY"
@@ -101,17 +102,63 @@ jobs:
           done
           if [ -n "$newer" ]; then
             echo "::warning title=Newer NEON release available::DP1.10003.001 now lists${newer}; this app is pinned to $BIRD_RELEASE. Re-pin deliberately (release, DOI, roster, receipts), never by editing data."
-            echo "Release watch: NEON lists${newer}, newer than the pinned $BIRD_RELEASE. Plan a re-pin." >> "$GITHUB_STEP_SUMMARY"
+            echo "Release watch: NEON lists${newer}, newer than the pinned $BIRD_RELEASE. Plan a re-pin (DEPLOY.md, Release rollover)." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Release watch: newest listed release is ${releases##* }; pinned $BIRD_RELEASE is current." | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+
+          # Change-log watch. A missing generation date or an unexpected shape
+          # degrades to a warning; it never fails the run.
+          generated=$(jq -r --arg r "$BIRD_RELEASE" \
+            '[.data.releases[]? | select(.release == $r) | .generationDate // empty][0] // empty' \
+            "$body" 2>/dev/null) || generated=""
+          generated_day=${generated:0:10}
+          if [[ ! "$generated_day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::warning title=Change-log watch unavailable::NEON product metadata gave no generation date for $BIRD_RELEASE; change-log entries were not checked."
+            echo "Change-log watch: no generation date for $BIRD_RELEASE; entries not checked." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! entries=$(jq -r --arg d "$generated_day" '
+                if (.data.changeLogs | type) != "array" then error("changeLogs is not an array") else . end
+                | .data.changeLogs[]
+                | select(((.issueDate // "") | tostring | .[0:10]) > $d)
+                | [ (.id // "?" | tostring),
+                    ((.issueDate // "") | tostring | .[0:10]),
+                    ((.locationAffected // "unspecified") | tostring | gsub("[\\r\\n\\t]+"; " ") | .[0:120]),
+                    ((.issue // "") | tostring | gsub("[\\r\\n\\t]+"; " ")
+                      | if length > 240 then .[0:240] + "..." else . end) ]
+                | @tsv' "$body" 2>/dev/null); then
+            echo "::warning title=Change-log watch unavailable::NEON product metadata had no readable changeLogs array; change-log entries were not checked."
+            echo "Change-log watch: no readable changeLogs array in NEON product metadata; entries not checked." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ -z "$entries" ]; then
+            echo "Change-log watch: no NEON change-log entry dated after the $BIRD_RELEASE generation date ($generated_day)." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          count=0
+          {
+            echo ""
+            echo "Change-log watch: NEON entries dated after the $BIRD_RELEASE generation date ($generated_day). The pinned bundle cannot reflect them; read each before the next re-pin."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS=$'\t' read -r id day location text; do
+            count=$((count + 1))
+            # Workflow-command messages must escape %, CR and LF.
+            message="Entry $id ($day, $location): $text"
+            message=${message//%/%25}
+            echo "::warning title=NEON change log after $BIRD_RELEASE::$message"
+            echo "- $day, $location: $text (entry $id)" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$entries"
+          echo "Change-log watch: $count NEON entries dated after $generated_day."
 
   produce_candidate:
     needs: probe_token
     runs-on: ubuntu-22.04
     timeout-minutes: 360
+    # NEON_TOKEN is mapped only on the two steps that read it, so checkout,
+    # dependency installs and fixtures never see the secret.
     env:
-      NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
       BIRD_ENV_BATCH_SIZE: "4"
     steps:
       - name: Checkout immutable producer revision
@@ -159,6 +206,8 @@ jobs:
           Rscript --vanilla scripts/test_env_batching.R
 
       - name: Require release token
+        env:
+          NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
         run: |
           if [[ -z "${NEON_TOKEN:-}" ]]; then
             echo "::error title=Missing NEON token::A full 47-site release fetch requires NEON_TOKEN."
@@ -166,6 +215,9 @@ jobs:
           fi
 
       - name: Fetch and bundle exact release in empty staging
+        # fetch_bird_all.R and refresh_env_data.R are the only token readers.
+        env:
+          NEON_TOKEN: ${{ secrets.NEON_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p "$BIRD_RAW_DIR" "$BIRD_OUTPUT_ROOT"
@@ -229,6 +281,8 @@ jobs:
     if: needs.produce_candidate.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    outputs:
+      content_changed: ${{ steps.content_key.outputs.content_changed }}
     steps:
       - name: Checkout immutable validator revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -383,6 +437,94 @@ jobs:
           bash -n scripts/post_deploy_smoke.sh
           git diff --check
 
+      # A rebuild of the same release must be a no-op. The byte check in the
+      # publisher is not enough: an October run whose only change was the
+      # neonUtilities version in the receipts touched 53 files with identical data.
+      - name: Compare data content with master, ignoring retrieval tool versions
+        id: content_key
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "+refs/heads/master:refs/remotes/origin/master"
+          master_sha=$(git rev-parse --verify "origin/master^{commit}")
+          master_tree="$RUNNER_TEMP/master-tree"
+          mkdir "$master_tree"
+          git archive "$master_sha" data data-sample docs/release.json | tar -x -C "$master_tree"
+          cat > "$RUNNER_TEMP/content_key.R" <<'RSCRIPT'
+          # Content key over data/ and data-sample/. It ignores what a rebuild of the
+          # same release legitimately moves: retrieval tool versions in the two
+          # receipts, the per-bundle meta$source_receipt_sha256 that hashes those
+          # receipts, and data/release_stamp.json (an identity over code, data and
+          # receipts). manifest.json and docs/release.json sit outside the key, so a
+          # code-only change is not a data change.
+          content_key <- function(root) {
+            rel <- unlist(lapply(c("data", "data-sample"), function(d) {
+              if (!dir.exists(file.path(root, d))) stop("missing ", d, " under ", root)
+              file.path(d, list.files(file.path(root, d), recursive = TRUE,
+                                      all.files = TRUE, no.. = TRUE))
+            }))
+            rel <- sort(setdiff(rel, "data/release_stamp.json"), method = "radix")
+            if (!length(rel)) stop("no data files under ", root)
+            receipts <- c("data/source_receipt.json", "data/environment_source_receipt.json")
+            entry <- vapply(rel, function(r) {
+              path <- file.path(root, r)
+              if (r %in% receipts) {
+                j <- jsonlite::fromJSON(path, simplifyVector = FALSE)
+                if (!is.list(j$retrieval)) stop(r, " has no retrieval block")
+                j$retrieval$neonUtilities_version <- NULL
+                j$retrieval$r_version <- NULL
+                txt <- as.character(jsonlite::toJSON(j, auto_unbox = TRUE, null = "null",
+                                                      digits = NA))
+                h <- digest::digest(txt, algo = "sha256", serialize = FALSE)
+              } else if (grepl("[.]rds$", r)) {
+                x <- readRDS(path)
+                if (is.list(x) && !is.data.frame(x) && is.list(x$meta)) {
+                  x$meta$source_receipt_sha256 <- NULL
+                }
+                # Version-2 serialization writes no ALTREP, so equal objects hash equally.
+                h <- digest::digest(serialize(x, NULL, xdr = TRUE, version = 2L),
+                                    algo = "sha256", serialize = FALSE)
+              } else {
+                h <- digest::digest(file = path, algo = "sha256")
+              }
+              paste(r, h, sep = "\t")
+            }, character(1), USE.NAMES = FALSE)
+            digest::digest(paste0(paste(entry, collapse = "\n"), "\n"),
+                           algo = "sha256", serialize = FALSE)
+          }
+          args <- commandArgs(trailingOnly = TRUE)
+          cat(content_key(args[[1]]), "\n", sep = "")
+          RSCRIPT
+          candidate_key=$(Rscript --vanilla "$RUNNER_TEMP/content_key.R" "$GITHUB_WORKSPACE")
+          if [[ ! "$candidate_key" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error title=Content key failed::Could not compute the candidate data content key."
+            exit 1
+          fi
+          master_key=$(Rscript --vanilla "$RUNNER_TEMP/content_key.R" "$master_tree") || master_key=""
+          if [[ ! "$master_key" =~ ^[0-9a-f]{64}$ ]]; then
+            # Unreadable master data cannot prove a no-op, so the candidate goes to review.
+            echo "::warning title=Master content key failed::Could not key master ${master_sha}; treating the candidate as changed so a reviewer sees it."
+            master_key="unavailable"
+          fi
+          if [[ "$candidate_key" == "$master_key" ]]; then changed=false; else changed=true; fi
+          echo "content_changed=$changed" >> "$GITHUB_OUTPUT"
+          field() { jq -r --arg f "$2" '.[$f] // "missing"' "$1" 2>/dev/null || echo "unreadable"; }
+          {
+            echo "### Data content key"
+            echo ""
+            echo "| | master \`${master_sha:0:12}\` | candidate |"
+            echo "|---|---|---|"
+            echo "| release | $(field "$master_tree/docs/release.json" release) | $(field docs/release.json release) |"
+            echo "| release_id | \`$(field "$master_tree/docs/release.json" release_id)\` | \`$(field docs/release.json release_id)\` |"
+            echo "| content key | \`$master_key\` | \`$candidate_key\` |"
+            echo ""
+            if [[ "$changed" == false ]]; then
+              echo "Content key: content unchanged; nothing published. Retrieval tool versions, receipt hashes, the release stamp, manifest.json and docs/release.json are outside the key."
+            else
+              echo "Content key: data content changed; the review-branch publisher runs next."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "content_changed=$changed (master $master_key, candidate $candidate_key)"
+
       - name: Package immutable validated candidate
         run: tar -czf "$RUNNER_TEMP/breeding-birds-release-2026.tgz" data data-sample docs/release.json manifest.json
 
@@ -396,10 +538,15 @@ jobs:
 
   publish_candidate:
     needs: validate_candidate
-    if: needs.validate_candidate.result == 'success'
+    # Publish only a candidate whose data content differs from master.
+    if: needs.validate_candidate.result == 'success' && needs.validate_candidate.outputs.content_changed == 'true'
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    # issues: write lets the publisher upsert one "candidate waiting" issue. It
+    # still never pushes master or opens a PR.
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     steps:
       - name: Checkout validated producer revision
@@ -414,26 +561,76 @@ jobs:
           name: breeding-birds-release-2026-${{ github.sha }}
           path: ${{ runner.temp }}/candidate
 
+      # This checkout holds a write credential, so nothing outside the four
+      # publishable paths may land in it: no .git/hooks, no workflow, no symlink.
+      - name: Check validated artifact members before extraction
+        run: |
+          set -euo pipefail
+          tgz="$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz"
+          members=$(tar -tzf "$tgz")
+          if [[ -z "$members" ]]; then
+            echo "::error title=Empty candidate artifact::$tgz lists no members."
+            exit 1
+          fi
+          outside=$(grep -vE '^(data/|data-sample/|docs/release\.json$|manifest\.json$)' <<<"$members" || true)
+          traversal=$(grep -E '(^/|(^|/)\.\.(/|$))' <<<"$members" || true)
+          special=$(tar -tvzf "$tgz" | awk 'substr($1, 1, 1) != "-" && substr($1, 1, 1) != "d"' || true)
+          if [[ -n "$outside$traversal$special" ]]; then
+            echo "::error title=Unexpected artifact member::The validated artifact may hold only regular files and directories under data/ and data-sample/, plus docs/release.json and manifest.json."
+            printf '%s\n' "$outside" "$traversal" "$special" | sed '/^$/d' | head -50
+            exit 1
+          fi
+          echo "Artifact members: $(wc -l <<<"$members") entries, all within the four publishable paths."
+
       - name: Publish review branch, never master
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          branch="automation/breeding-birds-release-2026"
+          compare_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/master...${branch}"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          outcome="failed before the review branch was updated"
+          old_release="unknown"; old_release_id="unknown"
+          new_release="unknown"; new_release_id="unknown"
+          changed_files="unknown"
+          write_summary() {
+            {
+              echo "### Breeding Birds review branch"
+              echo ""
+              echo "- Outcome: ${outcome}"
+              echo "- Compare: ${compare_url}"
+              echo "- Release on master: ${old_release} (\`${old_release_id}\`)"
+              echo "- Release on candidate: ${new_release} (\`${new_release_id}\`)"
+              echo "- Files differing from master: ${changed_files}"
+              echo "- Run: ${run_url}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          trap write_summary EXIT
           git fetch --no-tags origin master
+          if git cat-file -e origin/master:docs/release.json 2>/dev/null; then
+            old_release=$(git show origin/master:docs/release.json | jq -r '.release // "missing"')
+            old_release_id=$(git show origin/master:docs/release.json | jq -r '.release_id // "missing"')
+          fi
           if ! git merge-base --is-ancestor origin/master "$GITHUB_SHA"; then
             echo "Producer revision does not contain current master; refusing stale publication."
+            outcome="refused: the producer revision does not contain current master"
             exit 1
           fi
           find data data-sample -mindepth 1 -delete
-          tar -xzf "$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz"
-          branch="automation/breeding-birds-release-2026"
+          tar --no-same-owner -xzf "$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz" \
+            data data-sample docs/release.json manifest.json
+          new_release=$(jq -r '.release // "missing"' docs/release.json)
+          new_release_id=$(jq -r '.release_id // "missing"' docs/release.json)
           remote_head=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
           git switch -C "$branch"
           git config user.name "neon-data-bot"
           git config user.email "neon-data-bot@users.noreply.github.com"
           git add -A -- data data-sample docs/release.json manifest.json
+          changed_files=$(git diff --cached --name-only origin/master | wc -l | tr -d ' ')
           if git diff --cached --quiet -- data data-sample docs/release.json manifest.json; then
             echo "No validated candidate change, including untracked scoped files."
+            outcome="no byte change from the producer revision; nothing pushed"
             exit 0
           fi
           git commit -m "data: propose validated breeding-bird RELEASE-2026 [bot]" \
@@ -450,20 +647,44 @@ jobs:
             git push origin "$branch:refs/heads/$branch"
           fi
           pushed_commit=""
-          for attempt in 1 2 3 4 5; do
+          for _ in 1 2 3 4 5; do
             pushed_commit=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
             [[ "$pushed_commit" == "$published_commit" ]] && break
             sleep 2
           done
           if [[ "$pushed_commit" != "$published_commit" ]]; then
             echo "Published branch does not resolve to the validated candidate commit."
+            outcome="failed: the pushed branch does not resolve to ${published_commit}"
             exit 1
+          fi
+          outcome="review branch updated to ${published_commit}; waiting for a reviewer-authenticated PR"
+
+          # A green scheduled run sends no email, so a changed candidate opens (or
+          # comments on) one tracking issue. Exact-title match over open issues.
+          issue_title="Breeding Birds: validated candidate waiting for review"
+          issue_body="A validated candidate whose data content differs from master is on \`${branch}\` at \`${published_commit}\`.
+
+          - Run: ${run_url}
+          - Compare: ${compare_url}
+          - Release on master: ${old_release} (\`${old_release_id}\`)
+          - Release on candidate: ${new_release} (\`${new_release_id}\`)
+          - Files differing from master: ${changed_files}
+
+          Review the run summary, then open a reviewer-authenticated PR from \`${branch}\` to master (DEPLOY.md, Normal release procedure). The bot never opens the PR or pushes master."
+          issue_number=$(gh issue list --state open --limit 200 --json number,title |
+            jq -r --arg t "$issue_title" '[.[] | select(.title == $t)][0].number // empty')
+          if [[ -n "$issue_number" ]]; then
+            gh issue comment "$issue_number" --body "$issue_body"
+            echo "Commented on open issue #${issue_number}."
+          else
+            gh issue create --title "$issue_title" --body "$issue_body"
           fi
 
           pr_count=$(gh pr list --head "$branch" --base master --state open \
             --json url --jq 'length')
           if (( pr_count > 1 )); then
             echo "More than one open master PR exists for $branch; refusing ambiguous publication."
+            outcome="failed: more than one open master PR exists for ${branch}"
             exit 1
           fi
           if (( pr_count == 0 )); then
@@ -472,7 +693,7 @@ jobs:
           fi
 
           pr_record=""
-          for attempt in 1 2 3 4 5; do
+          for _ in 1 2 3 4 5; do
             pr_record=$(gh pr list --head "$branch" --base master --state open \
               --json url,baseRefName,headRefName,headRefOid \
               --jq 'if length == 1 then .[0] | [.url,.baseRefName,.headRefName,.headRefOid] | @tsv else "" end')
@@ -483,8 +704,10 @@ jobs:
           if [[ -z "$pr_record" || "$pr_base" != master || "$pr_head" != "$branch" || \
                 "$pr_oid" != "$published_commit" ]]; then
             echo "Open PR identity does not match master <- $branch at $published_commit."
+            outcome="failed: the open PR does not match master <- ${branch} at ${published_commit}"
             exit 1
           fi
           gh pr comment "$pr_url" \
             --body "Updated from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. GitHub will hold the pull_request synchronize checks triggered by this automation update for approval; a repository write user must select **Approve workflows to run**. Do not merge until checks are green on exact head ${published_commit}."
           echo "::notice title=Approve exact-head PR checks::Existing PR updated to $published_commit. A repository write user must select Approve workflows to run, then verify green checks on that exact head."
+          outcome="existing PR ${pr_url} updated to ${published_commit}; approve its workflow runs, then check the exact head"
