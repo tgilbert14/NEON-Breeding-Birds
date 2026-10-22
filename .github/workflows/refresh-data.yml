@@ -65,30 +65,31 @@ jobs:
   # Watches NEON's anonymous product metadata for a release newer than the one
   # this app is pinned to (RELEASE-2027 is expected in late January). It never
   # changes the pinned build: it only raises a named warning and a summary line
-  # so a person can plan the re-pin.
+  # so a person can plan the re-pin. The same metadata carries NEON's issue and
+  # change log; entries dated after the pinned release's generation date are
+  # surfaced as warnings because the pinned bundle cannot reflect them.
   release_watch:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
       contents: read
     steps:
-      - name: Look for a NEON release newer than the pinned one
+      - name: Look for a NEON release or change-log entry newer than the pinned one
         shell: bash
         env:
           PRODUCT_URL: https://data.neonscience.org/api/v0/products/DP1.10003.001
         run: |
           set -euo pipefail
           body=$(mktemp)
+          trap 'rm -f "$body"' EXIT
           code=$(curl -sS --retry 3 --retry-all-errors --max-time 60 -o "$body" -w '%{http_code}' \
             "$PRODUCT_URL") || code=000
           if [ "$code" != "200" ]; then
             echo "::warning title=Release watch unavailable::HTTP $code from $PRODUCT_URL; the pinned $BIRD_RELEASE build continues."
-            echo "Release watch: HTTP $code from NEON product metadata; could not check for a newer release." >> "$GITHUB_STEP_SUMMARY"
-            rm -f "$body"
+            echo "Release watch: HTTP $code from NEON product metadata; could not check for a newer release or change-log entry." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           releases=$(jq -r '[.data.releases[]?.release // empty] | map(select(test("^RELEASE-[0-9]{4}$"))) | sort | join(" ")' "$body" 2>/dev/null) || releases=""
-          rm -f "$body"
           if [ -z "$releases" ]; then
             echo "::warning title=Release watch unavailable::NEON product metadata listed no parsable release; the pinned $BIRD_RELEASE build continues."
             echo "Release watch: no parsable release list in NEON product metadata; could not check for a newer release." >> "$GITHUB_STEP_SUMMARY"
@@ -101,10 +102,55 @@ jobs:
           done
           if [ -n "$newer" ]; then
             echo "::warning title=Newer NEON release available::DP1.10003.001 now lists${newer}; this app is pinned to $BIRD_RELEASE. Re-pin deliberately (release, DOI, roster, receipts), never by editing data."
-            echo "Release watch: NEON lists${newer}, newer than the pinned $BIRD_RELEASE. Plan a re-pin." >> "$GITHUB_STEP_SUMMARY"
+            echo "Release watch: NEON lists${newer}, newer than the pinned $BIRD_RELEASE. Plan a re-pin (DEPLOY.md, Release rollover)." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Release watch: newest listed release is ${releases##* }; pinned $BIRD_RELEASE is current." | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+
+          # Change-log watch. A missing generation date or an unexpected shape
+          # degrades to a warning; it never fails the run.
+          generated=$(jq -r --arg r "$BIRD_RELEASE" \
+            '[.data.releases[]? | select(.release == $r) | .generationDate // empty][0] // empty' \
+            "$body" 2>/dev/null) || generated=""
+          generated_day=${generated:0:10}
+          if [[ ! "$generated_day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::warning title=Change-log watch unavailable::NEON product metadata gave no generation date for $BIRD_RELEASE; change-log entries were not checked."
+            echo "Change-log watch: no generation date for $BIRD_RELEASE; entries not checked." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! entries=$(jq -r --arg d "$generated_day" '
+                if (.data.changeLogs | type) != "array" then error("changeLogs is not an array") else . end
+                | .data.changeLogs[]
+                | select(((.issueDate // "") | tostring | .[0:10]) > $d)
+                | [ (.id // "?" | tostring),
+                    ((.issueDate // "") | tostring | .[0:10]),
+                    ((.locationAffected // "unspecified") | tostring | gsub("[\\r\\n\\t]+"; " ") | .[0:120]),
+                    ((.issue // "") | tostring | gsub("[\\r\\n\\t]+"; " ")
+                      | if length > 240 then .[0:240] + "..." else . end) ]
+                | @tsv' "$body" 2>/dev/null); then
+            echo "::warning title=Change-log watch unavailable::NEON product metadata had no readable changeLogs array; change-log entries were not checked."
+            echo "Change-log watch: no readable changeLogs array in NEON product metadata; entries not checked." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ -z "$entries" ]; then
+            echo "Change-log watch: no NEON change-log entry dated after the $BIRD_RELEASE generation date ($generated_day)." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          count=0
+          {
+            echo ""
+            echo "Change-log watch: NEON entries dated after the $BIRD_RELEASE generation date ($generated_day). The pinned bundle cannot reflect them; read each before the next re-pin."
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS=$'\t' read -r id day location text; do
+            count=$((count + 1))
+            # Workflow-command messages must escape %, CR and LF.
+            message="Entry $id ($day, $location): $text"
+            message=${message//%/%25}
+            echo "::warning title=NEON change log after $BIRD_RELEASE::$message"
+            echo "- $day, $location: $text (entry $id)" >> "$GITHUB_STEP_SUMMARY"
+          done <<< "$entries"
+          echo "Change-log watch: $count NEON entries dated after $generated_day."
 
   produce_candidate:
     needs: probe_token
