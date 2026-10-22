@@ -742,6 +742,98 @@ check(identical(bird_birds_or_na(c(1, 2), c(TRUE, TRUE)), 3) &&
       identical(bird_birds_or_na(numeric(), logical()), 0),
       "bird totals are NA whenever a count in scope is missing")
 
+# Cluster-size states (wren's ruling, 2026-10-21): a blank count on a bird
+# record is read as one bird only in a listed site-year with the recording
+# signature; invalid present values are never read as one.
+cs_state <- bird_cluster_size_state(
+  raw_token = c("3", " 4 ", "2.0", "0", "-1", "1.5", "abc", NA, "", NA, NA),
+  names_bird = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE),
+  site = c(rep("PUUM", 9), "PUUM", "SRER"),
+  year = c(rep(2021L, 9), 2019L, 2021L))
+check(identical(cs_state, c("recorded", "recorded", "recorded", "invalid", "invalid", "invalid",
+                            "invalid", "blank_no_bird", "blank_read_as_one",
+                            "blank_unresolved", "blank_unresolved")),
+      "cluster-size states separate recorded, invalid, no-bird, read-as-one and unresolved")
+check(identical(bird_cluster_size_used(c("3", "", "0", NA), c("recorded", "blank_read_as_one", "invalid", "blank_unresolved")),
+                c(3, 1, NA, NA)),
+      "the used count is the recorded value, one for a read blank, and NA otherwise")
+puum_obs <- split_obs_template
+puum_obs$site <- "PUUM"; puum_obs$pointkey <- sub("SPLT", "PUUM", puum_obs$pointkey)
+puum_obs$plotID <- "PUUM_001"
+puum_prepared <- bird_prepare_obs(puum_obs)
+check(puum_prepared$cluster_size_state[1] == "blank_read_as_one" && puum_prepared$clusterSize[1] == 1 &&
+      all(puum_prepared$enters_index),
+      "in a listed PUUM year a blank bird count is read as one and enters the index")
+puum_tampered <- puum_prepared; puum_tampered$cluster_size_state[1] <- "recorded"
+expect_error(bird_prepare_obs(puum_tampered), "cluster_size_state does not re-derive",
+             "a forged cluster-size state fails closed")
+puum_visits <- data.frame(survey_id = c("s-1", "s-2", "s-3"),
+  pointkey = c("PUUM_001_21", "PUUM_001_22", "PUUM_001_23"), year = 2021L, bout = "1",
+  valid_count = TRUE, stringsAsFactors = FALSE)
+puum_visits <- add_visit_summaries(puum_visits, puum_obs)
+puum_site <- site_birds(puum_obs, nvis = 3, visits = puum_visits)
+check(puum_site$n_detections_count_read_as_one == 1L && puum_site$n_detections_without_count == 0L &&
+      isTRUE(all.equal(puum_site$birds_per_count, round(7 / 3, 2))) &&
+      identical(puum_site$read_as_one_years, 2021L) && puum_site$index_birds == 7,
+      "a read-as-one count enters the PUUM index and is stated beside it")
+puum_board <- species_board(puum_obs, nvis = 3, visits = puum_visits)
+check(puum_board$detections_count_read_as_one[puum_board$scientificName == "Alpha avis"] == 1L &&
+      puum_board$detections_count_read_as_one[puum_board$scientificName == "Beta avis"] == 0L,
+      "the Board states each species' detections read as one")
+check(grepl("(1 of 7 birds)", bird_cluster_read_caveat("PUUM", c(2018L, 2021L, 2024L), 1L, 7), fixed = TRUE) &&
+      grepl("2018, 2021 and 2024", bird_cluster_read_caveat("PUUM", c(2024L, 2018L, 2021L), 881L, 1137), fixed = TRUE) &&
+      grepl("881 of 1,137 birds", bird_cluster_read_caveat("PUUM", 2021L, 881L, 1137), fixed = TRUE) &&
+      is.null(bird_cluster_read_caveat("SRER", integer(), 0L, 10)),
+      "the read-as-one caveat states years and the share of birds, and only where it applies")
+
+# Accumulation verdict (wren's ruling): Q1/T bands and reachability.
+check(bird_accumulation_verdict(25, 100)$band == "still rising" && bird_accumulation_verdict(25, 100)$per_n == 4L &&
+      bird_accumulation_verdict(4, 100)$band == "still rising" &&
+      bird_accumulation_verdict(1, 100)$band == "levelling off" &&
+      bird_accumulation_verdict(1, 200)$band == "nearly flat" &&
+      bird_accumulation_verdict(0, 90)$band == "flat" &&
+      grepl("flat: every detected species", bird_accumulation_verdict(0, 90)$text, fixed = TRUE),
+      "accumulation verdict bands are reachable and match the rule")
+
+# Spearman interval and exact permutation p (wren's ruling).
+ci45 <- bird_spearman_ci(0.351, 45)
+check(isTRUE(all.equal(round(ci45, 2), c(0.05, 0.59))) && all(is.na(bird_spearman_ci(0.5, 9))),
+      "Bonett-Wright interval matches the ruling and is withheld below n = 10")
+check(isTRUE(all.equal(bird_spearman_exact_p(1:7, 1:7), 2 / factorial(7))) &&
+      isTRUE(all.equal(bird_spearman_exact_p(1:6, c(2, 1, 4, 3, 6, 5)),
+                       suppressWarnings(stats::cor.test(1:6, c(2, 1, 4, 3, 6, 5), method = "spearman", exact = TRUE)$p.value))) &&
+      is.na(bird_spearman_exact_p(1:10, 1:10)),
+      "exact permutation p matches enumeration and R's exact test, and is limited to n <= 9")
+
+# Chao2 stability gate (wren's ruling): extrapolation and upper-bound gates.
+gate_extrap <- chao2_from_incidence(c(rep(1L, 20), rep(2L, 3), rep(5L, 10)), 100)
+check(gate_extrap$unstable && grepl("more than half", gate_extrap$suppressed_reason, fixed = TRUE),
+      "a Chao2 estimate that adds more than half the observed richness does not lead")
+gate_ok <- chao2_from_incidence(c(rep(1L, 2), rep(2L, 5), rep(8L, 30)), 100)
+check(!gate_ok$unstable && is.na(gate_ok$suppressed_reason),
+      "a well-supported Chao2 estimate still leads")
+
+# Ubiquity after the 2018 grid cut (wren's ruling): points last counted before
+# 2018 leave the denominator.
+ubq_visits <- data.frame(survey_id = c("u-1", "u-2", "u-3"),
+  pointkey = c("UBQ_001_21", "UBQ_001_22", "UBQ_001_23"), year = c(2017L, 2019L, 2019L),
+  bout = "1", valid_count = TRUE, stringsAsFactors = FALSE)
+ubq_obs <- data.frame(survey_id = c("u-1", "u-2"), pointkey = c("UBQ_001_21", "UBQ_001_22"),
+  plotID = "UBQ_001", year = c(2017L, 2019L), bout = "1", scientificName = c("Alpha avis", "Beta avis"),
+  vernacularName = c("Alpha bird", "Beta bird"), taxonRank = "species", clusterSize = 1,
+  detectionMethod = "singing", pointCountMinute = "2", observerDistance = "30", stringsAsFactors = FALSE)
+ubq_visits <- add_visit_summaries(ubq_visits, ubq_obs)
+ubq_board <- species_board(ubq_obs, nvis = 3, visits = ubq_visits)
+check(ubq_board$ubiquity[ubq_board$scientificName == "Alpha avis"] == 0 &&
+      ubq_board$ubiquity[ubq_board$scientificName == "Beta avis"] == 50 &&
+      all(ubq_board$ubiquity_points == 2L),
+      "ubiquity counts only points sampled since 2018")
+ubq_notes <- bird_site_design_notes("DELA", ubq_visits)
+check(any(grepl("1 point here was last counted before 2018", ubq_notes, fixed = TRUE)) &&
+      any(grepl("closed this site at the end of 2025", ubq_notes, fixed = TRUE)) &&
+      !any(grepl("before 2018", bird_site_design_notes("SRER", ubq_visits[2:3, ]), fixed = TRUE)),
+      "site design notes report the grid cut only where points were dropped")
+
 # Audit 2026-10-18: both robust-scale QC flags were unreachable because MAD = 0
 # on integer-clumped data. These fixtures mirror the measured shapes so neither
 # flag can silently die again.
