@@ -124,8 +124,64 @@ read_bundle <- function(f) {
   if (!identical(out$meta$release, NEON_RELEASE) || !identical(as.integer(out$meta$schema_version), 4L)) return(NULL)
   if (!nrow(out$opportunity)) NULL else out
 }
-load_site_bundle <- function(site) read_bundle(file.path(SITE_DIR, paste0(site, ".rds")))
+# A site code is accepted only when it is a single four-letter code in the
+# release roster. Every path that reaches the file system goes through this
+# check first, so a forged pickSite / site value can never build another path.
+is_release_site_code <- function(site) {
+  is.character(site) && length(site) == 1L && !is.na(site) &&
+    grepl("^[A-Z]{4}$", site) && site %in% neon_sites$site
+}
+load_site_bundle <- function(site) {
+  if (!is_release_site_code(site)) return(NULL)
+  read_bundle(file.path(SITE_DIR, paste0(site, ".rds")))
+}
 load_demo <- function() { b <- load_site_bundle(DEMO_META$site); if (!is.null(b)) b else read_bundle(DEMO_PATH) }
+
+# ---- prepared-site cache (app scope) ---------------------------------------
+# Site bundles are immutable within a release, so the validated preparation of a
+# site (effort checks, held ledger, species board, hero summary) is identical
+# for every visitor. Each successful preparation is kept for the life of the R
+# process, keyed by site code; a failed preparation is never stored.
+bird_empty_board <- function() data.frame(
+  scientificName=character(), vernacular=character(), detections=integer(),
+  detections_without_count=integer(), index_birds=numeric(),
+  n_points=integer(), n_detected_counts=integer(), n_point_years=integer(),
+  n_grids=integer(), mean_cluster=numeric(),
+  method=character(), n_observers=integer(), distance_n_observed=integer(),
+  distance_n_used=integer(), distance_n_outside_truncation=integer(),
+  distance_n_unavailable=integer(), ubiquity=numeric(), n_visits=numeric(), index=numeric(),
+  detection_frequency=numeric(), distance_usable_pct=numeric(), observer_support_complete=logical(),
+  opportunity_complete=logical(), flyover_detections=integer(), flyover_birds=numeric(),
+  total_birds=numeric(), stringsAsFactors=FALSE)
+prepare_site_bundle <- function(b) {
+  nvis <- sum(b$visits$valid_count %in% TRUE)
+  nopp <- sum(b$opportunity$supported %in% TRUE)
+  if (nvis <= 0L || nopp <= 0L) stop("site has no supported survey effort")
+  bird_validate_effort(b$opportunity, b$visits, b$obs)
+  held <- bird_prepare_held(b$held)
+  board <- species_board(b$obs, b$points, nvis, b$opportunity, b$visits,
+                         b$meta$observer_support)
+  if (is.null(board)) board <- bird_empty_board()
+  if (nrow(board)) {
+    missing_name <- is.na(board$vernacular) | !nzchar(trimws(board$vernacular))
+    board$vernacular[missing_name] <- board$scientificName[missing_name]
+    missing_method <- is.na(board$method) | !nzchar(trimws(board$method))
+    board$method[missing_method] <- "unknown"
+  }
+  sb <- site_birds(b$obs, b$points, nvis, b$opportunity, b$visits,
+                   b$meta$observer_support, board = board)
+  list(nvis=nvis, nopp=nopp, board=board, held=held, sb=sb)
+}
+SITE_PREP_CACHE <- new.env(parent = emptyenv())
+site_prep_get <- function(site) {
+  if (!is_release_site_code(site)) return(NULL)
+  SITE_PREP_CACHE[[site]]
+}
+site_prep_put <- function(site, bundle, prepared) {
+  if (is_release_site_code(site))
+    assign(site, list(bundle = bundle, prepared = prepared), envir = SITE_PREP_CACHE)
+  invisible(NULL)
+}
 
 SITE_INDEX <- tryCatch(readRDS("data/site_index.rds"), error = function(e) NULL)
 BUNDLED <- if (!is.null(SITE_INDEX)) SITE_INDEX$site else character(0)
@@ -217,7 +273,15 @@ asset_url <- function(path) { f <- file.path("www", path)
   v <- if (file.exists(f)) as.integer(as.numeric(file.mtime(f))) else 0L; sprintf("%s?v=%s", path, v) }
 spin <- function(x, img = NULL) shinycssloaders::withSpinner(x, color = DDL$sky, type = 6)
 info_pop <- function(title, ..., placement = "auto")
-  bslib::popover(tags$span(class = "info-dot", bsicons::bs_icon("info-circle")), ..., title = title, placement = placement)
+  bslib::popover(tags$span(class = "info-dot", `aria-label` = paste("About:", title),
+                           bsicons::bs_icon("info-circle")), ..., title = title, placement = placement)
+# Data-derived text placed inside a JavaScript string in an onclick attribute:
+# drop quote, backslash and line-break characters first (an entity would be
+# decoded back before the script runs). Use js_attr_text() inside raw HTML
+# strings; tag attributes are escaped by htmltools, so use js_str_text() there.
+js_str_text <- function(x) gsub("['\"\\\\\r\n<>]", "", as.character(x))
+js_attr_text <- function(x) htmltools::htmlEscape(js_str_text(x), attribute = TRUE)
+esc_html <- function(x) htmltools::htmlEscape(as.character(x))
 insight_banner <- function(icon, ..., tone = "navy")
   div(class = paste("chart-insight", paste0("ci-", tone)), bsicons::bs_icon(icon), div(class = "ci-text", ...))
 glow_badge <- function(label, color = "#c1502e", glow = color)
