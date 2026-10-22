@@ -144,7 +144,11 @@ ui <- bslib::page_fillable(
     bird_poster(),
     div(id = "site-picker-start", class = "picker-start", tabindex = "-1",
       p(class = "picker-start-kicker", "Choose a place"),
-      h2("Choose one field site.")),
+      h2("Choose one field site."),
+      p(class = "picker-start-meta",
+        sprintf("NEON %s · DOI ", NEON_RELEASE),
+        tags$a(href = paste0("https://doi.org/", NEON_DOI), target = "_blank", rel = "noopener", NEON_DOI),
+        sprintf(" · point counts from %s", NEON_DATA_SPAN))),
     div(class = "picker-map-wrap", leafletOutput("nationalPicker", height = "440px")),
 
     # ---- relocated select panel (was the sidebar) ----------------------
@@ -301,6 +305,8 @@ ui <- bslib::page_fillable(
     p("Desert Data Labs · Tucson, AZ · ",
       tags$a(href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer",
              style = "display:inline-flex;align-items:center;min-height:44px", "Feedback")),
-    p(style = "font-size:12.5px;color:var(--ink2)", "Data: NEON Breeding Landbird Point Counts (DP1.10003.001). Not affiliated with NEON, Battelle, or the NSF. An educational data-exploration tool."))
+    p(style = "font-size:12.5px;color:var(--ink2)",
+      sprintf("Data: NEON Breeding Landbird Point Counts (DP1.10003.001), %s, DOI %s, point counts from %s, CC BY 4.0. Not affiliated with NEON, Battelle, or the NSF. An educational data-exploration tool.",
+              NEON_RELEASE, NEON_DOI, NEON_DATA_SPAN)))
   )
 )

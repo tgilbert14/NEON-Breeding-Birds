@@ -22,7 +22,7 @@ PROTOCOL_MINUTES <- 6
 RAW_DIR <- Sys.getenv("BIRD_RAW_DIR", "build/raw/birds")
 RECEIPT_PATH <- Sys.getenv("BIRD_RECEIPT", "build/source_receipt.json")
 OUT_ROOT <- Sys.getenv("BIRD_OUTPUT_ROOT", "build/candidate")
-DEMO <- "CLBJ"
+DEMO <- "SRER"
 
 source("R/site_metadata.R")
 source("R/bird_evidence_contract.R")

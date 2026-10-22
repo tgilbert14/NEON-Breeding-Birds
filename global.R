@@ -57,6 +57,8 @@ source("R/bird_helpers.R", local = FALSE)
 NEON_DPID <- "DP1.10003.001"   # Breeding landbird point counts
 NEON_RELEASE <- "RELEASE-2026"
 NEON_DOI <- "10.48443/v6hs-mx57"
+# Bird record covered by the pinned release (moves with a release rollover).
+NEON_DATA_SPAN <- "June 2013 to July 2024"
 APP_RELEASE_MARKER <- "breeding-birds-release-2026-v1"
 LIVE_FETCH <- FALSE              # production and local runtime are bundle-only
 
@@ -112,9 +114,9 @@ if (!identical(stamp_chr("release_id"), RELEASE_STAMP_ID)) {
 
 SITE_DIR  <- "data/sites"
 DEMO_PATH <- "data-sample/demo.rds"
-# Demo fallback is the CLBJ oak-savanna bundle; ordinary entry asks the visitor to
+# Demo fallback is the SRER bundle (the suite's default site); ordinary entry asks the visitor to
 # choose any of the 47 release sites, so the demo is only a local resilience path.
-DEMO_META <- list(site = "CLBJ", label = "CLBJ · LBJ National Grassland · demo")
+DEMO_META <- list(site = "SRER", label = "SRER · Santa Rita Experimental Range · demo")
 
 read_bundle <- function(f) {
   if (!file.exists(f)) return(NULL)

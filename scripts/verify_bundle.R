@@ -952,7 +952,7 @@ for (site in expected_sites) {
 }
 
 demo <- readRDS(file.path(ROOT, "data-sample", "demo.rds"))
-assert(identical(demo, readRDS(file.path(SITES, "CLBJ.rds"))), "Demo bundle is not identical to CLBJ.")
+assert(identical(demo, readRDS(file.path(SITES, "SRER.rds"))), "Demo bundle is not identical to SRER.")
 cross <- readRDS(file.path(DATA, "cross_site.rds"))
 assert(all(vapply(cross_oracle_base, function(value) is.list(value) &&
                     identical(names(value), c(
