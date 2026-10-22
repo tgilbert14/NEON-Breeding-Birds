@@ -495,8 +495,12 @@ jobs:
     # Publish only a candidate whose data content differs from master.
     if: needs.validate_candidate.result == 'success' && needs.validate_candidate.outputs.content_changed == 'true'
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    # issues: write lets the publisher upsert one "candidate waiting" issue. It
+    # still never pushes master or opens a PR.
     permissions:
       contents: write
+      issues: write
       pull-requests: write
     steps:
       - name: Checkout validated producer revision
@@ -511,26 +515,76 @@ jobs:
           name: breeding-birds-release-2026-${{ github.sha }}
           path: ${{ runner.temp }}/candidate
 
+      # This checkout holds a write credential, so nothing outside the four
+      # publishable paths may land in it: no .git/hooks, no workflow, no symlink.
+      - name: Check validated artifact members before extraction
+        run: |
+          set -euo pipefail
+          tgz="$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz"
+          members=$(tar -tzf "$tgz")
+          if [[ -z "$members" ]]; then
+            echo "::error title=Empty candidate artifact::$tgz lists no members."
+            exit 1
+          fi
+          outside=$(grep -vE '^(data/|data-sample/|docs/release\.json$|manifest\.json$)' <<<"$members" || true)
+          traversal=$(grep -E '(^/|(^|/)\.\.(/|$))' <<<"$members" || true)
+          special=$(tar -tvzf "$tgz" | awk 'substr($1, 1, 1) != "-" && substr($1, 1, 1) != "d"' || true)
+          if [[ -n "$outside$traversal$special" ]]; then
+            echo "::error title=Unexpected artifact member::The validated artifact may hold only regular files and directories under data/ and data-sample/, plus docs/release.json and manifest.json."
+            printf '%s\n' "$outside" "$traversal" "$special" | sed '/^$/d' | head -50
+            exit 1
+          fi
+          echo "Artifact members: $(wc -l <<<"$members") entries, all within the four publishable paths."
+
       - name: Publish review branch, never master
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          branch="automation/breeding-birds-release-2026"
+          compare_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/master...${branch}"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          outcome="failed before the review branch was updated"
+          old_release="unknown"; old_release_id="unknown"
+          new_release="unknown"; new_release_id="unknown"
+          changed_files="unknown"
+          write_summary() {
+            {
+              echo "### Breeding Birds review branch"
+              echo ""
+              echo "- Outcome: ${outcome}"
+              echo "- Compare: ${compare_url}"
+              echo "- Release on master: ${old_release} (\`${old_release_id}\`)"
+              echo "- Release on candidate: ${new_release} (\`${new_release_id}\`)"
+              echo "- Files differing from master: ${changed_files}"
+              echo "- Run: ${run_url}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          trap write_summary EXIT
           git fetch --no-tags origin master
+          if git cat-file -e origin/master:docs/release.json 2>/dev/null; then
+            old_release=$(git show origin/master:docs/release.json | jq -r '.release // "missing"')
+            old_release_id=$(git show origin/master:docs/release.json | jq -r '.release_id // "missing"')
+          fi
           if ! git merge-base --is-ancestor origin/master "$GITHUB_SHA"; then
             echo "Producer revision does not contain current master; refusing stale publication."
+            outcome="refused: the producer revision does not contain current master"
             exit 1
           fi
           find data data-sample -mindepth 1 -delete
-          tar -xzf "$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz"
-          branch="automation/breeding-birds-release-2026"
+          tar --no-same-owner -xzf "$RUNNER_TEMP/candidate/breeding-birds-release-2026.tgz" \
+            data data-sample docs/release.json manifest.json
+          new_release=$(jq -r '.release // "missing"' docs/release.json)
+          new_release_id=$(jq -r '.release_id // "missing"' docs/release.json)
           remote_head=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
           git switch -C "$branch"
           git config user.name "neon-data-bot"
           git config user.email "neon-data-bot@users.noreply.github.com"
           git add -A -- data data-sample docs/release.json manifest.json
+          changed_files=$(git diff --cached --name-only origin/master | wc -l | tr -d ' ')
           if git diff --cached --quiet -- data data-sample docs/release.json manifest.json; then
             echo "No validated candidate change, including untracked scoped files."
+            outcome="no byte change from the producer revision; nothing pushed"
             exit 0
           fi
           git commit -m "data: propose validated breeding-bird RELEASE-2026 [bot]" \
@@ -547,20 +601,44 @@ jobs:
             git push origin "$branch:refs/heads/$branch"
           fi
           pushed_commit=""
-          for attempt in 1 2 3 4 5; do
+          for _ in 1 2 3 4 5; do
             pushed_commit=$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')
             [[ "$pushed_commit" == "$published_commit" ]] && break
             sleep 2
           done
           if [[ "$pushed_commit" != "$published_commit" ]]; then
             echo "Published branch does not resolve to the validated candidate commit."
+            outcome="failed: the pushed branch does not resolve to ${published_commit}"
             exit 1
+          fi
+          outcome="review branch updated to ${published_commit}; waiting for a reviewer-authenticated PR"
+
+          # A green scheduled run sends no email, so a changed candidate opens (or
+          # comments on) one tracking issue. Exact-title match over open issues.
+          issue_title="Breeding Birds: validated candidate waiting for review"
+          issue_body="A validated candidate whose data content differs from master is on \`${branch}\` at \`${published_commit}\`.
+
+          - Run: ${run_url}
+          - Compare: ${compare_url}
+          - Release on master: ${old_release} (\`${old_release_id}\`)
+          - Release on candidate: ${new_release} (\`${new_release_id}\`)
+          - Files differing from master: ${changed_files}
+
+          Review the run summary, then open a reviewer-authenticated PR from \`${branch}\` to master (DEPLOY.md, Normal release procedure). The bot never opens the PR or pushes master."
+          issue_number=$(gh issue list --state open --limit 200 --json number,title |
+            jq -r --arg t "$issue_title" '[.[] | select(.title == $t)][0].number // empty')
+          if [[ -n "$issue_number" ]]; then
+            gh issue comment "$issue_number" --body "$issue_body"
+            echo "Commented on open issue #${issue_number}."
+          else
+            gh issue create --title "$issue_title" --body "$issue_body"
           fi
 
           pr_count=$(gh pr list --head "$branch" --base master --state open \
             --json url --jq 'length')
           if (( pr_count > 1 )); then
             echo "More than one open master PR exists for $branch; refusing ambiguous publication."
+            outcome="failed: more than one open master PR exists for ${branch}"
             exit 1
           fi
           if (( pr_count == 0 )); then
@@ -569,7 +647,7 @@ jobs:
           fi
 
           pr_record=""
-          for attempt in 1 2 3 4 5; do
+          for _ in 1 2 3 4 5; do
             pr_record=$(gh pr list --head "$branch" --base master --state open \
               --json url,baseRefName,headRefName,headRefOid \
               --jq 'if length == 1 then .[0] | [.url,.baseRefName,.headRefName,.headRefOid] | @tsv else "" end')
@@ -580,8 +658,10 @@ jobs:
           if [[ -z "$pr_record" || "$pr_base" != master || "$pr_head" != "$branch" || \
                 "$pr_oid" != "$published_commit" ]]; then
             echo "Open PR identity does not match master <- $branch at $published_commit."
+            outcome="failed: the open PR does not match master <- ${branch} at ${published_commit}"
             exit 1
           fi
           gh pr comment "$pr_url" \
             --body "Updated from ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. GitHub will hold the pull_request synchronize checks triggered by this automation update for approval; a repository write user must select **Approve workflows to run**. Do not merge until checks are green on exact head ${published_commit}."
           echo "::notice title=Approve exact-head PR checks::Existing PR updated to $published_commit. A repository write user must select Approve workflows to run, then verify green checks on that exact head."
+          outcome="existing PR ${pr_url} updated to ${published_commit}; approve its workflow runs, then check the exact head"
