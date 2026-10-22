@@ -1420,7 +1420,7 @@ BIRD_COL_DICT <- list(
   method_other    = c("logical", "TRUE for a recorded non-flyover method without singing, calling, visual, or drumming components."),
   method_unknown  = c("logical", "TRUE when detectionMethod is blank, missing, or explicitly unknown."),
   clusterSizeRaw  = c("source token", "clusterSize exactly as returned by the NEON release fetch, before numeric parsing. NA = blank at source (or a bundle built before raw capture). Lets a reader tell a blank source field from a parse loss."),
-  clusterSize     = c("# birds", "Source count of birds in the detection (a flock is one row with clusterSize > 1). Only positive finite integer counts enter metrics; other values remain held."),
+  clusterSize     = c("# birds", "Source count of birds in the detection (a flock is one row with clusterSize > 1). Any detection counts toward incidence; only a positive finite integer count enters the detection index, and a missing or invalid count makes every birds-per-count figure in its scope NA."),
   matched_visit   = c("logical", "TRUE when the source detection matched exactly one authoritative brd_perpoint visit."),
   valid_count     = c("logical", "TRUE when the matched visit has samplingImpractical == OK. A missing clusterSize never makes a count invalid; it only makes the detection index unavailable."),
   is_species      = c("logical", "TRUE only when the reported species/subspecies name can be safely mapped to a canonical binomial community unit."),
@@ -1428,7 +1428,7 @@ BIRD_COL_DICT <- list(
   joined_valid_visit = c("logical", "TRUE when the detection joins unambiguously to a valid brd_perpoint physical visit."),
   enters_incidence = c("logical", "Incidence predicate shared by every community metric (presence, richness, detection frequency, Chao2, coverage, rarefaction, accumulation, maps, search): valid joined visit + formal point-count minute 1-6 + safely canonicalized species/subspecies + known detection method + non-flyover. A clusterSize is not required."),
   enters_index    = c("logical", "Detection-index predicate: enters_incidence AND a positive finite integer clusterSize. Birds per count sums clusterSize over these rows and is NA wherever an enters_incidence row in scope is not also enters_index."),
-  hold_reason     = c("category", "Why a source detection is held outside app metrics. NA denotes an auditable obs row; minute-specific values include incidental_outside_point_count, missing_point_count_minute, and invalid_point_count_minute. detection_on_unusable_visit also covers otherwise-clean rows on a count withdrawn for missing clusterSize."),
+  hold_reason     = c("category", "Why a source detection is held outside app metrics. NA denotes an auditable obs row; minute-specific values include incidental_outside_point_count, missing_point_count_minute, and invalid_point_count_minute. A count never causes a hold; invalid_cluster_size appears only in bundles built before the incidence/index split."),
   primary_method  = c("category", "Modal canonical detection channel across eligible non-flyover records for a species at the grid. NA = none recorded."),
   method          = c("category", "Modal canonical detection channel across eligible non-flyover records for the species."),
   index           = c("birds / point-count", "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population. Detectability differs by species. NA when any of the species' detections lacks a usable clusterSize (see detections_without_count)."),
@@ -1557,7 +1557,9 @@ point_summary <- function(obs, points, opportunity = NULL) {
   sp <- eligible_breeding_detections(obs)
   per <- sp %>% dplyr::group_by(.data$pointkey) %>%
     dplyr::summarise(richness = dplyr::n_distinct(.data$communityScientificName),
-                     birds = sum(.data$clusterSize), .groups = "drop")
+                     detections = dplyr::n(),
+                     birds = bird_birds_or_na(.data$clusterSize, .data$enters_index),
+                     .groups = "drop")
   opp <- bird_validate_opportunity(opportunity, obs)
   if (!is.null(opp)) {
     if (!setequal(as.character(points$pointkey), as.character(opp$pointkey)))
@@ -1585,8 +1587,12 @@ point_summary <- function(obs, points, opportunity = NULL) {
   }
   out <- dplyr::left_join(out, per, by = "pointkey")
   supported <- suppressWarnings(as.numeric(out$n_visits)) > 0
-  out$richness[is.na(out$richness) & supported] <- 0L
-  out$birds[is.na(out$birds) & supported] <- 0
+  # Zero only where a supported point had no eligible detection; a point whose
+  # detections lack a usable clusterSize keeps birds and per_visit NA.
+  no_detection <- is.na(out$detections) & supported
+  out$richness[no_detection] <- 0L
+  out$birds[no_detection] <- 0
+  out$detections[no_detection] <- 0L
   out$per_visit <- ifelse(out$n_visits > 0, round(out$birds / out$n_visits, 1), NA_real_)
   out
 }

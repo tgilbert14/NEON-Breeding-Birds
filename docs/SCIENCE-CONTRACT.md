@@ -65,8 +65,8 @@ authority for annual support and audit summaries. Therefore:
   grain.
 - `supported_zero`: valid survey support and no eligible in-window non-flyover
   detection, including flyover-only or coarse-identification-only records.
-- `unavailable`: no valid count at the stated grain, including a protocol-valid
-  count withdrawn for missing `clusterSize`. This is missing support, never zero.
+- `unavailable`: no valid count at the stated grain. This is missing support,
+  never zero. A missing `clusterSize` never makes a count unavailable.
 
 A point-year with one positive count and one supported-zero count is positive in
 the annual/audit ledger while retaining both physical-count outcomes. The two zero
@@ -129,7 +129,7 @@ In-window flyovers remain in the auditable detection table and exports but are
 operationally excluded from on-point richness, ubiquity, incidence, Chao2,
 accumulation, maps, search ranks, and the birds-per-count numerator. This filter
 does not infer territory or breeding status. Out-of-window incidentals,
-missing/unknown minute rows, missing/unknown detection methods, unsafe taxonomy,
+missing/unknown minute rows, missing/unknown detection methods, and unsafe taxonomy
 remain traceable in the held ledger. No row is held for its cluster size. All
 source rows are conserved.
 
@@ -231,7 +231,7 @@ identity counts.
 Schema-v4 public detection rows carry canonical and reported taxonomy plus the
 explicit canonicalization and detection-method states. The About tab exposes a
 privacy-safe site-wide `obs + held` audit CSV, so flyover-only, coarse-only,
-unsafe-taxonomy, missing-method, invalid-cluster, and other held rows remain
+unsafe-taxonomy, missing-method, and other held rows remain
 reachable even when no species profile exists. Observer identity, personnel,
 free text, and source UIDs remain excluded.
 

@@ -78,7 +78,7 @@ state_choices <- function() {
                        ifelse(table(neon_sites$state)[st] == 1, "site", "sites")))
 }
 
-# Sites within one state -> "JORN — Jornada Experimental Range" choices
+# Sites within one state -> "JORN · Jornada Experimental Range" choices
 sites_in_state <- function(st) {
   rows <- neon_sites[neon_sites$state == st, ]
   rows <- rows[order(rows$name), ]

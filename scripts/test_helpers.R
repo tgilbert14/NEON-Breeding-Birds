@@ -709,6 +709,34 @@ split_grid <- grid_species(split_obs, "SPLT_001")
 check(is.na(split_grid$birds[split_grid$scientificName == "Alpha avis"]) &&
       split_grid$birds[split_grid$scientificName == "Beta avis"] == 4,
       "grid bird totals are NA only for the species with a missing count")
+split_opportunity <- data.frame(
+  pointkey = split_visits$pointkey, year = 2021L, n_valid_bouts = 1L, n_held_bouts = 0L,
+  n_bouts_recorded = 1L, supported = TRUE, outcome = "positive", stringsAsFactors = FALSE)
+split_annual <- annual_bird_summary(split_obs, split_opportunity, split_visits)
+check(nrow(split_annual) == 1L && is.na(split_annual$eligible_birds) &&
+      is.na(split_annual$birds_per_count) && split_annual$eligible_species == 2L &&
+      split_annual$eligible_detection_rows == 4L && split_annual$outcome == "positive",
+      "annual birds are NA when a detection lacks a count, while incidence still counts it")
+split_beta_year <- detection_by_year(split_obs, "Beta avis", split_opportunity)
+split_alpha_year <- detection_by_year(split_obs, "Alpha avis", split_opportunity)
+check(split_beta_year$birds == 4 && isTRUE(all.equal(split_beta_year$birds_per_count, 4 / 3)) &&
+      is.na(split_alpha_year$birds_per_count) && split_alpha_year$detected,
+      "species-year birds per count is NA only for the species with a missing count")
+split_points <- data.frame(pointkey = split_visits$pointkey, plotID = "SPLT_001",
+                           n_visits = 1L, stringsAsFactors = FALSE)
+split_point_summary <- point_summary(split_obs, split_points, split_opportunity)
+missing_point <- split_point_summary[split_point_summary$pointkey == "SPLT_001_21", ]
+counted_point <- split_point_summary[split_point_summary$pointkey == "SPLT_001_23", ]
+check(is.na(missing_point$birds) && is.na(missing_point$per_visit) &&
+      missing_point$richness == 1L && counted_point$birds == 1,
+      "a point whose only detection lacks a count reports NA birds, not zero")
+qc_split <- split_obs
+qc_split$observerDistance[1] <- "0"
+qc_split_flags <- bird_qc(qc_split, "Alpha avis")
+qc_split_keys <- vapply(qc_split_flags$flags, function(f) f$key, character(1))
+check("zero" %in% qc_split_keys && any(is.na(qc_split_flags$sets$zero$clusterSize)),
+      "distance QC still reviews a detection that lacks a count")
+
 check(identical(bird_birds_or_na(c(1, 2), c(TRUE, TRUE)), 3) &&
       is.na(bird_birds_or_na(c(NA, 2), c(FALSE, TRUE))) &&
       identical(bird_birds_or_na(numeric(), logical()), 0),
