@@ -13,7 +13,7 @@
 # Run with R-4.5.2 via PowerShell (NOT git-bash — git-bash segfaults reading these).
 # Atomic per-file replace (tempfile + file.rename) so a concurrent reader is safe.
 # ===========================================================================
-dir  <- "C:/Users/tsgil/OneDrive/Documents/VGS - R/NEON-Breeding-Birds"
+dir  <- Sys.getenv("BIRD_ROOT", getwd())   # repository root; set BIRD_ROOT to run from elsewhere
 SENT <- c(999, 9999)
 files <- c(list.files(file.path(dir, "data/sites"), pattern = "\\.rds$", full.names = TRUE),
            list.files(file.path(dir, "data-sample"), pattern = "\\.rds$", full.names = TRUE))
