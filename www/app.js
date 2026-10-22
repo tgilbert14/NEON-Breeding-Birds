@@ -93,6 +93,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // and you don't see half-rendered data through it.
 var smtSafetyTimer = null;
 var smtLoadReturnFocus = null;
+var smtLoadActive = false;
 var smtDefaultLoadNote = "Building the species board, detection profiles, and maps.";
 function smtSetAppLoading(isLoading) {
   var main = document.getElementById("appMain");
@@ -134,6 +135,8 @@ function smtLoadStart(label) {
     });
     ov.dataset.focusGuard = "1";
   }
+  smtLoadActive = true;
+  smtClosePickerPopups();
   smtSetAppLoading(true);
   ov.setAttribute("aria-hidden", "false");
   ov.setAttribute("aria-busy", "true");
@@ -156,10 +159,32 @@ function smtLoadDone() {
     ov.setAttribute("aria-busy", "false");
   }
   smtSetAppLoading(false);
-  if (smtLoadReturnFocus && document.contains(smtLoadReturnFocus)) {
-    try { smtLoadReturnFocus.focus({ preventScroll: true }); } catch (e) {}
+  // When a load leaves the site view showing, the control that started it is
+  // usually inside the now-hidden splash (or a tab that is about to switch), so
+  // bring the site name to the top and focus <main>. Otherwise (a failed first
+  // load that leaves the picker up) return focus to that control if visible.
+  var rf = smtLoadReturnFocus;
+  var wrap = document.getElementById("mainTabsWrap");
+  if (smtLoadActive && wrap && wrap.offsetParent !== null) {
+    var hero = document.querySelector(".hero-band") || document.getElementById("heroStats") || wrap;
+    try { hero.scrollIntoView({ block: "start" }); } catch (e) {}
+    var m = document.getElementById("appMain");
+    if (m) { try { m.focus({ preventScroll: true }); } catch (e) {} }
+  } else if (rf && document.contains(rf) && rf.offsetParent !== null) {
+    try { rf.focus({ preventScroll: true }); } catch (e) {}
   }
+  smtLoadActive = false;
   smtLoadReturnFocus = null;
+}
+
+// Close any open popup on the national picker before the splash hides the map,
+// so no popup is left panning a hidden map.
+function smtClosePickerPopups() {
+  try {
+    var w = window.HTMLWidgets && HTMLWidgets.find("#nationalPicker");
+    var map = w && typeof w.getMap === "function" ? w.getMap() : null;
+    if (map) map.closePopup();
+  } catch (e) {}
 }
 
 // (The site report card is now a server-side PDF streamed by a Shiny
