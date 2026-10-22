@@ -1,3 +1,4 @@
+// copied from tgilbert14/NEON-Small-Mammal-Tracker-App@43a5eb1 (www/app.js), identical to this repo's 2026-06-19 initial copy; adapted for Breeding Birds since.
 /* =========================================================================
    app.js — stat counters, loading state, popovers, and widget resizing
    ========================================================================= */

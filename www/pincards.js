@@ -1,3 +1,4 @@
+// copied from tgilbert14/NEON-Small-Mammal-Tracker-App@62457f6 (www/pincards.js), the nearest commit to this repo's 2026-06-19 initial copy; adapted for Breeding Birds since.
 /* =========================================================================
    pincards.js — tap-to-pin cards + export-with-pins for the Size Lab scatter.
 
