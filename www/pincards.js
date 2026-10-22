@@ -260,7 +260,7 @@
           n.classList.contains("smt-pin-resize") || n.classList.contains("smt-snap-btn") ||
           n.classList.contains("smt-clear-btn"))); } })   // keep cards + leader lines; drop chrome buttons
         .then(function (url) { downloadUrl(url, name); toastDone("Saved ✓"); })
-        .catch(function () { toastDone("Render failed — try again", true); })
+        .catch(function () { toastDone("Render failed, try again", true); })
         .then(function () { saving = false; });
     }, 90);
   }

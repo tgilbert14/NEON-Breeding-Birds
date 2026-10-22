@@ -143,7 +143,7 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
   load_site <- function(site){ if (is.null(site)||site=="") { session$sendCustomMessage("loadDone", list()); return() }
-    b <- load_site_bundle(site); if (is.null(b)) { session$sendCustomMessage("loadDone", list()); showNotification("That site isn't bundled in this demo.", type="error"); return() }
+    b <- load_site_bundle(site); if (is.null(b)) { session$sendCustomMessage("loadDone", list()); showNotification("That site isn't in the RELEASE-2026 bundle.", type="error"); return() }
     row <- site_table[site_table$site==site,]; ingest(b, sprintf("%s · %s", site, if (nrow(row)) row$name else site)) }
   observeEvent(input$loadBtn, load_site(input$site))
   # Map dot / browse-list pick. Drive the sidebar selectors so the state + site
@@ -247,7 +247,7 @@ server <- function(input, output, session) {
     h <- sp_hits(); req(!is.null(h)); if (!nrow(h)) return(NULL)
     yrs <- ifelse(is.finite(h$year_min) & is.finite(h$year_max),
                   ifelse(h$year_min == h$year_max, as.character(h$year_min),
-                         paste0(h$year_min, "–", h$year_max)), "—")
+                         paste0(h$year_min, "–", h$year_max)), "n/a")
     df <- data.frame(Site = h$site, Name = h$name %||% h$site, State = h$state %||% "",
                      `Detection index · 2017–2024` = fmt_index(h$detection_index_window, 3),
                      `Valid counts detected` = h$n_detected_counts_window,
@@ -287,7 +287,7 @@ server <- function(input, output, session) {
       if (is.null(h) || !nrow(h)) return(div(class = "search-empty", bs_icon("emoji-frown"), " No sites pass that threshold. Lower the richness cutoff."))
       tagList(div(class = "search-count", sprintf("%d of %d sites", nrow(h), total)),
         div(class = "search-note", bs_icon("info-circle"),
-          sprintf(" Sites with 2017–2024 richness rarefied above %d species at the common support of %s valid counts. Rarefaction standardizes count-sample size only; completeness and detectability can still differ.", input$threshX %||% 100, if (nrow(h)) h$t_used[[1]] else "—")))
+          sprintf(" Sites with 2017–2024 richness rarefied above %d species at the common support of %s valid counts. Rarefaction standardizes count-sample size only; completeness and detectability can still differ.", input$threshX %||% 100, if (nrow(h)) h$t_used[[1]] else "n/a")))
     }
   })
   output$searchThreshTable <- DT::renderDT({
@@ -303,7 +303,7 @@ server <- function(input, output, session) {
                      `Rarefied species` = h$S_rare, `Observed species` = h$S_obs,
                      `Valid counts` = h$T_counts, Points = h$n_points_window,
                      `Birds/count` = fmt_index(h$birds_per_count_window, 2),
-                     Coverage = ifelse(is.finite(h$coverage), paste0(round(100 * h$coverage), "%"), "—"),
+                     Coverage = ifelse(is.finite(h$coverage), paste0(round(100 * h$coverage), "%"), "n/a"),
                      Top = ifelse(is.na(h$top_species_window), "unavailable", h$top_species_window),
                      ` ` = mapply(go_btn, h$site, h$name %||% h$site),
                      check.names = FALSE, stringsAsFactors = FALSE)
@@ -465,7 +465,7 @@ server <- function(input, output, session) {
     brd$tip <- paste0("<span class='smt-pin-emoji'>\U0001F426</span> <b>", brd$vernacular %||% brd$scientificName, "</b><br/>",
       "<em>", brd$scientificName, "</em><br/>",
       "<span class='smt-pin-stats'>", brd$index, " birds/count · ", brd$detection_frequency, "% of valid counts<br/>",
-      brd$detections, " detections · mostly ", brd$method %||% "—", "</span>",
+      brd$detections, " detections · mostly ", brd$method %||% "n/a", "</span>",
       ifelse(brd$reliable, "", "<br/><span class='smt-pin-rar' style='color:#ffd9a7'>⚠ few detections</span>"),
       "<br/><span class='smt-open' role='button' tabindex='0' data-tag='", brd$scientificName, "'>\U0001F985 Open species profile &rarr;</span>",
       "<br/><em class='smt-pin-hint'>Tap the dot to pin this card</em>")
@@ -477,7 +477,7 @@ server <- function(input, output, session) {
       # (●▲■◆) so the board is legible without relying on hue (CVD-safe). The symbol is
       # constant per method, so the plotly legend swatch shows symbol + colour paired.
       p <- p %>% add_trace(data=sub, x=~detection_frequency, y=~index, type="scatter", mode="markers",
-        name=sprintf("%s %s", method_glyph(m), m %||% "—"),
+        name=sprintf("%s %s", method_glyph(m), m %||% "n/a"),
         customdata=~tip, marker=list(color=sub$col, symbol=method_sym(m), size=11, opacity=0.82, line=list(color="#fff", width=0.5)),
         text=~paste0(vernacular %||% scientificName), hovertemplate="%{text}<br>%{x}% of valid counts · %{y:.2f}/count<extra></extra>") }
     mx <- stats::median(brd$detection_frequency); my <- stats::median(brd$index[brd$reliable])
@@ -502,7 +502,7 @@ server <- function(input, output, session) {
       div(class="qc-empty-icon", "\U0001F4CB"), h4("Supported counts, no eligible species detections"),
       p("There is no species card to open for this sampled record. This is a supported zero, not missing effort.")))
     if (is.null(rv$sp)) return(div(class="qc-empty", div(class="qc-empty-icon","\U0001F426"), h4("Tap a species to see its card"),
-      p("Tap a dot above and choose “Open species profile”, or pick a species in the sidebar.")))
+      p("Tap a dot above and choose “Open species profile”, or pick one in “Open a species profile” at the top.")))
     r <- rv$board[rv$board$scientificName == rv$sp,]; if (!nrow(r)) return(NULL)
     div(class="lab-sel", span(class="ls-emoji","\U0001F985"),
       div(class="ls-body", div(class="ls-id", tags$b(r$vernacular %||% r$scientificName), sprintf(" · %.2f birds/count · %.0f%% of valid counts", r$index, r$detection_frequency)),
@@ -533,7 +533,7 @@ server <- function(input, output, session) {
       div(class="qc-empty-icon", "\U0001F4CB"), h4("No eligible species profile for this sampled record"),
       p("Valid point-counts were completed, but no eligible non-flyover species were detected. Annual and community views retain that zero without inventing a species-level profile.")))
     if (is.null(rv$sp)) return(div(class="qc-empty", div(class="qc-empty-icon","\U0001F426"), h4("Pick a species to open its profile"),
-      p("Use the Bird Board (tap a dot → “Open species profile”) or the sidebar picker.")))
+      p("Pick one in “Open a species profile” above, or open one from the Bird Board.")))
     r <- rv$board[rv$board$scientificName == rv$sp,]; req(nrow(r)==1)
     my <- detection_by_year(rv$obs, rv$sp, rv$opportunity); mm <- method_mix(rv$obs, rv$sp)
     dist_rows <- eligible_breeding_detections(rv$obs)
@@ -555,8 +555,7 @@ server <- function(input, output, session) {
           div(class="qcf-body",
             div(class="qcf-title", f$title, tags$span(class="qcf-n", f$n)),
             div(class="qcf-detail", f$detail)),
-          tags$span(class="qcf-go", bs_icon("chevron-right"))))),
-        div(class="qcf-hint", bs_icon("hand-index-thumb"), " tap a flag to list the exact detections behind it"))
+          tags$span(class="qcf-go", bs_icon("chevron-right"))))))
       else div(class="qc-flag qc-flag-ok", bs_icon("check-circle-fill"),
         div(class="qcf-body", div(class="qcf-title","No data-quality flags for this species"),
           div(class="qcf-detail","Distances, flock sizes, names, and point effort all look consistent, nothing to verify."))))
@@ -596,7 +595,7 @@ server <- function(input, output, session) {
         tags$thead(tags$tr(tags$th("Year"), tags$th("Birds"), tags$th("Birds/count"), tags$th("Valid counts"), tags$th("Supported point-years"))),
         tags$tbody(lapply(seq_len(nrow(my)), function(i) tags$tr(
           tags$td(my$year[i]), tags$td(if (is.na(my$birds[i])) "n/a" else my$birds[i]), tags$td(fmt_index(my$birds_per_count[i])),
-          tags$td(my$n_valid_visits[i]), tags$td(my$n_supported_point_years[i])))))) else p(class="qc-cap-note","—"),
+          tags$td(my$n_valid_visits[i]), tags$td(my$n_supported_point_years[i])))))) else p(class="qc-cap-note","n/a"),
       qc_block,
       p(class="qc-cap-note", style="margin-top:8px", bs_icon("info-circle"),
         " Birds per count is a detection index, not a population. Distance bars divide detections by annulus area and all valid visits to show a relative observation signature. They are not density, a fitted detection function, or proof of a true detectability curve."))
@@ -677,7 +676,7 @@ server <- function(input, output, session) {
     leaflet::leaflet(g) %>% add_suite_basemap(input$view %||% "Esri.WorldTopoMap") %>%
       leaflet::addCircleMarkers(lng=~lng, lat=~lat, radius=~radius, fillColor=pal(val), color="#fff", weight=1, fillOpacity=0.85,
         layerId=~plotID,
-        label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", short_point(plotID), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
+        label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", short_point(plotID), richness, ifelse(is.na(per_visit),"n/a",per_visit)), htmltools::HTML)) %>%
       leaflet::addLegend("bottomright", pal=pal, values=val, title=if (metric=="richness") "species" else "birds/count", na.label="n/a")
   })
   observeEvent(input$map_marker_click, { id <- input$map_marker_click$id; if (!is.null(id)) rv$grid <- id })
@@ -689,7 +688,7 @@ server <- function(input, output, session) {
     if (is.null(gs) || !nrow(gs)) return(div(class="grid-empty", bs_icon("info-circle"), span(sprintf(" No species records at grid %s.", short_point(rv$grid)))))
     rows <- lapply(seq_len(nrow(gs)), function(i) {
       lbl <- gs$vernacular[i]; if (is.na(lbl)) lbl <- gs$scientificName[i]
-      m <- gs$method[i]; if (is.na(m)) m <- "—"
+      m <- gs$method[i]; if (is.na(m)) m <- "n/a"
       tags$tr(
         tags$td(tags$b(lbl), tags$br(), tags$em(class="grid-sci", gs$scientificName[i])),
         tags$td(class="grid-num", if (is.na(gs$birds[i])) "n/a" else gs$birds[i]), tags$td(class="grid-num", gs$detections[i]),
@@ -769,9 +768,9 @@ server <- function(input, output, session) {
     if (!nrow(m))
       return(modalDialog(title = "Site info", easyClose = TRUE, footer = modalButton("Close"),
                          p("No details are available for this site.")))
-    coords <- if (!is.na(m$lat[1]) && !is.na(m$lng[1])) sprintf("%.3f, %.3f", m$lat[1], m$lng[1]) else "—"
+    coords <- if (!is.na(m$lat[1]) && !is.na(m$lng[1])) sprintf("%.3f, %.3f", m$lat[1], m$lng[1]) else "n/a"
     stat <- function(v, lab) div(class = "si-stat",
-      div(class = "si-stat-n", if (is.null(v) || is.na(v)) "—" else format(v, big.mark = ",")),
+      div(class = "si-stat-n", if (is.null(v) || is.na(v)) "n/a" else format(v, big.mark = ",")),
       div(class = "si-stat-l", lab))
     modalDialog(
       title = HTML(sprintf("\U0001F426 %s <span class='si-code'>(%s)</span>", m$name[1], code)),
@@ -945,7 +944,7 @@ server <- function(input, output, session) {
         p("An (unofficial) explorer for NEON's ", tags$b("Breeding landbird point counts"), " (", tags$code("DP1.10003.001"), "). At each point, an observer records every bird detected by sight or sound in a ", tags$b("6-minute count"), ", with the distance to each, once or twice each breeding season. Only records from minutes 1–6 enter the metrics; NEON minute 88 incidentals and missing or unknown minute values remain auditable but are excluded.")),
       div(class="about-card", h4(bs_icon("soundwave"), " Detection index, not population"),
         p("Raw point-count totals are ", tags$b("detection-confounded"), ": a loud, conspicuous species and a quiet, skulking one at the same true density produce different counts. So the abundance axis here is a ", tags$b("detection index"), " (birds per point-count), never a population."),
-        p(tags$b("Detection frequency"), " is the % of valid physical six-minute counts where a species was detected. Supported zero counts stay in that denominator; invalid or unavailable visits do not. Repeated bouts are repeated protocol samples, not independent places, and this remains a naïve detection summary—not detection-corrected occupancy. The distance panel is truncated to 0–200 m and is a relative area- and effort-standardized observation signature, not density or a fitted detection function.")),
+        p(tags$b("Detection frequency"), " is the % of valid physical six-minute counts where a species was detected. Supported zero counts stay in that denominator; invalid or unavailable visits do not. Repeated bouts are repeated protocol samples, not independent places, and this remains a naïve detection summary, not detection-corrected occupancy. The distance panel is truncated to 0–200 m and is a relative area- and effort-standardized observation signature, not density or a fitted detection function.")),
       div(class="about-card", h4(bs_icon("calculator"), " How many species?"),
         p(tags$b("Bias-corrected Chao2"), " extrapolates richness from incidence across the complete valid physical-count ledger. Two valid bouts at one point-year remain two samples, while duplicate detections of a species within one count collapse to one incidence. Supported zero counts remain explicit. The estimator does not make repeated counts independent places or estimate occupancy.")),
       div(class="about-card", h4(bs_icon("globe-americas"), " Across the continent (climate gradient)"),
@@ -967,7 +966,7 @@ server <- function(input, output, session) {
         h4(bs_icon("stars"), " Explore the NEON Explorer Suite"),
         p("Breeding Birds is one part of a ten-app ecology suite. Open a companion cover page to follow the cascade from environmental conditions through plants and animal communities."),
         div(class="suite-app-grid",
-          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Driver-Cascade/", target="_blank", rel="noopener", "Driver Cascade"),
+          tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Driver-Cascade/", target="_blank", rel="noopener", "NEON Cross-Product Response Atlas"),
           tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Small-Mammal-Tracker-App/", target="_blank", rel="noopener", "Small Mammals"),
           tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Ground-Beetle-Tracker/", target="_blank", rel="noopener", "Ground Beetles"),
           tags$a(class="suite-app-link", href="https://tgilbert14.github.io/NEON-Plant-Diversity/", target="_blank", rel="noopener", "Plant Diversity"),
@@ -997,7 +996,7 @@ server <- function(input, output, session) {
     contentType="text/csv")
   observeEvent(input$help, showModal(modalDialog(easyClose=TRUE, title=tagList(bs_icon("question-circle"), " How it works"),
     tags$ul(
-      tags$li(HTML("<b>Pick a site</b> — tap a dot on the map, or choose one by name in the panel below it.")),
+      tags$li(HTML("<b>Pick a site</b>: tap a dot on the map, or choose one by name in the panel below it.")),
       tags$li(HTML("Use <b>change site</b> in the site banner to come back here and pick a different one.")),
       tags$li(HTML("<b>Community</b> · observed richness, opportunity-complete accumulation, and a support-qualified Chao2 extrapolation.")),
       tags$li(HTML("<b>Bird Board</b> · every species by valid-count detection frequency × detection index; <b>tap one</b> to pin its card, then “Open species profile”.")),

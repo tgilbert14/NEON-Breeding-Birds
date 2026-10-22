@@ -236,10 +236,10 @@ fmt_index <- function(x, digits = 2) {
 # is always °C; these convert for display only. (Spearman/rank stats are unit-free.)
 temp_val  <- function(c, unit = "F") if (identical(unit, "C")) c else c * 9 / 5 + 32
 temp_unit_lab <- function(unit = "F") if (identical(unit, "C")) "°C" else "°F"
-temp_disp <- function(c, unit = "F") {                       # vectorised; NA -> "—"
+temp_disp <- function(c, unit = "F") {                       # vectorised; NA -> "n/a"
   c <- suppressWarnings(as.numeric(c))
   s <- if (identical(unit, "C")) sprintf("%.1f°C", c) else sprintf("%.0f°F", c * 9 / 5 + 32)
-  s[is.na(c)] <- "—"; s
+  s[is.na(c)] <- "n/a"; s
 }
 
 # ---- biome classification (cross-site gradient color / legend) --------------
