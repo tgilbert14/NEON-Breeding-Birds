@@ -81,7 +81,10 @@ a stale lifetime richness value fails release validation.
 - **Evidence:** at PUUM, 1,026 detections are held for a missing `clusterSize`
   (881 of them otherwise-eligible species detections), and all 51 of its supported-
   zero counts carried at least one of them. Those were not zero-bird counts. No
-  other release site has a count in this state.
+  other release site has a count in this state: elsewhere every NA count sits on
+  an empty-minute line. PUUM's recorded cluster sizes are almost never 1, and
+  NEON protocol Rev L later clarified that singles must be entered, so the blanks
+  are single birds left unrecorded at source, not a parsing loss.
 - **Opportunity contract:** a protocol-OK count whose only otherwise-eligible
   detections lack a positive integer `clusterSize` is now unavailable
   (`count_hold_reason = detections_without_cluster_size`) and leaves every

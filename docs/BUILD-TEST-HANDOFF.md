@@ -124,10 +124,29 @@
   `clusterSize` as an integer column at every site, with NA and never blank or
   text. PUUM has 1,038 NA in 1,153 rows (90%). Other sites carry NA too (for
   example BONA 2,103 of 5,848), but there those rows do not withdraw counts. So
-  the app's own parsing loses nothing. Whether PUUM's values are blank in NEON's
-  files or lost inside neonUtilities' typed read still needs one read of the raw
-  CSV text, which decides between a source note and the enters_incidence /
-  enters_index split.
+  the app's own parsing loses nothing.
+- **Why PUUM's counts are blank (bundle and protocol evidence, 2026-10-22):** at
+  SRER, BONA and HARV every NA `clusterSize` row is an empty-minute line with no
+  taxon and no method. At PUUM 895 NA rows are species-rank detections with a
+  known method (ʻApapane 494, ʻŌmaʻo 132, Hawaiʻi ʻAmakihi 122), spread over 2018
+  (280), 2021 (382) and 2024 (376), while the recorded PUUM values are almost
+  never 1 (1: 9, 2: 32, 3: 39, 4: 23, 5 or more: 12). NEON protocol
+  NEON.DOC.014041 Rev L (2024-04-17, change ECO-07079) says the cluster size of a
+  non-clustered bird is always 1 (SOP B) and records a clarification to enter
+  the number of individuals for every observation, even when it is not a
+  cluster; its field steps still say to record cluster information if
+  available. The NEON user guide (Rev G) and the product change log say nothing
+  about PUUM. Reading: PUUM crews entered a cluster size only for groups and left
+  single birds blank at source; this is not a parsing loss.
+- **Exploratory PUUM numbers for the next step (not shipped):** with incidence
+  no longer requiring a count, all 90 counts are positive (0 supported zeros),
+  richness is 9 (adds Cardinalis cardinalis, Cettia diphone, Lophura
+  leucomelanos), Chao2 9 (Q1 1, Q2 0), and the network rarefaction target
+  returns to 90. Birds per count would be 12.63 if a blank PUUM count is read as
+  one bird, against 6.56 under this stopgap (recorded clusters over the 39
+  remaining counts) and 2.84 before it; so the stopgap's PUUM index still
+  undercounts. Reading a blank as one bird is imputation, which the contract
+  forbids today, so it needs wren's rule text and the lead's approval.
 - **Candidate adopted onto PR #8:** commit `5dd7324` copies the validated
   artifact's 106 files byte-for-byte (57 change: all 47 site bundles, the site,
   cross-site and search indexes, both receipts, the schema, the demo bundle, the
@@ -146,9 +165,11 @@
   touched (still `e97e56c`); seeding it is optional now.
 - **Next action:** Tim reviews and merges PR #8 once its exact-head CI is green;
   Connect then republishes from `master`, and the production smoke must show
-  Pages and Connect serving release instance `sha256:8167a297...`. Then one raw
-  read of PUUM's `clusterSize` text decides the next step (source note, or the
-  enters_incidence / enters_index split that restores the target of 90).
+  Pages and Connect serving release instance `sha256:8167a297...`. Then the next
+  step is the enters_incidence / enters_index split (restores PUUM richness 9 and
+  the target of 90), with an explicit wren/lead decision on PUUM's index: NA with
+  a stated reason, or blank read as one bird under a documented PUUM recording
+  rule. Until then, PUUM's birds-per-count headline is an undercount.
 
 ## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
 
