@@ -51,18 +51,9 @@ server <- function(input, output, session) {
     plotly::config(displayModeBar = FALSE)
 
   rv <- reactiveValues(obs=NULL, held=NULL, visits=NULL, opportunity=NULL, points=NULL,
-    observer_support=NULL, board=NULL,
+    observer_support=NULL, board=NULL, sb=NULL,
     nvis=0, nopp=0, label=NULL, site=NULL, sp=NULL, ctx=NULL, is_demo=FALSE, grid=NULL, pendingSite=NULL)
-  empty_board <- function() data.frame(
-    scientificName=character(), vernacular=character(), detections=integer(), index_birds=numeric(),
-    n_points=integer(), n_detected_counts=integer(), n_point_years=integer(),
-    n_grids=integer(), mean_cluster=numeric(),
-    method=character(), n_observers=integer(), distance_n_observed=integer(),
-    distance_n_used=integer(), distance_n_outside_truncation=integer(),
-    distance_n_unavailable=integer(), ubiquity=numeric(), n_visits=numeric(), index=numeric(),
-    detection_frequency=numeric(), distance_usable_pct=numeric(), observer_support_complete=logical(),
-    opportunity_complete=logical(), flyover_detections=integer(), flyover_birds=numeric(),
-    total_birds=numeric(), stringsAsFactors=FALSE)
+  empty_board <- bird_empty_board
 
   observe({ ch <- bird_state_choices(); updateSelectInput(session, "stateSel", choices = ch, selected = if ("MA" %in% ch) "MA" else NULL) })
   # State cascade. When a map dot or browse-list card was tapped, rv$pendingSite
@@ -72,10 +63,13 @@ server <- function(input, output, session) {
   observeEvent(input$stateSel, {
     sites <- bird_sites_in_state(input$stateSel)
     pend  <- rv$pendingSite
-    sel   <- if (!is.null(pend) && pend %in% sites) pend else if (length(sites)) sites[[1]] else NULL
-    rv$pendingSite <- NULL
-    updateSelectInput(session, "site", choices = sites, selected = sel)
-    if (!is.null(pend) && identical(sel, pend)) load_site(sel)   # map/browse pick -> load it
+    # Consume a pending pick only on the echo of ITS state; an earlier state's
+    # echo during rapid picks must not drop the latest pick.
+    if (!is.null(pend) && pend %in% sites) {
+      rv$pendingSite <- NULL
+      updateSelectInput(session, "site", choices = sites, selected = pend)
+      load_site(pend)   # map/browse pick -> load it
+    } else updateSelectInput(session, "site", choices = sites, selected = if (length(sites)) sites[[1]] else NULL)
   }, ignoreInit = FALSE, ignoreNULL = TRUE)
   output$siteBio <- renderUI({ req(input$site); b <- site_bio(input$site); if (is.null(b)) return(NULL); div(class="site-bio", bs_icon("info-circle-fill"), span(b)) })
   output$siteCards <- renderUI({
@@ -87,47 +81,36 @@ server <- function(input, output, session) {
                 r$state, w$S_rare, fmt_int(w$T_counts)) else
         sprintf("%s · 2017–2024 comparison unavailable", r$state)
       tags$a(class="site-card", href="#",
-        onclick=sprintf("smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;", gsub("'","",r$name), r$site),
+        onclick=sprintf("smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;", js_str_text(r$name), r$site),
         div(class="sc-emoji","\U0001F985"),
         div(class="sc-body", div(class="sc-name", tags$b(r$site), sprintf(" · %s", r$name)),
           div(class="sc-meta", comparison))) }))
   })
   shinyjs::hide("mainTabsWrap")
 
-  ingest <- function(b, label, is_demo = FALSE) {
+  ingest <- function(b, label, is_demo = FALSE, cache_key = NULL) {
     if (is.null(b) || !all(c("obs","visits","opportunity","points","held","meta") %in% names(b)) ||
         !identical(b$meta$release, NEON_RELEASE) || !identical(as.integer(b$meta$schema_version), 4L)) {
       session$sendCustomMessage("loadDone", list())
       showNotification("This site is not in the validated RELEASE-2026 bundle.", type="error")
       return(invisible())
     }
-    prepared <- tryCatch({
-      nvis <- sum(b$visits$valid_count %in% TRUE)
-      nopp <- sum(b$opportunity$supported %in% TRUE)
-      if (nvis <= 0L || nopp <= 0L) stop("site has no supported survey effort")
-      bird_validate_effort(b$opportunity, b$visits, b$obs)
-      held <- bird_prepare_held(b$held)
-      board <- species_board(b$obs, b$points, nvis, b$opportunity, b$visits,
-                             b$meta$observer_support)
-      if (is.null(board)) board <- empty_board()
-      if (nrow(board)) {
-        missing_name <- is.na(board$vernacular) | !nzchar(trimws(board$vernacular))
-        board$vernacular[missing_name] <- board$scientificName[missing_name]
-        missing_method <- is.na(board$method) | !nzchar(trimws(board$method))
-        board$method[missing_method] <- "unknown"
-      }
-      list(nvis=nvis, nopp=nopp, board=board, held=held)
-    }, error=function(e) e)
+    # Bundles are immutable per release: a site prepared once in this R process
+    # (global.R SITE_PREP_CACHE) is reused for every later visitor and pick.
+    hit <- if (!is.null(cache_key)) site_prep_get(cache_key) else NULL
+    prepared <- if (!is.null(hit) && identical(hit$bundle, b)) hit$prepared else
+      tryCatch(prepare_site_bundle(b), error=function(e) e)
     if (inherits(prepared, "error")) {
       session$sendCustomMessage("loadDone", list())
       showNotification(paste("Site bundle failed scientific validation:", conditionMessage(prepared)), type="error")
       return(invisible())
     }
+    if (!is.null(cache_key) && is.null(hit)) site_prep_put(cache_key, b, prepared)
     # Commit the new site only after every validation succeeds; a failed load can
     # never leave observations from one site mixed with effort from another.
     rv$obs <- b$obs; rv$held <- prepared$held; rv$visits <- b$visits; rv$opportunity <- b$opportunity; rv$points <- b$points
     rv$observer_support <- b$meta$observer_support
-    rv$nvis <- prepared$nvis; rv$nopp <- prepared$nopp; rv$board <- prepared$board
+    rv$nvis <- prepared$nvis; rv$nopp <- prepared$nopp; rv$board <- prepared$board; rv$sb <- prepared$sb
     rv$label <- label; rv$site <- b$meta$site; rv$is_demo <- is_demo; rv$sp <- NULL; rv$grid <- NULL
     yrs <- range(b$opportunity$year[b$opportunity$supported %in% TRUE], na.rm=TRUE)
     rv$ctx <- paste0(b$meta$site, " · ", if (yrs[1]==yrs[2]) yrs[1] else paste0(yrs[1],"–",yrs[2]))
@@ -136,32 +119,52 @@ server <- function(input, output, session) {
     ch <- setNames(rv$board$scientificName, sprintf("%s · %s", rv$board$vernacular, rv$board$scientificName))
     updateSelectizeInput(session, "spSel", choices = c("Pick a species…"="", ch), selected = "", server = TRUE)
     nav_select("tabs", "overview"); session$sendCustomMessage("countUp", list()); session$sendCustomMessage("loadDone", list())
+    # Record the loaded site in the URL so back / forward / refresh restore it.
+    if (!is_demo && is_release_site_code(rv$site)) updateQueryString(paste0("?site=", rv$site), mode = "replace")
     if (!nrow(rv$board))
       showNotification("Supported surveys are available, but no eligible non-flyover species were detected.", type="message")
     invisible(TRUE)
   }
-  load_site <- function(site){ if (is.null(site)||site=="") { session$sendCustomMessage("loadDone", list()); return() }
-    b <- load_site_bundle(site); if (is.null(b)) { session$sendCustomMessage("loadDone", list()); showNotification("That site isn't bundled in this demo.", type="error"); return() }
-    row <- site_table[site_table$site==site,]; ingest(b, sprintf("%s · %s", site, if (nrow(row)) row$name else site)) }
-  observeEvent(input$loadBtn, load_site(input$site))
+  load_site <- function(site){ if (!is_release_site_code(site)) { session$sendCustomMessage("loadDone", list()); return() }
+    hit <- site_prep_get(site)
+    b <- if (!is.null(hit)) hit$bundle else load_site_bundle(site); if (is.null(b)) { session$sendCustomMessage("loadDone", list()); showNotification("That site isn't bundled in this demo.", type="error"); return() }
+    row <- site_table[site_table$site==site,]; ingest(b, sprintf("%s · %s", site, if (nrow(row)) row$name else site), cache_key = site) }
+  observeEvent(input$loadBtn, { rv$pendingSite <- NULL; load_site(input$site) })
   # Map dot / browse-list pick. Drive the sidebar selectors so the state + site
   # dropdowns end up reading the picked site, then load. Same state -> set the
   # site dropdown and load directly (the cascade won't re-fire on an unchanged
   # state). Different state -> stash pendingSite and switch stateSel, and the
   # cascade above lists the new state's sites, selects this one, and loads it.
-  observeEvent(input$pickSite, {
-    removeModal()   # if the pick came from the "About this site" card, close it
-    code <- input$pickSite; if (is.null(code) || !nzchar(code)) { session$sendCustomMessage("loadDone", list()); return() }
+  pick_site <- function(code) {
+    # Reject anything outside the release roster before any lookup or file access.
+    if (!is_release_site_code(code)) { session$sendCustomMessage("loadDone", list()); return() }
     st <- neon_sites$state[neon_sites$site == code][1]
-    if (is.na(st)) { load_site(code); return() }
+    if (is.na(st)) { rv$pendingSite <- NULL; load_site(code); return() }
     if (identical(input$stateSel, st)) {
+      rv$pendingSite <- NULL
       updateSelectInput(session, "site", choices = bird_sites_in_state(st), selected = code)
       load_site(code)
     } else {
       rv$pendingSite <- code
       updateSelectInput(session, "stateSel", selected = st)
     }
+  }
+  observeEvent(input$pickSite, {
+    removeModal()   # if the pick came from the "About this site" card, close it
+    pick_site(input$pickSite)
   })
+  # ?site=CODE (written on every load) restores that site on a fresh session,
+  # so back / forward / refresh land on the same record. Only a bundled
+  # release code is honoured.
+  observeEvent(session$clientData$url_search, {
+    q <- parseQueryString(session$clientData$url_search %||% "")$site
+    if (is_release_site_code(q) && q %in% BUNDLED) {
+      row <- site_table[site_table$site == q, ]
+      session$sendCustomMessage("smtLoadStart",
+        list(label = sprintf("%s · %s", q, if (nrow(row)) row$name else q)))
+      pick_site(q)
+    }
+  }, once = TRUE, ignoreNULL = TRUE)
   # (v2 flow: the LBJ Grassland demo path is gone — users pick a real site on the
   #  map, the Browse-all-sites list, or the by-name select panel. demoBtn/demoBtn2
   #  and their observers were removed with it.)
@@ -169,8 +172,9 @@ server <- function(input, output, session) {
   # "Change site" (in the hero band) -> back to the picker-map landing.
   observeEvent(input$changeSite, {
     rv$obs <- NULL; rv$visits <- NULL; rv$opportunity <- NULL; rv$points <- NULL; rv$observer_support <- NULL
-    rv$board <- NULL; rv$nvis <- 0; rv$nopp <- 0; rv$label <- NULL; rv$site <- NULL; rv$sp <- NULL; rv$grid <- NULL
+    rv$board <- NULL; rv$sb <- NULL; rv$nvis <- 0; rv$nopp <- 0; rv$label <- NULL; rv$site <- NULL; rv$sp <- NULL; rv$grid <- NULL
     shinyjs::hide("mainTabsWrap"); shinyjs::hide("spPickerWrap"); shinyjs::show("splash")
+    updateQueryString("?", mode = "replace")
     # the picker map was hidden while a site was loaded; nudge it to recompute its
     # size now that it's visible again so it never paints blank/half-width on return
     session$sendCustomMessage("kickMaps", list())
@@ -185,8 +189,7 @@ server <- function(input, output, session) {
     filename = function() sprintf("NEON-Birds_report_%s_%s.csv",
       gsub("[^A-Za-z0-9]+", "-", rv$site %||% "site"), format(Sys.Date(), "%Y%m%d")),
     content = function(file) {
-      brd <- rv$board; sb <- site_birds(rv$obs, rv$points, rv$nvis, rv$opportunity,
-                                       rv$visits, rv$observer_support)
+      brd <- rv$board; sb <- rv$sb
       if (is.null(brd) || is.null(sb)) { utils::write.csv(data.frame(note = "No site loaded"), file, row.names = FALSE); return() }
       out <- bird_report_export(brd, rv$site, NEON_RELEASE, sb, rv$visits, rv$opportunity)
       utils::write.csv(out, file, row.names = FALSE, na = "")
@@ -209,9 +212,11 @@ server <- function(input, output, session) {
   # button in each row reuses the shared pickSite path: it loads that site from
   # its bundle (instant) and lands the user on the Overview, identical to a map
   # dot or browse-list pick.
-  go_btn <- function(code, name) sprintf(
+  go_btn <- function(code, name) {
+    if (!grepl("^[A-Z]{4}$", code %||% "")) return("")
+    sprintf(
     "<button class='smt-clear-btn search-go' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});\">Go to this site &rarr;</button>",
-    gsub("'", "", name), code)
+    js_attr_text(name), code) }
   search_dt <- function(df) DT::datatable(df, rownames = FALSE, escape = FALSE,
     selection = "none", class = "compact stripe hover",
     options = list(pageLength = 12, dom = "tip", order = list(),
@@ -310,14 +315,13 @@ server <- function(input, output, session) {
 
   # ---- hero ----
   output$heroStats <- renderUI({
-    sb <- site_birds(rv$obs, rv$points, rv$nvis, rv$opportunity, rv$visits,
-                     rv$observer_support); if (is.null(sb)) return(NULL)
+    sb <- rv$sb; if (is.null(sb)) return(NULL)
     hero <- function(v,l,suf="",icon,tone,info=NULL) div(class=paste0("hero-stat hero-",tone),
       div(class="hs-icon", bs_icon(icon)),
       div(div(class="hs-v count-up", `data-target`=v, `data-suffix`=suf, "0"),
           div(class="hs-l", l, if (!is.null(info)) info)))
     div(class="hero-band",
-      div(class="hero-title", bs_icon("broadcast"), tags$b(rv$label),
+      div(class="hero-title", bs_icon("broadcast"), tags$h1(class="hero-title-h", rv$label),
         actionLink("changeSite", tagList(bs_icon("arrow-left-circle"), " change site"), class = "hero-change"),
         downloadLink("reportCsv", tagList(bs_icon("file-earmark-arrow-down"), " report"), class = "hero-report")),
       div(class="hero-grid",
@@ -362,7 +366,7 @@ server <- function(input, output, session) {
       HTML(sprintf("NEON completed <b>%s</b> valid point-counts across <b>%s</b> supported point-years here, with <b>zero eligible non-flyover species detections</b>. That is a supported zero record, not missing survey effort and not proof that birds were absent.", fmt_int(rv$nvis), fmt_int(rv$nopp)))))
     top <- brd[which.max(brd$index),]; freq <- brd[which.max(brd$detection_frequency),]
     insight_banner("soundwave", tone="navy", HTML(sprintf("<b>%s</b> has the highest detection index here (%.2f birds per count); <b>%s</b> appears on the largest share of valid six-minute counts (%.0f%%). The site has <span class='ci-hero'>%d</span> detected species.",
-      top$vernacular %||% top$scientificName, top$index, freq$vernacular %||% freq$scientificName, freq$detection_frequency, nrow(brd))))
+      esc_html(top$vernacular %||% top$scientificName), top$index, esc_html(freq$vernacular %||% freq$scientificName), freq$detection_frequency, nrow(brd))))
   })
   output$siteInsights <- renderUI({
     brd <- rv$board; req(!is.null(brd)); ch <- chao2_points(rv$obs, rv$visits)
@@ -373,14 +377,14 @@ server <- function(input, output, session) {
       tags$li(HTML("Those supported opportunities contained <b>zero eligible non-flyover species detections</b>. The scientific value is zero for this sampled record; unsurveyed opportunities remain unavailable rather than zero.")),
       tags$li(HTML("No detection index, observer-distance profile, or Chao2 point estimate is inferred from an empty detection record."))))
     top <- brd[which.max(brd$index),]; freq <- brd[which.max(brd$detection_frequency),]
-    nm <- function(r) r$vernacular %||% r$scientificName
+    nm <- function(r) esc_html(r$vernacular %||% r$scientificName)
     eligible <- eligible_breeding_detections(rv$obs)
     sing_share <- round(100 * mean(eligible$method_singing %in% TRUE, na.rm=TRUE))
     pts <- c(
       sprintf("Over <b>%s</b>, NEON ran <b>%s</b> valid six-minute point-counts at <b>%d</b> points here. Those counts produced <b>%s</b> eligible in-window non-flyover birds across <b>%d</b> detected species.",
         yr_lab, fmt_int(rv$nvis), sum(rv$points$n_visits > 0), fmt_int(sum(brd$index_birds)), nrow(brd)),
       sprintf("The highest detection index belongs to the <b>%s</b> (<i>%s</i>), about <b>%.2f</b> birds per count; the <b>%s</b> was detected on <b>%.0f%%</b> of valid six-minute counts.",
-        nm(top), top$scientificName, top$index, nm(freq), freq$detection_frequency))
+        nm(top), esc_html(top$scientificName), top$index, nm(freq), freq$detection_frequency))
     if (is.finite(sing_share)) pts <- c(pts, sprintf("<b>%d%%</b> of eligible detections included <i>singing</i> as a recorded detection channel; other records included calling or visual channels. This method mix does not establish territory or breeding status.", sing_share))
     if (!is.null(ch)) {
       cov <- site_coverage(rv$obs, rv$visits)
@@ -437,12 +441,12 @@ server <- function(input, output, session) {
     if (!nrow(brd)) return(note_plot("No eligible species to place on the Bird Board"))
     brd$reliable <- brd$detections >= 3
     brd$col <- method_col(brd$method); brd$col[!brd$reliable] <- "rgba(138,129,117,0.35)"   # faded ink, parchment-friendly
-    brd$tip <- paste0("<span class='smt-pin-emoji'>\U0001F426</span> <b>", brd$vernacular %||% brd$scientificName, "</b><br/>",
-      "<em>", brd$scientificName, "</em><br/>",
+    brd$tip <- paste0("<span class='smt-pin-emoji'>\U0001F426</span> <b>", esc_html(brd$vernacular %||% brd$scientificName), "</b><br/>",
+      "<em>", esc_html(brd$scientificName), "</em><br/>",
       "<span class='smt-pin-stats'>", brd$index, " birds/count · ", brd$detection_frequency, "% of valid counts<br/>",
-      brd$detections, " detections · mostly ", brd$method %||% "—", "</span>",
+      brd$detections, " detections · mostly ", esc_html(brd$method %||% "—"), "</span>",
       ifelse(brd$reliable, "", "<br/><span class='smt-pin-rar' style='color:#ffd9a7'>⚠ few detections</span>"),
-      "<br/><span class='smt-open' role='button' tabindex='0' data-tag='", brd$scientificName, "'>\U0001F985 Open species profile &rarr;</span>",
+      "<br/><span class='smt-open' role='button' tabindex='0' data-tag='", htmltools::htmlEscape(brd$scientificName, attribute = TRUE), "'>\U0001F985 Open species profile &rarr;</span>",
       "<br/><em class='smt-pin-hint'>Tap the dot to pin this card</em>")
     qcol <- if (is_dark()) "#9a8f7c" else "#b3a892"; muted <- if (is_dark()) "#b3a692" else "#7a6f5d"
     p <- plot_ly()
@@ -645,7 +649,7 @@ server <- function(input, output, session) {
     leaflet::leaflet(g) %>% add_suite_basemap(input$view %||% "Esri.WorldTopoMap") %>%
       leaflet::addCircleMarkers(lng=~lng, lat=~lat, radius=~radius, fillColor=pal(val), color="#fff", weight=1, fillOpacity=0.85,
         layerId=~plotID,
-        label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", short_point(plotID), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
+        label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", esc_html(short_point(plotID)), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
       leaflet::addLegend("bottomright", pal=pal, values=val, title=if (metric=="richness") "species" else "birds/count")
   })
   observeEvent(input$map_marker_click, { id <- input$map_marker_click$id; if (!is.null(id)) rv$grid <- id })
@@ -715,14 +719,16 @@ server <- function(input, output, session) {
     if (sum(is.finite(d$S_rare)) == nrow(d) && diff(range(d$S_rare)) > 0) {
       rr <- range(d$S_rare); d$rad <- 7 + 9 * (d$S_rare - rr[1]) / diff(rr)
     } else d$rad <- 10
-    pop <- sprintf("<div style='font-family:system-ui,sans-serif;min-width:210px'><b>%s · %s</b><br><span style='color:#7a6f5d'>%s · %s · 2017–2024</span><br><b>%s</b> rarefied species · <b>%d</b> observed<br><b>%s</b> valid counts at <b>%s</b> points · <b>%.2f</b> birds/count<br><span style='color:#7a6f5d'>estimated coverage %s</span><br><a href='#' style='color:#c1502e;font-weight:700' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;\">\U0001F426 Explore this site &rarr;</a><br><a href='#' style='color:#2f7fb5;font-weight:600' onclick=\"Shiny.setInputValue('siteInfo','%s',{priority:'event'});return false;\">About this site</a></div>",
-                   d$site, d$name, d$blab, d$state, d$S_rare, d$S_obs,
+    pop <- sprintf("<div style='font-family:system-ui,sans-serif;min-width:210px'><b>%s · %s</b><br><span style='color:#7a6f5d'>%s · %s · 2017–2024</span><br><b>%s</b> rarefied species · <b>%d</b> observed<br><b>%s</b> valid counts at <b>%s</b> points · <b>%.2f</b> birds/count<br><span style='color:#7a6f5d'>estimated coverage %s</span><a href='#' role='button' class='pm-pop-btn pm-pop-explore' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;\">\U0001F426 Explore this site &rarr;</a><a href='#' role='button' class='pm-pop-btn pm-pop-about' onclick=\"Shiny.setInputValue('siteInfo','%s',{priority:'event'});return false;\">About this site</a></div>",
+                   esc_html(d$site), esc_html(d$name), esc_html(d$blab), esc_html(d$state), d$S_rare, d$S_obs,
                    fmt_int(d$T_counts), fmt_int(d$n_points_window), d$birds_per_count_window,
                    ifelse(is.finite(d$coverage), paste0(round(100 * d$coverage), "%"), "unavailable"),
-                   gsub("'", "", d$name), d$site, d$site)
+                   js_attr_text(d$name), d$site, d$site)
+    ok <- grepl("^[A-Z]{4}$", d$site); d <- d[ok, , drop = FALSE]; pop <- pop[ok]
     leaflet::leaflet(d) %>% add_suite_basemap("CartoDB.Positron") %>% leaflet::setView(-96, 41, 3) %>%
       leaflet::addCircleMarkers(lng = ~lng, lat = ~lat, radius = ~rad, fillColor = ~bcol, color = "#fff", weight = 1, fillOpacity = 0.85,
-        label = ~lapply(sprintf("<b>%s</b> · %s<br>%s · %s rarefied species · 2017–2024", site, name, blab, S_rare), htmltools::HTML), popup = pop) %>%
+        label = ~lapply(sprintf("<b>%s</b> · %s<br>%s · %s rarefied species · 2017–2024", esc_html(site), esc_html(name), esc_html(blab), S_rare), htmltools::HTML), popup = pop,
+        popupOptions = leaflet::popupOptions(keepInView = FALSE)) %>%
       leaflet::addLegend("bottomright", colors = unname(BIOME_COL), labels = unname(BIOME_LAB), title = "Biome", opacity = 0.9)
   })
 
@@ -732,6 +738,7 @@ server <- function(input, output, session) {
   # instant info card, no bundle load). The modal's footer button reuses the same
   # pickSite channel so a load from here also keeps the sidebar in sync.
   site_info_modal <- function(code) {
+    if (!is_release_site_code(code)) code <- ""
     m <- neon_sites[neon_sites$site == code, ]
     row <- if (!is.null(SEARCH_SITES)) SEARCH_SITES[SEARCH_SITES$site == code, ] else NULL
     if (!nrow(m))
@@ -742,12 +749,12 @@ server <- function(input, output, session) {
       div(class = "si-stat-n", if (is.null(v) || is.na(v)) "—" else format(v, big.mark = ",")),
       div(class = "si-stat-l", lab))
     modalDialog(
-      title = HTML(sprintf("\U0001F426 %s <span class='si-code'>(%s)</span>", m$name[1], code)),
+      title = HTML(sprintf("\U0001F426 %s <span class='si-code'>(%s)</span>", esc_html(m$name[1]), code)),
       easyClose = TRUE, size = "m",
       footer = tagList(
         modalButton("Close"),
         tags$button(type = "button", class = "btn btn-primary",
-          onclick = sprintf("smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});", gsub("'", "", m$name[1]), code),
+          onclick = sprintf("smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});", js_str_text(m$name[1]), code),
           HTML("Explore this site &rarr;"))),
       div(class = "site-info",
         div(class = "si-sec",
@@ -803,15 +810,15 @@ server <- function(input, output, session) {
     g$coverage_lab <- ifelse(is.finite(g$coverage), paste0(round(100 * g$coverage), "% estimated coverage"), "coverage unavailable")
     g$bird_year_lab <- ifelse(g$bird_year_min == g$bird_year_max, as.character(g$bird_year_min),
       paste0(g$bird_year_min, "–", g$bird_year_max))
-    g$tip <- paste0("<span class='smt-pin-emoji'>\U0001F985</span> <b>", g$site, " · ", g$name, "</b><br/>",
-      "<em>", g$biome_lab, " · ", g$state, "</em><br/>",
+    g$tip <- paste0("<span class='smt-pin-emoji'>\U0001F985</span> <b>", esc_html(g$site), " · ", esc_html(g$name), "</b><br/>",
+      "<em>", esc_html(g$biome_lab), " · ", esc_html(g$state), "</em><br/>",
       "<span class='smt-pin-stats'>", temp_disp(g$breeding_temp_c, unit), " breeding · ",
       g$precip_lab, "<br/>",
       g$S_obs, " species detected · ", g$S_rare, " rarefied · ", g$coverage_lab, "<br/>",
       g$n_points_window, " points · ", g$T_counts, " valid counts · comparison window ",
       g$analysis_year_min, "–", g$analysis_year_max, " (bird support ", g$bird_year_lab, ")<br/>",
-      "top: <em>", g$top_species_window, "</em></span>",
-      "<br/><span class='smt-open' role='button' tabindex='0' data-action='site' data-tag='", g$site, "'>\U0001F426 Open this site &rarr;</span>",
+      "top: <em>", esc_html(g$top_species_window), "</em></span>",
+      "<br/><span class='smt-open' role='button' tabindex='0' data-action='site' data-tag='", htmltools::htmlEscape(g$site, attribute = TRUE), "'>\U0001F426 Open this site &rarr;</span>",
       "<br/><em class='smt-pin-hint'>Tap the dot to pin this card</em>")
     sref <- 2 * max(g$n_points_window, na.rm = TRUE) / (26^2)
     muted <- if (is_dark()) "#b3a692" else "#7a6f5d"
