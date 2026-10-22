@@ -221,7 +221,7 @@ expected_schema_fields <- c(
   "schema_version", "product", "release", "incidence_unit", "annual_audit_unit",
   "detection_index_denominator", "valid_visit_rule", "observer_support",
   "cross_job_evidence", "species_community_unit", "source_taxonomy_provenance",
-  "breeding_detection_rule", "visit_outcomes", "point_year_outcomes",
+  "breeding_detection_rule", "detection_index_rule", "visit_outcomes", "point_year_outcomes",
   "cross_site_rule", "climate_context_rule", "detection_method_states",
   "distance_states", "point_count_minute_states"
 )
@@ -233,7 +233,7 @@ assert(identical(schema$release, "RELEASE-2026"), "Bundle schema release mismatc
 assert(identical(as.character(schema$detection_index_denominator),
                  "valid point-count bouts") &&
        identical(as.character(schema$valid_visit_rule),
-                 "samplingImpractical == OK AND not withdrawn as detections_without_cluster_size"),
+                 "samplingImpractical == OK"),
        "Bundle schema detection-index denominator or valid-visit rule mismatch.")
 assert(grepl("visits.survey_id", as.character(schema$incidence_unit), fixed = TRUE) &&
        grepl("point x year", as.character(schema$annual_audit_unit), fixed = TRUE),
@@ -242,9 +242,15 @@ assert(grepl("pointCountMinute in 1:6", as.character(schema$breeding_detection_r
        "Bundle schema does not declare the formal point-count minute window.")
 assert(grepl("known detectionMethod", as.character(schema$breeding_detection_rule), fixed = TRUE),
        "Bundle schema does not fail closed on missing/unknown detection methods.")
-assert(grepl("positive finite integer clusterSize", as.character(schema$breeding_detection_rule),
+assert(grepl("clusterSize is not required", as.character(schema$breeding_detection_rule),
+             fixed = TRUE) &&
+       !grepl("positive finite integer clusterSize", as.character(schema$breeding_detection_rule),
+              fixed = TRUE) &&
+       grepl("positive finite integer clusterSize", as.character(schema$detection_index_rule),
+             fixed = TRUE) &&
+       grepl("reports birds per count as NA", as.character(schema$detection_index_rule),
              fixed = TRUE),
-       "Bundle schema does not require count-valued clusterSize eligibility.")
+       "Bundle schema does not declare the incidence/index split for clusterSize.")
 assert(grepl("aggregate counts only", as.character(schema$observer_support), fixed = TRUE),
        "Bundle schema does not declare aggregate-only observer support.")
 assert(grepl("parent species and subspecies collapse", as.character(schema$species_community_unit),
@@ -302,7 +308,8 @@ index <- readRDS(file.path(DATA, "site_index.rds"))
 assert(nrow(index) == 47L && identical(sort(as.character(index$site)), expected_sites), "Site index roster mismatch.")
 expected_index_fields <- c(
   "site", "n_species", "n_points", "n_visits", "n_supported_zero_counts",
-  "n_opportunities", "n_supported_zero", "birds_per_count", "top_species",
+  "n_opportunities", "n_supported_zero", "birds_per_count",
+  "n_detections_without_count", "top_species",
   "lat", "lng", "release", "schema_version"
 )
 assert(identical(names(index), expected_index_fields) &&
@@ -387,7 +394,7 @@ for (site in expected_sites) {
     "detection_method_state",
     "method_channel", "method_singing", "method_calling", "method_visual", "method_drumming",
     "clusterSize", "clusterSizeRaw", "sexOrAge", "matched_visit", "valid_count", "is_flyover",
-    "enters_breeding_metrics", "hold_reason"
+    "enters_incidence", "enters_index", "hold_reason"
   )
   point_cols <- c(
     "pointkey", "site", "plotID", "pointID", "nlcdClass", "observedHabitat",
@@ -446,33 +453,13 @@ for (site in expected_sites) {
   assert(identical(as.character(visits$survey_id), expected_survey), paste(site, "survey key is not authoritative."))
   protocol_ok <- toupper(trimws(as.character(visits$samplingImpractical))) == "OK"
   protocol_ok[is.na(protocol_ok)] <- FALSE
-  # Audit item 16 stopgap, re-derived from the public detection ledgers alone: a
-  # protocol-valid count whose otherwise-eligible species detections all lack a
-  # positive integer clusterSize is withdrawn as unavailable, never a zero.
-  detection_all <- rbind(obs, held)
-  detection_unit <- community_unit(detection_all$reportedTaxonRank,
-                                   detection_all$reportedScientificName)
-  detection_method <- tolower(trimws(as.character(detection_all$detectionMethod)))
-  detection_method_known <- !blank(detection_method) & detection_method != "unknown"
-  detection_flyover <- grepl("flyover", detection_method)
-  detection_flyover[is.na(detection_flyover)] <- FALSE
-  detection_cluster_valid <- is.finite(detection_all$clusterSize) &
-    detection_all$clusterSize > 0 & detection_all$clusterSize == floor(detection_all$clusterSize)
-  detection_protocol_ok <- detection_all$matched_visit %in% TRUE &
-    as.character(detection_all$survey_id) %in% as.character(visits$survey_id[protocol_ok])
-  detection_core <- detection_protocol_ok & detection_all$in_protocol_window %in% TRUE &
-    detection_unit$eligible & detection_method_known & !detection_flyover
-  blocked_ids <- setdiff(
-    unique(as.character(detection_all$survey_id[detection_core & !detection_cluster_valid])),
-    unique(as.character(detection_all$survey_id[detection_core & detection_cluster_valid])))
-  expected_blocked <- protocol_ok & as.character(visits$survey_id) %in% blocked_ids
-  expected_valid <- protocol_ok & !expected_blocked
+  expected_valid <- protocol_ok
   assert(identical(visits$valid_count %in% TRUE, expected_valid),
-         paste(site, "valid-count state does not equal samplingImpractical == OK minus cluster-withdrawn counts."))
-  expected_count_hold <- ifelse(!protocol_ok, "sampling_impractical",
-    ifelse(expected_blocked, "detections_without_cluster_size", NA_character_))
+         paste(site, "valid-count state does not equal samplingImpractical == OK."))
+  expected_count_hold <- ifelse(!protocol_ok, "sampling_impractical", NA_character_)
   assert(same_chr(visits$count_hold_reason, expected_count_hold),
-         paste(site, "count_hold_reason does not re-derive from sampling state and held detections."))
+         paste(site, "count_hold_reason does not re-derive from the sampling state."))
+  detection_all <- rbind(obs, held)
   cluster_raw_value <- suppressWarnings(as.numeric(detection_all$clusterSizeRaw))
   assert(identical(is.na(cluster_raw_value), is.na(detection_all$clusterSize)) &&
          all(cluster_raw_value[!is.na(cluster_raw_value)] ==
@@ -536,7 +523,7 @@ for (site in expected_sites) {
   observer_by_species <- as.data.frame(observer_support$by_species,
                                        stringsAsFactors = FALSE)
   expected_observer_species <- sort(unique(as.character(
-    obs$communityScientificName[obs$enters_breeding_metrics %in% TRUE]
+    obs$communityScientificName[obs$enters_incidence %in% TRUE]
   )), method = "radix")
   assert(identical(names(observer_by_species), c("scientificName", "n_observers")) &&
          !anyNA(observer_by_species$scientificName) &&
@@ -611,11 +598,15 @@ for (site in expected_sites) {
 
   obs_cluster_valid <- is.finite(obs$clusterSize) & obs$clusterSize > 0 &
     obs$clusterSize == floor(obs$clusterSize)
+  # Incidence/index split: incidence needs no count; the index also needs a
+  # positive integer clusterSize.
   expected_eligible <- obs_unit$eligible & obs_method_known & obs$valid_count %in% TRUE &
-    obs$in_protocol_window %in% TRUE &
-    !obs_flyover & obs_cluster_valid
-  assert(identical(obs$enters_breeding_metrics %in% TRUE, expected_eligible),
-         paste(site, "eligible protocol-filtered predicate mismatch."))
+    obs$in_protocol_window %in% TRUE & !obs_flyover
+  expected_index <- expected_eligible & obs_cluster_valid
+  assert(identical(obs$enters_incidence %in% TRUE, expected_eligible),
+         paste(site, "incidence predicate mismatch."))
+  assert(identical(obs$enters_index %in% TRUE, expected_index),
+         paste(site, "detection-index predicate mismatch."))
   obs_visit_match <- match(as.character(obs$survey_id), as.character(visits$survey_id))
   assert(!anyNA(obs_visit_match) &&
          same_chr(obs$occasion_id, visits$occasion_id[obs_visit_match]) &&
@@ -635,7 +626,7 @@ for (site in expected_sites) {
          all(obs$detection_bout_matches_visit[!is.na(obs$detection_bout_matches_visit)] %in% TRUE),
          paste(site, "detection/visit year or bout audit mismatch."))
   assert(sum(opportunities$eligible_detection_rows) == sum(expected_eligible), paste(site, "eligible-row conservation failed."))
-  assert(same_num(sum(opportunities$eligible_birds), sum(obs$clusterSize[expected_eligible], na.rm = TRUE)),
+  assert(same_num(sum(opportunities$eligible_birds), sum(obs$clusterSize[expected_index])),
          paste(site, "eligible-bird conservation failed."))
   expected_fly <- obs_flyover & obs$valid_count %in% TRUE &
     obs$in_protocol_window %in% TRUE & obs$is_species %in% TRUE & obs_cluster_valid
@@ -665,7 +656,7 @@ for (site in expected_sites) {
       expected_visit_summary$eligible_detection_rows[destination] <<-
         vapply(groups, length, integer(1))
       expected_visit_summary$eligible_birds[destination] <<-
-        vapply(groups, function(i) sum(obs$clusterSize[i]), numeric(1))
+        vapply(groups, function(i) sum(obs$clusterSize[i][expected_index[i]]), numeric(1))
       expected_visit_summary$eligible_species[destination] <<-
         vapply(groups, function(i) length(unique(obs$communityScientificName[i])), integer(1))
     }
@@ -692,8 +683,6 @@ for (site in expected_sites) {
         ifelse(held$point_count_minute_state == "incidental_minute_88", "incidental_outside_point_count",
           ifelse(held$point_count_minute_state == "source_missing", "missing_point_count_minute",
             ifelse(!(held$in_protocol_window %in% TRUE), "invalid_point_count_minute",
-              ifelse(!is.finite(held$clusterSize) | held$clusterSize <= 0 |
-                       held$clusterSize != floor(held$clusterSize), "invalid_cluster_size",
                 ifelse(is.na(held$reportedScientificName) |
                          !nzchar(trimws(as.character(held$reportedScientificName))),
                        "missing_taxon",
@@ -701,9 +690,7 @@ for (site in expected_sites) {
                            c("species", "subspecies") & !held_unit$eligible,
                          "unsafe_species_canonicalization",
                     ifelse(!held_method_known,
-                           "missing_or_unknown_detection_method",
-                      ifelse(!(held$valid_count %in% TRUE), "detection_on_unusable_visit",
-                             NA_character_))))))))))
+                           "missing_or_unknown_detection_method", NA_character_))))))))
     held_visit <- match(as.character(held$survey_id), as.character(visits$survey_id))
     assert(identical(held$valid_count %in% TRUE,
                      !is.na(held_visit) & expected_valid[ifelse(is.na(held_visit), 1L, held_visit)]),
@@ -728,7 +715,7 @@ for (site in expected_sites) {
            opportunities$n_valid_bouts[[i]] == sum(visits$valid_count[vi]) &&
            opportunities$n_held_bouts[[i]] == sum(!visits$valid_count[vi]) &&
            opportunities$eligible_detection_rows[[i]] == length(oi) &&
-           same_num(opportunities$eligible_birds[[i]], sum(obs$clusterSize[oi], na.rm = TRUE)) &&
+           same_num(opportunities$eligible_birds[[i]], sum(obs$clusterSize[oi][expected_index[oi]])) &&
            opportunities$eligible_species[[i]] == length(unique(obs$communityScientificName[oi])) &&
            opportunities$flyover_rows[[i]] == length(fi) &&
            same_num(opportunities$flyover_birds[[i]], sum(obs$clusterSize[fi], na.rm = TRUE)),
@@ -773,16 +760,22 @@ for (site in expected_sites) {
          row$n_opportunities == sum(expected_supported) &&
          row$n_supported_zero == sum(opportunities$outcome == "supported_zero"),
          paste(site, "site index does not re-derive from the bundle."))
-  species_totals <- tapply(obs$clusterSize[expected_eligible],
-                           obs$communityScientificName[expected_eligible], sum)
+  # Bird-count summaries need a usable count on every incidence detection.
+  site_without_count <- sum(expected_eligible & !expected_index)
+  species_totals <- if (site_without_count == 0L)
+    tapply(obs$clusterSize[expected_eligible],
+           obs$communityScientificName[expected_eligible], sum) else numeric()
   expected_top_species <- if (length(species_totals)) {
     top_order <- order(-as.numeric(species_totals), names(species_totals), method = "radix")
     names(species_totals)[top_order[[1]]]
   } else NA_character_
   assert(same_chr(row$top_species, expected_top_species),
          paste(site, "site-index top species is not a canonical community unit."))
-  expected_index <- sum(obs$clusterSize[expected_eligible], na.rm = TRUE) / sum(visits$valid_count)
-  assert(same_num(row$birds_per_count, round(expected_index, 3)), paste(site, "detection index mismatch."))
+  expected_site_index <- if (site_without_count == 0L)
+    round(sum(obs$clusterSize[expected_index]) / sum(visits$valid_count), 3) else NA_real_
+  assert(same_num(row$birds_per_count, expected_site_index) &&
+         identical(as.integer(row$n_detections_without_count), as.integer(site_without_count)),
+         paste(site, "detection index or its count-support statement mismatch."))
 
   # Reconstruct the shared-window count-incidence input independently from the
   # producer and without consulting the lifetime site index.
@@ -813,7 +806,9 @@ for (site in expected_sites) {
   n_positive_counts_window <- as.integer(length(unique(species_count_pairs$survey_id)))
   n_supported_zero_counts_window <- as.integer(T_counts - n_positive_counts_window)
   n_points_window <- as.integer(length(unique(as.character(visits$pointkey[window_visit]))))
-  n_birds_window <- if (length(window_rows)) sum(obs$clusterSize[window_rows]) else 0
+  window_without_count <- as.integer(sum(!expected_index[window_rows]))
+  n_birds_window <- if (window_without_count > 0L) NA_real_ else
+    if (length(window_rows)) sum(obs$clusterSize[window_rows]) else 0
 
   species_point_pairs <- if (length(window_rows)) unique(data.frame(
     communityScientificName = as.character(obs$communityScientificName[window_rows]),
@@ -825,7 +820,7 @@ for (site in expected_sites) {
   )
   point_incidence <- if (nrow(species_point_pairs))
     table(species_point_pairs$communityScientificName) else integer()
-  species_birds_window <- if (length(window_rows))
+  species_birds_window <- if (length(window_rows) && window_without_count == 0L)
     tapply(obs$clusterSize[window_rows],
            obs$communityScientificName[window_rows], sum) else numeric()
   top_species_window <- if (length(species_birds_window)) {
@@ -854,7 +849,8 @@ for (site in expected_sites) {
          n_positive_counts_window + n_supported_zero_counts_window == T_counts &&
          U_incidence >= n_positive_counts_window &&
          n_points_window >= 1L && n_points_window <= T_counts &&
-         is.finite(n_birds_window) && n_birds_window >= n_positive_counts_window &&
+         (window_without_count > 0L ||
+            (is.finite(n_birds_window) && n_birds_window >= n_positive_counts_window)) &&
          sum(independently_expected_visit_outcome[window_visit] == "positive") ==
            n_positive_counts_window &&
          sum(independently_expected_visit_outcome[window_visit] == "supported_zero") ==
@@ -890,7 +886,8 @@ for (site in expected_sites) {
       state = as.character(site_meta_row$state[[1]]),
       analysis_year_min = BIRD_CROSS_SITE_YEAR_MIN,
       analysis_year_max = BIRD_CROSS_SITE_YEAR_MAX,
-      detection_index_window = round(sum(obs$clusterSize[rows]) / T_counts, 3),
+      detection_index_window = if (all(expected_index[rows]))
+        round(sum(obs$clusterSize[rows]) / T_counts, 3) else NA_real_,
       detection_frequency_window = round(
         100 * length(unique(as.character(obs$survey_id[rows]))) / T_counts, 1
       ),
@@ -937,6 +934,7 @@ for (site in expected_sites) {
       n_positive_counts_window = n_positive_counts_window,
       n_supported_zero_counts_window = n_supported_zero_counts_window,
       n_birds_window = n_birds_window,
+      n_detections_without_count_window = window_without_count,
       S_obs = S_obs,
       U_incidence = U_incidence,
       Q1_incidence = Q1_incidence,
@@ -980,7 +978,8 @@ rownames(expected_cross) <- NULL
 expected_cross_fields <- c(
   "site", "analysis_year_min", "analysis_year_max", "bird_year_min", "bird_year_max",
   "T_counts", "n_visits_window", "n_points_window", "n_positive_counts_window",
-  "n_supported_zero_counts_window", "n_birds_window", "S_obs", "U_incidence",
+  "n_supported_zero_counts_window", "n_birds_window",
+  "n_detections_without_count_window", "S_obs", "U_incidence",
   "Q1_incidence", "Q2_incidence", "birds_per_count_window", "top_species_window",
   "mean_detection_frequency", "mean_ubiquity", "pct_singing", "S_rare", "t_used",
   "coverage", "hill_q1", "hill_q2"
@@ -1010,8 +1009,8 @@ assert(identical(as.integer(attr(cross, "schema_version", exact = TRUE)), 4L) &&
 integer_cross_fields <- c(
   "analysis_year_min", "analysis_year_max", "bird_year_min", "bird_year_max",
   "T_counts", "n_visits_window", "n_points_window", "n_positive_counts_window",
-  "n_supported_zero_counts_window", "S_obs", "U_incidence", "Q1_incidence",
-  "Q2_incidence", "t_used"
+  "n_supported_zero_counts_window", "n_detections_without_count_window", "S_obs",
+  "U_incidence", "Q1_incidence", "Q2_incidence", "t_used"
 )
 assert(all(vapply(cross[integer_cross_fields], is.integer, logical(1))),
        "Cross-site count/window support fields are not stored as integers.")

@@ -31,7 +31,10 @@ rows <- lapply(files, function(path) {
   sp <- eligible_rows(b$obs)
   nvis <- sum(b$visits$valid_count %in% TRUE)
   nopp <- sum(b$opportunity$supported %in% TRUE)
-  totals <- if (nrow(sp)) stats::aggregate(clusterSize ~ communityScientificName, sp, sum) else NULL
+  # Bird-count summaries need a usable count on every incidence detection.
+  n_without_count <- if (nrow(sp)) sum(!(sp$enters_index %in% TRUE)) else 0L
+  totals <- if (nrow(sp) && n_without_count == 0L)
+    stats::aggregate(clusterSize ~ communityScientificName, sp, sum) else NULL
   top <- if (!is.null(totals) && nrow(totals)) totals$communityScientificName[which.max(totals$clusterSize)] else NA_character_
   tibble::tibble(
     site = code,
@@ -41,7 +44,9 @@ rows <- lapply(files, function(path) {
     n_supported_zero_counts = sum(b$visits$outcome == "supported_zero"),
     n_opportunities = nopp,
     n_supported_zero = sum(b$opportunity$outcome == "supported_zero"),
-    birds_per_count = if (nvis > 0) round(sum(sp$clusterSize, na.rm = TRUE) / nvis, 3) else NA_real_,
+    birds_per_count = if (nvis > 0 && n_without_count == 0L)
+      round(sum(sp$clusterSize) / nvis, 3) else NA_real_,
+    n_detections_without_count = as.integer(n_without_count),
     top_species = top,
     lat = as.numeric(b$meta$lat),
     lng = as.numeric(b$meta$lng),

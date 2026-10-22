@@ -71,7 +71,7 @@ shiny::testServer(app_server, {
   distance_support <- aggregate(
     as.integer(candidate$obs$distance_state == "observed" &
       is.finite(candidate$obs$observerDistance) & candidate$obs$observerDistance >= 0 &
-      candidate$obs$observerDistance <= 200 & candidate$obs$enters_breeding_metrics),
+      candidate$obs$observerDistance <= 200 & candidate$obs$enters_incidence),
     list(scientificName = candidate$obs$communityScientificName), sum, na.rm = TRUE)
   names(distance_support)[2] <- "n"
   usable <- distance_support$scientificName[distance_support$n >= 8L]

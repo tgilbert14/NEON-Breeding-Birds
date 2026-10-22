@@ -344,35 +344,21 @@ for (site in expected_sites) {
   minute <- point_count_minute_state(cd$pointCountMinute)
   is_species <- unit$eligible
   is_flyover <- grepl("flyover", tolower(method)); is_flyover[is.na(is_flyover)] <- FALSE
-  eligible <- matched_valid & minute$in_window & is_species & method_known &
-    !is_flyover & cluster_valid
-  # Independent re-derivation of the audit item 16 stopgap: a protocol-valid
-  # count with no eligible detection but at least one otherwise-eligible species
-  # detection lacking a positive integer clusterSize is unavailable, not zero.
-  protocol_valid <- matched_valid
-  cluster_blocked <- protocol_valid & minute$in_window & is_species & method_known &
-    !is_flyover & !cluster_valid
-  blocked_surveys <- setdiff(unique(cd_survey[cluster_blocked]), unique(cd_survey[eligible]))
-  pp_blocked <- pp_valid & pp_survey %in% blocked_surveys
-  pp_valid <- pp_valid & !pp_blocked
-  expected_visits$valid_count <- pp_valid
-  expected_visits$count_hold_reason[pp_blocked] <- "detections_without_cluster_size"
-  expected_visits$protocol_minutes <- ifelse(pp_valid, 6, 0)
-  matched_valid <- matched
-  matched_valid[matched] <- pp_valid[visit_match[matched]]
+  # Independent re-derivation of the incidence/index split (audit item 16):
+  # incidence needs no count; the detection index also needs a positive integer
+  # clusterSize. A count never causes a hold.
+  eligible <- matched_valid & minute$in_window & is_species & method_known & !is_flyover
+  index_ok <- eligible & cluster_valid
   reason <- ifelse(!matched, "orphan_detection_no_visit",
-            ifelse(!protocol_valid, "detection_on_unusable_visit",
+            ifelse(!matched_valid, "detection_on_unusable_visit",
               ifelse(minute$state == "incidental_minute_88", "incidental_outside_point_count",
                 ifelse(minute$state == "source_missing", "missing_point_count_minute",
                   ifelse(!minute$in_window, "invalid_point_count_minute",
-                    ifelse(!cluster_valid, "invalid_cluster_size",
                       ifelse(blank(scientific), "missing_taxon",
                         ifelse(tolower(trimws(rank)) %in% c("species", "subspecies") & !is_species,
                                "unsafe_species_canonicalization",
                           ifelse(!method_known,
-                                 "missing_or_unknown_detection_method",
-                            ifelse(!matched_valid, "detection_on_unusable_visit",
-                                   NA_character_))))))))))
+                                 "missing_or_unknown_detection_method", NA_character_))))))))
 
   expected_channel <- method_channel(method)
   component <- function(pattern) {
@@ -425,7 +411,8 @@ for (site in expected_sites) {
     matched_visit = matched,
     valid_count = matched_valid,
     is_flyover = is_flyover,
-    enters_breeding_metrics = eligible,
+    enters_incidence = eligible,
+    enters_index = index_ok,
     hold_reason = reason,
     stringsAsFactors = FALSE, check.names = FALSE)
   assert(identical(names(obs), names(expected_detection)) &&
@@ -448,7 +435,7 @@ for (site in expected_sites) {
   expected_visits$eligible_detection_rows <- vapply(expected_visits$survey_id,
     function(key) summarize_visit(visit_eligible, key, length, 0L), integer(1))
   expected_visits$eligible_birds <- vapply(expected_visits$survey_id,
-    function(key) summarize_visit(visit_eligible, key, function(i) sum(cluster[i]), 0), numeric(1))
+    function(key) summarize_visit(visit_eligible, key, function(i) sum(cluster[i][index_ok[i]]), 0), numeric(1))
   expected_visits$eligible_species <- vapply(expected_visits$survey_id,
     function(key) summarize_visit(visit_eligible, key,
       function(i) length(unique(unit$name[i])), 0L), integer(1))
@@ -475,7 +462,7 @@ for (site in expected_sites) {
          identical(visits$valid_count[vm] %in% TRUE, pp_valid),
          site, ": visit ledger fields do not independently re-derive from raw.")
   assert(sum(visits$eligible_detection_rows) == sum(eligible) &&
-         same_num(sum(visits$eligible_birds), sum(cluster[eligible], na.rm = TRUE)) &&
+         same_num(sum(visits$eligible_birds), sum(cluster[index_ok])) &&
          sum(visits$flyover_rows) == sum(fly_auditable) &&
          same_num(sum(visits$flyover_birds), sum(cluster[fly_auditable], na.rm = TRUE)),
          site, ": visit-level detection conservation failed.")
@@ -501,7 +488,7 @@ for (site in expected_sites) {
   expected_opp$eligible_detection_rows <- vapply(expected_opp$occasion_id,
     function(key) summarize_rows(eligible_rows, key, length, 0L), integer(1))
   expected_opp$eligible_birds <- vapply(expected_opp$occasion_id,
-    function(key) summarize_rows(eligible_rows, key, function(i) sum(cluster[i]), 0), numeric(1))
+    function(key) summarize_rows(eligible_rows, key, function(i) sum(cluster[i][index_ok[i]]), 0), numeric(1))
   expected_opp$eligible_species <- vapply(expected_opp$occasion_id,
     function(key) summarize_rows(eligible_rows, key, function(i) mode_count(unit$name[i]), 0L), integer(1))
   expected_opp$flyover_rows <- vapply(expected_opp$occasion_id,

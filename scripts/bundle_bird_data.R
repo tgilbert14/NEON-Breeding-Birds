@@ -286,24 +286,14 @@ build_site <- function(site) {
   flyover <- is_flyover_method(method_raw)
   matched <- !is.na(visit_match)
   visit_index <- ifelse(matched, visit_match, 1L)
-  protocol_valid <- matched & visits$valid_count[visit_index]
-  protocol_valid[!matched] <- FALSE
-  eligible <- protocol_valid & minute$in_window & species & method_known &
-    !flyover & cluster_valid
-
-  # Audit item 16 stopgap. A protocol-valid count whose only otherwise-eligible
-  # species detections lack a positive integer clusterSize is not evidence of
-  # zero birds: it is withdrawn from every analysis denominator as unavailable
-  # (count_hold_reason = detections_without_cluster_size), never a supported zero.
-  cluster_blocked <- protocol_valid & minute$in_window & species & method_known &
-    !flyover & !cluster_valid
-  blocked_surveys <- setdiff(unique(cd_survey[cluster_blocked]), unique(cd_survey[eligible]))
-  visit_blocked <- visits$valid_count & visits$survey_id %in% blocked_surveys
-  visits$count_hold_reason[visit_blocked] <- "detections_without_cluster_size"
-  visits$valid_count <- visits$valid_count & !visit_blocked
-  visits$protocol_minutes <- ifelse(visits$valid_count, PROTOCOL_MINUTES, 0)
   matched_valid <- matched & visits$valid_count[visit_index]
   matched_valid[!matched] <- FALSE
+  # Audit item 16, incidence/index split. A detection enters incidence (presence,
+  # richness, Chao2, coverage, rarefaction, accumulation, maps, search) without a
+  # count. Only the detection index (birds per count) also needs a positive
+  # integer clusterSize; PUUM's crews left single birds blank at source.
+  incidence <- matched_valid & minute$in_window & species & method_known & !flyover
+  index_ok <- incidence & cluster_valid
 
   # The structural visit ledger owns point, year, and bout. A detection-side
   # timestamp can be stale or formatted differently; once the immutable physical
@@ -368,22 +358,20 @@ build_site <- function(site) {
     matched_visit = matched,
     valid_count = matched_valid,
     is_flyover = flyover,
-    enters_breeding_metrics = eligible
+    enters_incidence = incidence,
+    enters_index = index_ok
   )
 
   hold_reason <- ifelse(!matched, "orphan_detection_no_visit",
-                 ifelse(!protocol_valid, "detection_on_unusable_visit",
+                 ifelse(!matched_valid, "detection_on_unusable_visit",
                    ifelse(minute$state == "incidental_minute_88", "incidental_outside_point_count",
                      ifelse(minute$state == "source_missing", "missing_point_count_minute",
                        ifelse(!minute$in_window, "invalid_point_count_minute",
-                         ifelse(!cluster_valid, "invalid_cluster_size",
                            ifelse(is.na(reported_scientific) | !nzchar(trimws(reported_scientific)), "missing_taxon",
                              ifelse(tolower(trimws(reported_rank)) %in% c("species", "subspecies") & !species,
                                     "unsafe_species_canonicalization",
                                ifelse(!method_known,
-                                      "missing_or_unknown_detection_method",
-                                 ifelse(!matched_valid, "detection_on_unusable_visit",
-                                        NA_character_))))))))))
+                                      "missing_or_unknown_detection_method", NA_character_))))))))
   detection$hold_reason <- hold_reason
   held <- detection[!is.na(hold_reason), , drop = FALSE]
   obs <- detection[is.na(hold_reason), , drop = FALSE]
@@ -391,12 +379,12 @@ build_site <- function(site) {
   # Make the physical-count incidence denominator and supported zeros explicit.
   # A valid bout is one six-minute sample; repeated bouts/years at a point remain
   # repeated protocol samples and are never described as independent places.
-  elig <- obs[obs$enters_breeding_metrics %in% TRUE, , drop = FALSE]
+  elig <- obs[obs$enters_incidence %in% TRUE, , drop = FALSE]
   visit_elig_summary <- elig %>%
     dplyr::group_by(.data$survey_id) %>%
     dplyr::summarise(
       eligible_detection_rows = dplyr::n(),
-      eligible_birds = sum(.data$clusterSize, na.rm = TRUE),
+      eligible_birds = sum(.data$clusterSize[.data$enters_index %in% TRUE]),
       eligible_species = dplyr::n_distinct(.data$communityScientificName),
       .groups = "drop"
     )
@@ -441,7 +429,7 @@ build_site <- function(site) {
     dplyr::group_by(.data$occasion_id) %>%
     dplyr::summarise(
       eligible_detection_rows = dplyr::n(),
-      eligible_birds = sum(.data$clusterSize, na.rm = TRUE),
+      eligible_birds = sum(.data$clusterSize[.data$enters_index %in% TRUE]),
       eligible_species = dplyr::n_distinct(.data$communityScientificName),
       .groups = "drop"
     )
@@ -477,15 +465,15 @@ build_site <- function(site) {
   if (!is.finite(site_lat) && nrow(meta_row)) site_lat <- meta_row$lat[[1]]
   if (!is.finite(site_lng) && nrow(meta_row)) site_lng <- meta_row$lng[[1]]
   years <- sort(unique(opportunity$year[opportunity$supported]))
-  valid_observer <- visits$valid_count & !is.na(pp_observer)
+  valid_observer <- pp_valid & !is.na(pp_observer)
   observer_at_detection <- rep(NA_character_, nrow(cd))
   observer_at_detection[matched] <- pp_observer[visit_match[matched]]
-  eligible_species <- sort(unique(unit$name[eligible]))
+  eligible_species <- sort(unique(unit$name[incidence]))
   observer_by_species <- if (length(eligible_species)) {
     tibble::tibble(
       scientificName = eligible_species,
       n_observers = vapply(eligible_species, function(taxon) {
-        values <- observer_at_detection[eligible & unit$name == taxon]
+        values <- observer_at_detection[incidence & unit$name == taxon]
         dplyr::n_distinct(values[!is.na(values) & nzchar(values)])
       }, integer(1))
     )
@@ -494,9 +482,9 @@ build_site <- function(site) {
   }
   observer_support <- list(
     n_observers = dplyr::n_distinct(pp_observer[valid_observer]),
-    n_valid_visits = sum(visits$valid_count),
+    n_valid_visits = sum(pp_valid),
     n_valid_visits_with_observer = sum(valid_observer),
-    complete = sum(visits$valid_count) > 0L && all(!is.na(pp_observer[visits$valid_count])),
+    complete = sum(pp_valid) > 0L && all(!is.na(pp_observer[pp_valid])),
     by_species = observer_by_species
   )
   meta <- list(
@@ -530,8 +518,12 @@ for (site in expected_sites) {
   saveRDS(bundle, path, compress = "xz", version = 3)
   if (identical(site, DEMO)) saveRDS(bundle, file.path(sample_dir, "demo.rds"), compress = "xz", version = 3)
 
-  eligible <- bundle$obs[bundle$obs$enters_breeding_metrics %in% TRUE, , drop = FALSE]
-  totals <- if (nrow(eligible)) stats::aggregate(clusterSize ~ communityScientificName, eligible, sum) else NULL
+  eligible <- bundle$obs[bundle$obs$enters_incidence %in% TRUE, , drop = FALSE]
+  # Bird-count summaries need a usable count on every eligible detection; one
+  # without (PUUM) makes the index and the top species by birds unavailable.
+  n_without_count <- sum(!(eligible$enters_index %in% TRUE))
+  totals <- if (nrow(eligible) && n_without_count == 0L)
+    stats::aggregate(clusterSize ~ communityScientificName, eligible, sum) else NULL
   top <- if (!is.null(totals) && nrow(totals)) totals$communityScientificName[which.max(totals$clusterSize)] else NA_character_
   index_rows[[site]] <- data.frame(
     site = site,
@@ -541,7 +533,9 @@ for (site in expected_sites) {
     n_supported_zero_counts = bundle$meta$n_supported_zero_counts,
     n_opportunities = bundle$meta$n_opportunities,
     n_supported_zero = bundle$meta$n_supported_zero,
-    birds_per_count = if (bundle$meta$n_visits > 0) round(sum(eligible$clusterSize, na.rm = TRUE) / bundle$meta$n_visits, 3) else NA_real_,
+    birds_per_count = if (bundle$meta$n_visits > 0 && n_without_count == 0L)
+      round(sum(eligible$clusterSize) / bundle$meta$n_visits, 3) else NA_real_,
+    n_detections_without_count = as.integer(n_without_count),
     top_species = top,
     lat = bundle$meta$lat,
     lng = bundle$meta$lng,
@@ -569,12 +563,13 @@ schema <- list(
   incidence_unit = "valid physical six-minute point-count keyed by visits.survey_id; repeated counts are protocol samples, not independent places",
   annual_audit_unit = "point x year opportunity; one or two valid bouts retained in n_valid_bouts",
   detection_index_denominator = "valid point-count bouts",
-  valid_visit_rule = "samplingImpractical == OK AND not withdrawn as detections_without_cluster_size",
+  valid_visit_rule = "samplingImpractical == OK",
   observer_support = "site/species aggregate counts only; raw measuredBy remains only in producer-local evidence",
   cross_job_evidence = "schema-v2 exact two-table scientific projection; source brd_perpoint has no endDate; public visits.endDate is retained as typed NA; observer identity, personnel, remarks, and source UIDs excluded",
   species_community_unit = "safe normalized genus + species binomial; parent species and subspecies collapse; ambiguous nomenclature fails closed",
   source_taxonomy_provenance = "reportedTaxonID, reportedScientificName, reportedVernacularName, and reportedTaxonRank preserve exact source values",
-  breeding_detection_rule = "matched valid visit AND pointCountMinute in 1:6 AND safely canonicalized taxonRank in species/subspecies AND known detectionMethod AND not flyover AND positive finite integer clusterSize",
+  breeding_detection_rule = "enters_incidence = matched valid visit AND pointCountMinute in 1:6 AND safely canonicalized taxonRank in species/subspecies AND known detectionMethod AND not flyover; clusterSize is not required",
+  detection_index_rule = "enters_index = enters_incidence AND positive finite integer clusterSize; a site, year, species, grid, or window with any enters_incidence detection outside enters_index reports birds per count as NA and states the number of detections without a usable count",
   visit_outcomes = c("positive", "supported_zero", "unavailable"),
   point_year_outcomes = c("positive", "supported_zero", "unavailable"),
   cross_site_rule = list(

@@ -150,7 +150,7 @@ BIRD_POINT_MINUTE_STATES <- c("standard_minute", "incidental_minute_88",
 BIRD_DETECTION_HOLD_REASONS <- c(
   "orphan_detection_no_visit", "detection_on_unusable_visit",
   "incidental_outside_point_count", "missing_point_count_minute",
-  "invalid_point_count_minute", "invalid_cluster_size", "missing_taxon",
+  "invalid_point_count_minute", "missing_taxon",
   "unsafe_species_canonicalization", "missing_or_unknown_detection_method")
 
 bird_valid_cluster_size <- function(x) {
@@ -303,20 +303,39 @@ bird_prepare_obs <- function(obs) {
   matched <- if ("matched_visit" %in% names(out)) out$matched_visit %in% TRUE else rep(TRUE, nrow(out))
   valid <- if ("valid_count" %in% names(out)) out$valid_count %in% TRUE else rep(TRUE, nrow(out))
   out$joined_valid_visit <- matched & valid
-  derived <- out$joined_valid_visit & out$in_protocol_window & out$is_species &
-    !out$method_unknown & !out$is_flyover & bird_valid_cluster_size(out$clusterSize)
-  if ("enters_breeding_metrics" %in% names(out) &&
-      any((out$enters_breeding_metrics %in% TRUE) != derived))
-    stop("enters_breeding_metrics disagrees with the shared eligible-breeding predicate", call. = FALSE)
-  out$enters_breeding_metrics <- derived
-  out$enters_index <- derived
+  # Incidence/index split (audit item 16): a detection enters incidence (every
+  # community metric) without a count; the detection index (birds per count)
+  # also needs a positive integer clusterSize.
+  derived_incidence <- out$joined_valid_visit & out$in_protocol_window & out$is_species &
+    !out$method_unknown & !out$is_flyover
+  derived_index <- derived_incidence & bird_valid_cluster_size(out$clusterSize)
+  if ("enters_incidence" %in% names(out) &&
+      any((out$enters_incidence %in% TRUE) != derived_incidence))
+    stop("enters_incidence disagrees with the shared incidence predicate", call. = FALSE)
+  if ("enters_index" %in% names(out) &&
+      any((out$enters_index %in% TRUE) != derived_index))
+    stop("enters_index disagrees with the shared detection-index predicate", call. = FALSE)
+  # Pre-split bundles carried enters_breeding_metrics (incidence AND a count).
+  # The meaning changed, so the old column is dropped, never reinterpreted.
+  out$enters_breeding_metrics <- NULL
+  out$enters_incidence <- derived_incidence
+  out$enters_index <- derived_index
   out
+}
+
+# Sum of usable counts, or NA when any incidence detection in scope lacks one.
+# Every birds-per-count figure (site, year, species, grid, window) uses this, so
+# a missing count can never be read as zero birds.
+bird_birds_or_na <- function(cluster, index_ok) {
+  if (!length(cluster)) return(0)
+  if (!all(index_ok %in% TRUE)) return(NA_real_)
+  sum(cluster)
 }
 
 eligible_breeding_detections <- function(obs) {
   d <- bird_prepare_obs(obs)
   if (is.null(d) || !nrow(d)) return(d)
-  d[d$enters_breeding_metrics %in% TRUE, , drop = FALSE]
+  d[d$enters_incidence %in% TRUE, , drop = FALSE]
 }
 
 BIRD_OPPORTUNITY_REQUIRED <- c("pointkey", "year", "n_valid_bouts", "outcome")
@@ -397,7 +416,8 @@ bird_validate_opportunity <- function(opportunity, obs = NULL) {
         by_key <- split(seq_len(nrow(sp)), skey)
         idx <- match(names(by_key), actual$key)
         actual$rows[idx] <- vapply(by_key, length, integer(1))
-        actual$birds[idx] <- vapply(by_key, function(i) sum(sp$clusterSize[i]), numeric(1))
+        actual$birds[idx] <- vapply(by_key, function(i)
+          sum(sp$clusterSize[i][sp$enters_index[i] %in% TRUE]), numeric(1))
         actual$species[idx] <- vapply(by_key, function(i)
           length(unique(sp$communityScientificName[i])), integer(1))
       }
@@ -433,7 +453,7 @@ bird_validate_opportunity <- function(opportunity, obs = NULL) {
 }
 
 BIRD_VISIT_REQUIRED <- c("survey_id", "pointkey", "year", "bout")
-BIRD_COUNT_HOLD_REASONS <- c("sampling_impractical", "detections_without_cluster_size")
+BIRD_COUNT_HOLD_REASONS <- c("sampling_impractical")
 BIRD_VISIT_SUMMARY_FIELDS <- c(
   "eligible_detection_rows", "eligible_birds", "eligible_species",
   "flyover_rows", "flyover_birds", "support_state", "outcome")
@@ -460,9 +480,9 @@ bird_validate_visits <- function(visits, obs = NULL) {
   }
   out$support_state <- ifelse(out$valid_count, "supported", "held")
   if ("count_hold_reason" %in% names(out)) {
-    # A held count names why: the visit was impractical, or (audit item 16) its
-    # only otherwise-eligible species detections lack a usable clusterSize. A
-    # withdrawn count is unavailable, never a supported zero.
+    # A held count names why it is not a valid six-minute count. A missing
+    # clusterSize never withdraws a count: since the incidence/index split it
+    # only makes the detection index unavailable.
     reason <- as.character(out$count_hold_reason)
     if (any(!is.na(reason) & !reason %in% BIRD_COUNT_HOLD_REASONS))
       stop(sprintf("unrecognized count_hold_reason token(s): %s",
@@ -558,7 +578,7 @@ bird_validate_visits <- function(visits, obs = NULL) {
         } else {
           expected$eligible_detection_rows[index] <<- vapply(groups, length, integer(1))
           expected$eligible_birds[index] <<- vapply(groups,
-            function(i) sum(d$clusterSize[i]), numeric(1))
+            function(i) sum(d$clusterSize[i][d$enters_index[i] %in% TRUE]), numeric(1))
           expected$eligible_species[index] <<- vapply(groups,
             function(i) length(unique(d$communityScientificName[i])), integer(1))
         }
@@ -707,12 +727,14 @@ species_board <- function(obs, points = NULL, nvis = NULL, opportunity = NULL, v
         dplyr::first(.data$communityScientificName), .data$reportedScientificName,
         .data$reportedTaxonRank, .data$reportedVernacularName),
       detections = dplyr::n(),
-      index_birds = sum(.data$clusterSize),
+      detections_without_count = sum(!(.data$enters_index %in% TRUE)),
+      index_birds = bird_birds_or_na(.data$clusterSize, .data$enters_index),
       n_points = dplyr::n_distinct(.data$pointkey),
       n_detected_counts = dplyr::n_distinct(.data$survey_id),
       n_point_years = dplyr::n_distinct(paste(.data$pointkey, .data$year, sep = "|")),
       n_grids  = dplyr::n_distinct(.data$plotID),
-      mean_cluster = round(mean(.data$clusterSize), 2),
+      mean_cluster = if (all(.data$enters_index %in% TRUE))
+        round(mean(.data$clusterSize), 2) else NA_real_,
       method = mode_chr(.data$methodCanonical),
       distance_n_observed = sum(.data$distance_state == "observed"),
       distance_n_used = sum(.data$distance_state == "observed" &
@@ -761,13 +783,17 @@ site_birds <- function(obs, points = NULL, nvis = NULL, opportunity = NULL, visi
       length(unique(sp$pointkey))
   fly <- raw$joined_valid_visit & raw$in_protocol_window & raw$is_species & raw$is_flyover &
     bird_valid_cluster_size(raw$clusterSize)
+  # The site index needs a usable count on every incidence detection.
+  n_without_count <- if (nrow(sp)) sum(!(sp$enters_index %in% TRUE)) else 0L
   top <- NA_character_
-  if (!is.null(brd) && nrow(brd)) {
+  if (!is.null(brd) && nrow(brd) && n_without_count == 0L && any(is.finite(brd$index))) {
     i <- which.max(brd$index)
     top <- if (!is.na(brd$vernacular[i]) && nzchar(brd$vernacular[i])) brd$vernacular[i] else brd$scientificName[i]
   }
   list(n_species = if (is.null(brd)) 0L else nrow(brd),
-       birds_per_count = round(if (nrow(sp)) sum(sp$clusterSize) / n_visits else 0, 2),
+       birds_per_count = if (n_without_count > 0L) NA_real_ else
+         round(if (nrow(sp)) sum(sp$clusterSize) / n_visits else 0, 2),
+       n_detections_without_count = as.integer(n_without_count),
        flyover_birds = sum(raw$clusterSize[fly], na.rm = TRUE),
        n_points = n_points, n_visits = n_visits,
        n_opportunities = if (!is.null(opp)) sum(opp$supported) else NA_integer_,
@@ -955,8 +981,8 @@ bird_prepare_held <- function(held) {
   if (any(bad))
     stop(sprintf("unrecognized bird detection hold reason(s): %s",
                  paste(sort(unique(d$hold_reason[bad])), collapse = ", ")), call. = FALSE)
-  if (any(d$enters_breeding_metrics %in% TRUE))
-    stop("held bird detection satisfies the breeding-metric predicate", call. = FALSE)
+  if (any(d$enters_incidence %in% TRUE))
+    stop("held bird detection satisfies the incidence predicate", call. = FALSE)
   d
 }
 species_detection_export <- function(obs, held = NULL, sci) {
@@ -1033,8 +1059,10 @@ detection_by_year <- function(obs, sci, opportunity = NULL) {
   d <- d[d$communityScientificName == sci &
            !is.na(d$communityScientificName), , drop = FALSE]
   det <- if (nrow(d)) d %>% dplyr::group_by(.data$year) %>%
-    dplyr::summarise(birds = sum(.data$clusterSize, na.rm = TRUE), .groups = "drop") else
-    data.frame(year = integer(), birds = numeric())
+    dplyr::summarise(detections = dplyr::n(),
+                     birds = bird_birds_or_na(.data$clusterSize, .data$enters_index),
+                     .groups = "drop") else
+    data.frame(year = integer(), detections = integer(), birds = numeric())
   opp <- bird_validate_opportunity(opportunity, obs)
   if (is.null(opp)) return(if (nrow(det)) det else NULL)
   eff <- opp %>%
@@ -1046,9 +1074,13 @@ detection_by_year <- function(obs, sci, opportunity = NULL) {
   out <- out[out$n_valid_visits > 0, , drop = FALSE]
   out$surveyed <- TRUE
   out$support_state <- "supported"
-  out$birds[is.na(out$birds)] <- 0
+  # A surveyed year without a detection is a true zero; a year whose detections
+  # lack a usable count keeps birds (and birds per count) NA.
+  no_detection <- is.na(out$detections)
+  out$detections[no_detection] <- 0L
+  out$birds[no_detection] <- 0
   out$birds_per_count <- out$birds / out$n_valid_visits
-  out$detected <- out$birds > 0
+  out$detected <- out$detections > 0
   out
 }
 
@@ -1070,7 +1102,7 @@ annual_bird_summary <- function(obs, opportunity, visits = NULL) {
   eligible <- if (nrow(sp)) sp %>% dplyr::group_by(.data$year) %>%
     dplyr::summarise(
       eligible_detection_rows = dplyr::n(),
-      eligible_birds = sum(.data$clusterSize),
+      eligible_birds = bird_birds_or_na(.data$clusterSize, .data$enters_index),
       eligible_species = dplyr::n_distinct(.data$communityScientificName),
       method_singing_pct = round(100 * mean(.data$method_singing), 1),
       method_calling_pct = round(100 * mean(.data$method_calling), 1),
@@ -1089,9 +1121,13 @@ annual_bird_summary <- function(obs, opportunity, visits = NULL) {
     dplyr::left_join(fly, by = "year")
   zero_when_supported <- c("eligible_detection_rows", "eligible_birds", "eligible_species",
                            "distance_n_observed", "distance_n_unavailable")
+  # Only a supported year with no eligible detection is filled with zero; a year
+  # whose detections lack a usable count keeps eligible_birds NA.
+  if (!"eligible_detection_rows" %in% names(annual)) annual$eligible_detection_rows <- NA_real_
+  no_detection_year <- is.na(annual$eligible_detection_rows) & annual$n_valid_visits > 0
   for (nm in zero_when_supported) {
     if (!nm %in% names(annual)) annual[[nm]] <- NA_real_
-    annual[[nm]][is.na(annual[[nm]]) & annual$n_valid_visits > 0] <- 0
+    annual[[nm]][no_detection_year] <- 0
   }
   for (nm in c("method_singing_pct", "method_calling_pct", "method_visual_pct",
                "method_drumming_pct"))
@@ -1131,7 +1167,7 @@ grid_species <- function(obs, plotid) {
                        .data$reportedScientificName, .data$reportedTaxonRank,
                        .data$reportedVernacularName),
                      detections  = dplyr::n(),
-                     birds       = sum(.data$clusterSize, na.rm = TRUE),
+                     birds       = bird_birds_or_na(.data$clusterSize, .data$enters_index),
                      method      = mode_chr(.data$methodCanonical),
                      .groups = "drop") %>%
     dplyr::rename(scientificName = "communityScientificName") %>%
@@ -1164,7 +1200,7 @@ bird_qc <- function(obs, sci, points = NULL) {
                       "method_singing","method_calling","method_visual","method_drumming",
                       "method_other","method_unknown","pointCountMinuteRaw","pointCountMinute",
                       "point_count_minute_state","in_protocol_window","clusterSize","is_flyover",
-                      "joined_valid_visit","enters_breeding_metrics","enters_index"), names(d))
+                      "joined_valid_visit","enters_incidence","enters_index"), names(d))
   # tidy carries flag (title) + flag_key + flag_level so the QC report CSV is
   # self-describing and re-derivable per the codebook (no orphan codebook rows).
   tidy <- function(rows, label, key, level) {
@@ -1178,7 +1214,10 @@ bird_qc <- function(obs, sci, points = NULL) {
   od   <- if ("observerDistance" %in% names(d)) suppressWarnings(as.numeric(d$observerDistance)) else rep(NA_real_, nrow(d))
   cs   <- if ("clusterSize"      %in% names(d)) suppressWarnings(as.numeric(d$clusterSize))      else rep(NA_real_, nrow(d))
   meth <- if ("detectionMethod"  %in% names(d)) as.character(d$detectionMethod)                  else rep(NA_character_, nrow(d))
-  eligible <- d$enters_index %in% TRUE
+  # Every flag reviews the incidence detections; the flock-size checks can only
+  # use detections that carry a usable count.
+  eligible <- d$enters_incidence %in% TRUE
+  counted <- d$enters_index %in% TRUE
 
   # 1 — common-name drift is assessed within an exact reported taxon. Different
   # subspecies may legitimately carry different common names after they pool to
@@ -1213,11 +1252,11 @@ bird_qc <- function(obs, sci, points = NULL) {
   # "Effectively solitary" = 99% of detections are 1–3 birds (p99 <= 3): this keeps a genuine
   # flocking species (which is USUALLY counted as singletons on a breeding point count but has a
   # real tail of flocks, e.g. Red-winged Blackbird) OUT of the solitary branch — its p99 is high.
-  csf <- cs[eligible & is.finite(cs)]
+  csf <- cs[counted]
   if (length(csf) >= 10) {
     p99 <- stats::quantile(csf, 0.99, names = FALSE)
     if (is.finite(p99) && p99 <= 3) {
-      add("warn", "Large flock for a typically solitary species", "cluster", which(eligible & is.finite(cs) & cs >= 6),
+      add("warn", "Large flock for a typically solitary species", "cluster", which(counted & cs >= 6),
           "99% of this species' detections are 1–3 birds, yet these report 6+ in one cluster. Review for a possible transcription error, species-identification issue, or genuine unusual flock.")
     } else {
       # Most flocking species are counted as singletons, so mad(log1p) is 0 and an
@@ -1231,7 +1270,7 @@ bird_qc <- function(obs, sci, points = NULL) {
       thr <- min(thr, log1p(max(10 * stats::median(csf),
                                 stats::quantile(csf, 0.995, names = FALSE))))
       if (is.finite(thr))
-        add("info", "Unusually large flock (vs this species)", "cluster", which(eligible & is.finite(cs) & log1p(cs) > thr),
+        add("info", "Unusually large flock (vs this species)", "cluster", which(counted & log1p(cs) > thr),
             "Flock size far above this species' own typical range (judged on the log scale, so ordinary flocks don't flag). Often genuine for gregarious species, noted for review, not presumed wrong.")
     }
   }
@@ -1291,8 +1330,9 @@ SPCSV_KEEP <- c("scientificName","communityScientificName","community_unit_state
                 "detection_method_state",
                 "methodCanonical","method_singing","method_calling","method_visual",
                 "method_drumming","method_other","method_unknown","clusterSize","is_flyover",
-                "joined_valid_visit","enters_breeding_metrics","enters_index","hold_reason")
+                "joined_valid_visit","enters_incidence","enters_index","hold_reason")
 BOARD_KEEP <- c("scientificName","vernacular","method","index","ubiquity","detections",
+                "detections_without_count",
                 "detection_frequency","total_birds","index_birds","flyover_detections",
                 "flyover_birds","n_points","n_detected_counts","n_point_years","n_grids","n_visits",
                 "mean_cluster","n_observers","distance_n_observed","distance_n_used",
@@ -1302,6 +1342,7 @@ GRADIENT_KEEP <- c(
   "site","name","state","biome_lab",
   "analysis_year_min","analysis_year_max","bird_year_min","bird_year_max",
   "T_counts","n_visits_window","n_points_window","n_birds_window",
+  "n_detections_without_count_window",
   "n_positive_counts_window","n_supported_zero_counts_window",
   "S_obs","U_incidence","Q1_incidence","Q2_incidence","S_rare","t_used",
   "coverage","hill_q1","hill_q2","mean_detection_frequency","mean_ubiquity",
@@ -1314,7 +1355,7 @@ REPORT_KEEP <- c(
   "row_type", "site", "release", "site_year_min", "site_year_max", "site_n_species",
   "site_n_points", "site_n_valid_counts", "site_n_supported_zero_counts",
   "site_n_supported_point_years", "site_n_supported_zero_point_years",
-  "site_birds_per_count", "site_flyover_birds", BOARD_KEEP)
+  "site_birds_per_count", "site_n_detections_without_count", "site_flyover_birds", BOARD_KEEP)
 SITE_AUDIT_KEEP <- c(
   "site","survey_id","occasion_id","eventID","pointkey","plotID","pointID","year","bout",
   "scientificName","communityScientificName","community_unit_state",
@@ -1324,7 +1365,7 @@ SITE_AUDIT_KEEP <- c(
   "detection_method_state","methodCanonical",
   "method_singing","method_calling","method_visual","method_drumming","method_other",
   "method_unknown","clusterSize","clusterSizeRaw","is_flyover","matched_visit","valid_count",
-  "joined_valid_visit","enters_breeding_metrics","enters_index","hold_reason")
+  "joined_valid_visit","enters_incidence","enters_index","hold_reason")
 # QC report / inspector exports carry these flag columns (added by bird_qc tidy()):
 QC_KEEP    <- c("scientificName","communityScientificName","community_unit_state",
                 "reportedScientificName",
@@ -1336,7 +1377,7 @@ QC_KEEP    <- c("scientificName","communityScientificName","community_unit_state
                 "detection_method_state",
                 "method_singing","method_calling","method_visual","method_drumming",
                 "method_other","method_unknown","clusterSize","is_flyover","joined_valid_visit",
-                "enters_breeding_metrics","enters_index","flag","flag_key","flag_level")
+                "enters_incidence","enters_index","flag","flag_key","flag_level")
 
 # Master column dictionary: every column ANY export can emit -> units + NA-semantics.
 # One row per column name (keyed); the codebook is a lookup over the keep-vectors.
@@ -1377,25 +1418,26 @@ BIRD_COL_DICT <- list(
   clusterSizeRaw  = c("source token", "clusterSize exactly as returned by the NEON release fetch, before numeric parsing. NA = blank at source (or a bundle built before raw capture). Lets a reader tell a blank source field from a parse loss."),
   clusterSize     = c("# birds", "Source count of birds in the detection (a flock is one row with clusterSize > 1). Only positive finite integer counts enter metrics; other values remain held."),
   matched_visit   = c("logical", "TRUE when the source detection matched exactly one authoritative brd_perpoint visit."),
-  valid_count     = c("logical", "TRUE when the matched visit is a valid analysis count: samplingImpractical == OK and the count was not withdrawn because its only otherwise-eligible species detections lack a usable clusterSize (count_hold_reason detections_without_cluster_size)."),
+  valid_count     = c("logical", "TRUE when the matched visit has samplingImpractical == OK. A missing clusterSize never makes a count invalid; it only makes the detection index unavailable."),
   is_species      = c("logical", "TRUE only when the reported species/subspecies name can be safely mapped to a canonical binomial community unit."),
   is_flyover      = c("logical", "TRUE if this detection was recorded as a bird passing overhead. It remains auditable but is operationally excluded from every on-point community metric."),
   joined_valid_visit = c("logical", "TRUE when the detection joins unambiguously to a valid brd_perpoint physical visit."),
-  enters_breeding_metrics = c("logical", "Shared eligibility predicate: valid joined visit + formal point-count minute 1–6 + safely canonicalized species/subspecies + known detection method + positive finite integer clusterSize + non-flyover."),
-  enters_index    = c("logical", "Backwards-compatible alias for enters_breeding_metrics. Re-derive the index as sum(clusterSize[enters_index]) / valid physical visits."),
+  enters_incidence = c("logical", "Incidence predicate shared by every community metric (presence, richness, detection frequency, Chao2, coverage, rarefaction, accumulation, maps, search): valid joined visit + formal point-count minute 1-6 + safely canonicalized species/subspecies + known detection method + non-flyover. A clusterSize is not required."),
+  enters_index    = c("logical", "Detection-index predicate: enters_incidence AND a positive finite integer clusterSize. Birds per count sums clusterSize over these rows and is NA wherever an enters_incidence row in scope is not also enters_index."),
   hold_reason     = c("category", "Why a source detection is held outside app metrics. NA denotes an auditable obs row; minute-specific values include incidental_outside_point_count, missing_point_count_minute, and invalid_point_count_minute. detection_on_unusable_visit also covers otherwise-clean rows on a count withdrawn for missing clusterSize."),
   primary_method  = c("category", "Modal canonical detection channel across eligible non-flyover records for a species at the grid. NA = none recorded."),
   method          = c("category", "Modal canonical detection channel across eligible non-flyover records for the species."),
-  index           = c("birds / point-count", "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population. Detectability differs by species."),
+  index           = c("birds / point-count", "Detection index = sum(clusterSize, FLYOVERS EXCLUDED) / point-counts run. A relative detection index, NOT a population. Detectability differs by species. NA when any of the species' detections lacks a usable clusterSize (see detections_without_count)."),
   ubiquity        = c("% of supported points", "Lifetime point detection footprint = % of supported points where the species was ever detected. It is effort- and detectability-dependent context, not occupancy."),
   detection_frequency = c("% valid physical counts", "Percentage of the complete valid six-minute physical-count universe with an eligible detection of the species. Repeated counts are protocol samples, not independent places; this is neither geographic spread nor detection-corrected occupancy."),
   detections      = c("# detection rows", "Number of eligible non-flyover detection rows for the species; a count of records, not birds."),
-  total_birds     = c("# birds", "Eligible in-window non-flyover birds plus audited flyover birds for a species that has at least one eligible on-point record; flyover-only taxa do not enter the Board."),
-  index_birds     = c("# birds", "Birds entering the index = sum(clusterSize) with flyovers EXCLUDED."),
+  detections_without_count = c("# detection rows", "Eligible detections of the species with no usable clusterSize. They count toward incidence; when above zero, the species' bird totals and detection index are NA, never zero."),
+  total_birds     = c("# birds", "Eligible in-window non-flyover birds plus audited flyover birds for a species that has at least one eligible on-point record; flyover-only taxa do not enter the Board. NA when any eligible detection lacks a usable clusterSize."),
+  index_birds     = c("# birds", "Birds entering the index = sum(clusterSize) with flyovers EXCLUDED. NA when any eligible detection lacks a usable clusterSize."),
   flyover_detections = c("# detection rows", "Audited flyover rows for a species with at least one eligible on-point record; excluded operationally from community metrics."),
   flyover_birds   = c("# birds", "Birds in flyover detections (quarantined from the index). total_birds = index_birds + flyover_birds."),
-  eligible_birds  = c("# birds", "Eligible protocol-window non-flyover birds represented by the exported row. In the grid export this is the sum across the canonical species at that grid."),
-  mean_cluster    = c("# birds", "Mean clusterSize across the species' detections."),
+  eligible_birds  = c("# birds", "Eligible protocol-window non-flyover birds represented by the exported row. In the grid export this is the sum across the canonical species at that grid. NA when any of those detections lacks a usable clusterSize."),
+  mean_cluster    = c("# birds", "Mean clusterSize across the species' detections. NA when any of them lacks a usable clusterSize."),
   n_points        = c("# points", "Number of distinct supported points where the species was detected (per-species) or with valid effort (per-site)."),
   n_detected_counts = c("# valid physical counts", "Number of distinct valid survey_id physical counts with an eligible detection of the species; the numerator of detection_frequency."),
   n_point_years   = c("# detected point-years", "Annual/audit context: number of distinct point x year records with an eligible detection of the species. This is not the incidence denominator."),
@@ -1418,7 +1460,7 @@ BIRD_COL_DICT <- list(
   coverage        = c("0-1", "Chao/Jost incidence coverage across valid physical counts: estimated share of total incidence probability represented by already-detected species. This does not correct detectability or survey design."),
   S_rare          = c("# species", "Species richness rarefied to t_used valid physical counts within the stated analysis window. Rarefaction standardizes sample-count support only; it does not equalize coverage, detectability, space, timing, or design."),
   t_used          = c("# valid physical counts", "Common valid physical-count support used for S_rare; the minimum T_counts across the exact 47-site 2017-2024 roster."),
-  birds_per_count = c("birds / point-count", "Site detection index = eligible in-window non-flyover birds / valid point-counts run."),
+  birds_per_count = c("birds / point-count", "Detection index = eligible in-window non-flyover birds / valid point-counts run. NA when any eligible detection in scope lacks a usable clusterSize; a missing count is never read as zero birds."),
   pct_singing     = c("% eligible detections", "Share of eligible detections whose raw method includes a singing component; compound methods are included."),
   hill_q1         = c("# species", "Unstandardized plug-in Hill q1 = exp(Shannon) of the observed physical-count incidence frequencies. It is not rarefied, effort-robust, or detection-corrected."),
   hill_q2         = c("# species", "Unstandardized plug-in Hill q2 (inverse Simpson) of the observed physical-count incidence frequencies. It is not rarefied, effort-robust, or detection-corrected."),
@@ -1431,13 +1473,14 @@ BIRD_COL_DICT <- list(
   T_counts        = c("# valid physical counts", "Complete sample-incidence support: number of distinct valid survey_id physical counts in the fixed 2017-2024 cross-site window, including supported zeros."),
   n_visits_window = c("# valid physical counts", "Audit copy of the valid physical-count total in the fixed analysis window; it must equal T_counts."),
   n_points_window = c("# points", "Number of distinct pointkey locations with at least one valid physical count in the fixed analysis window."),
-  n_birds_window  = c("# birds", "Eligible in-window non-flyover birds summed across valid physical counts in the fixed analysis window."),
+  n_birds_window  = c("# birds", "Eligible in-window non-flyover birds summed across valid physical counts in the fixed analysis window. NA when n_detections_without_count_window is above zero."),
+  n_detections_without_count_window = c("# detection rows", "Eligible detections in the fixed analysis window with no usable clusterSize. They count toward incidence and richness; when above zero, n_birds_window and birds_per_count_window are NA."),
   n_positive_counts_window = c("# valid physical counts", "Valid physical counts in the fixed analysis window with at least one eligible in-window non-flyover detection."),
   n_supported_zero_counts_window = c("# valid physical counts", "Valid physical counts in the fixed analysis window with no eligible in-window non-flyover detection. Together with positive counts these conserve T_counts."),
   U_incidence     = c("# species-count incidences", "Sum of species incidence frequencies across valid physical counts in the fixed analysis window."),
   Q1_incidence    = c("# species", "Number of species detected on exactly one valid physical count in the fixed analysis window."),
   Q2_incidence    = c("# species", "Number of species detected on exactly two valid physical counts in the fixed analysis window; sparse Q2 makes Chao2 unstable."),
-  birds_per_count_window = c("birds / valid physical count", "Window-specific detection index = eligible in-window non-flyover birds / valid physical counts in 2017-2024. It is not abundance, density, occupancy, or population size."),
+  birds_per_count_window = c("birds / valid physical count", "Window-specific detection index = eligible in-window non-flyover birds / valid physical counts in 2017-2024. It is not abundance, density, occupancy, or population size. NA when an eligible detection in the window lacks a usable clusterSize."),
   top_species_window = c("", "Canonical species with the greatest eligible bird total in the fixed analysis window; ties are resolved alphabetically. This is a detection result, not dominance or abundance."),
   breeding_temp_c = c("degrees C", "Equal-weight mean of coverage-qualified RELEASE-2026 calendar-month temperature climatologies for the distinct months in which valid 2017-2024 bird counts occurred. NA when even one realized count month lacks support; the site is then omitted only from the temperature gradient and no value is imputed. Environmental context only; not a bird measurement."),
   n_realized_months = c("# calendar months", "Number of distinct calendar months (1-12) containing valid bird counts in the fixed 2017-2024 analysis window."),
@@ -1464,7 +1507,8 @@ BIRD_COL_DICT <- list(
   site_n_supported_zero_counts = c("# valid physical counts", "Site-wide valid physical counts with no eligible non-flyover detections, repeated on each species row of the site report."),
   site_n_supported_point_years = c("# point-years", "Site-wide supported point-year total retained for annual/audit context and repeated on each species row of the site report."),
   site_n_supported_zero_point_years = c("# point-years", "Site-wide supported point-years with no eligible non-flyover detections, repeated on each species row of the site report."),
-  site_birds_per_count = c("birds / valid physical count", "Site-wide eligible non-flyover bird detection index repeated on each species row of the site report; not abundance or population size."),
+  site_birds_per_count = c("birds / valid physical count", "Site-wide eligible non-flyover bird detection index repeated on each species row of the site report; not abundance or population size. NA when site_n_detections_without_count is above zero."),
+  site_n_detections_without_count = c("# detection rows", "Site-wide eligible detections with no usable clusterSize, repeated on each species row of the site report. They count toward incidence; when above zero, the site detection index is NA."),
   site_flyover_birds = c("# birds", "Site-wide audited flyover birds excluded from community metrics, repeated on each species row of the site report.")
 )
 

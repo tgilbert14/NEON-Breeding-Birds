@@ -61,9 +61,12 @@ for (path in files) {
     stringsAsFactors = FALSE)
   n_positive_counts_window <- as.integer(length(unique(species_count_pairs$survey_id)))
   n_supported_zero_counts_window <- as.integer(si$T - n_positive_counts_window)
-  n_birds_window <- if (nrow(sp)) sum(sp$clusterSize) else 0
+  # The window index needs a usable count on every incidence detection.
+  n_without_count_window <- if (nrow(sp)) as.integer(sum(!(sp$enters_index %in% TRUE))) else 0L
+  n_birds_window <- if (n_without_count_window > 0L) NA_real_ else
+    if (nrow(sp)) sum(sp$clusterSize) else 0
 
-  species_birds <- if (nrow(sp)) stats::aggregate(
+  species_birds <- if (nrow(sp) && n_without_count_window == 0L) stats::aggregate(
     clusterSize ~ communityScientificName, sp, sum
   ) else data.frame(communityScientificName = character(), clusterSize = numeric())
   if (nrow(species_birds)) {
@@ -89,7 +92,9 @@ for (path in files) {
       any(incidence_y < 1L | incidence_y > si$T) ||
       n_positive_counts_window + n_supported_zero_counts_window != si$T ||
       U_incidence < n_positive_counts_window ||
-      !is.finite(n_birds_window) || n_birds_window < n_positive_counts_window)
+      (n_without_count_window == 0L &&
+         (!is.finite(n_birds_window) || n_birds_window < n_positive_counts_window)) ||
+      (n_without_count_window > 0L && !is.na(n_birds_window)))
     stop(site, " has inconsistent window-specific count incidence.", call. = FALSE)
   if (all(c("outcome", "eligible_detection_rows") %in% names(visits)) &&
       (sum(visits$outcome == "positive") != n_positive_counts_window ||
@@ -109,6 +114,7 @@ for (path in files) {
     n_positive_counts_window = n_positive_counts_window,
     n_supported_zero_counts_window = n_supported_zero_counts_window,
     n_birds_window = n_birds_window,
+    n_detections_without_count_window = n_without_count_window,
     S_obs = S_obs,
     U_incidence = U_incidence,
     Q1_incidence = Q1_incidence,
@@ -153,13 +159,16 @@ attr(cross_site, "method") <- sprintf(
 expected_columns <- c(
   "site", "analysis_year_min", "analysis_year_max", "bird_year_min", "bird_year_max",
   "T_counts", "n_visits_window", "n_points_window", "n_positive_counts_window",
-  "n_supported_zero_counts_window", "n_birds_window", "S_obs", "U_incidence",
+  "n_supported_zero_counts_window", "n_birds_window",
+  "n_detections_without_count_window", "S_obs", "U_incidence",
   "Q1_incidence", "Q2_incidence", "birds_per_count_window", "top_species_window",
   "mean_detection_frequency", "mean_ubiquity", "pct_singing", "S_rare", "t_used",
   "coverage", "hill_q1", "hill_q2"
 )
 nonempty <- cross_site$S_obs > 0L
 coverage_supported <- cross_site$U_incidence > 0L
+# The top species by birds exists only where every window detection has a count.
+counts_complete <- cross_site$n_detections_without_count_window == 0L
 if (!identical(names(cross_site), expected_columns) ||
     nrow(cross_site) != 47L ||
     !identical(as.character(cross_site$site), codes) ||
@@ -170,9 +179,13 @@ if (!identical(names(cross_site), expected_columns) ||
           cross_site$n_points_window > cross_site$n_visits_window) ||
     any(cross_site$U_incidence < cross_site$n_positive_counts_window) ||
     any(cross_site$Q1_incidence + cross_site$Q2_incidence > cross_site$S_obs) ||
-    any(!is.finite(cross_site$n_birds_window) | cross_site$n_birds_window < 0) ||
+    any(cross_site$n_detections_without_count_window < 0L) ||
+    any(xor(cross_site$n_detections_without_count_window > 0L,
+            is.na(cross_site$n_birds_window))) ||
+    any(is.na(cross_site$n_birds_window) != is.na(cross_site$birds_per_count_window)) ||
+    any(cross_site$n_birds_window < 0, na.rm = TRUE) ||
     any(abs(cross_site$birds_per_count_window -
-              cross_site$n_birds_window / cross_site$n_visits_window) > 1e-12) ||
+              cross_site$n_birds_window / cross_site$n_visits_window) > 1e-12, na.rm = TRUE) ||
     any(cross_site$T_counts < t_common) || any(!is.finite(cross_site$S_rare)) ||
     length(unique(cross_site$t_used)) != 1L ||
     unique(cross_site$t_used) != t_common ||
@@ -191,9 +204,9 @@ if (!identical(names(cross_site), expected_columns) ||
     any(!is.na(cross_site$mean_detection_frequency[!nonempty]) |
           !is.na(cross_site$mean_ubiquity[!nonempty]) |
           !is.na(cross_site$pct_singing[!nonempty])) ||
-    any(!is.na(cross_site$top_species_window[!nonempty])) ||
-    any(is.na(cross_site$top_species_window[nonempty]) |
-          !nzchar(cross_site$top_species_window[nonempty])) ||
+    any(!is.na(cross_site$top_species_window[!nonempty | !counts_complete])) ||
+    any(is.na(cross_site$top_species_window[nonempty & counts_complete]) |
+          !nzchar(cross_site$top_species_window[nonempty & counts_complete])) ||
     any(cross_site$bird_year_min < BIRD_CROSS_SITE_YEAR_MIN |
           cross_site$bird_year_max > BIRD_CROSS_SITE_YEAR_MAX |
           cross_site$bird_year_min > cross_site$bird_year_max) ||

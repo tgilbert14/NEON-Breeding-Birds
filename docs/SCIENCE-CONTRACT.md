@@ -45,21 +45,10 @@ Only a visit with `samplingImpractical == "OK"` is a valid six-minute count.
 Missing, impractical, conflicting, duplicated, or otherwise ambiguous visits do
 not enter denominators. They fail the build or remain explicitly held.
 
-A protocol-valid count is also withdrawn when it has no eligible detection but at
-least one otherwise-eligible detection (matched visit, minute 1-6, safely
-canonicalized species, known non-flyover method) that lacks a positive integer
-`clusterSize`. Such a count is not evidence of zero birds. It is held with
-`count_hold_reason = "detections_without_cluster_size"`, its outcome is
-`unavailable`, and it leaves every analysis denominator: Chao2, coverage,
-rarefaction, accumulation, detection frequency, and birds per count. Its
-detections stay in the held ledger (`invalid_cluster_size`, or
-`detection_on_unusable_visit` for otherwise clean rows). Impractical visits carry
-`count_hold_reason = "sampling_impractical"`; valid counts carry `NA`. This is the
-audit 2026-10-18 item 16 stopgap. In RELEASE-2026 it withdraws 51 of PUUM's 90
-counts and no count at any other site. The raw `clusterSize` token is retained as
-`clusterSizeRaw` so a blank source field can be told from a parse loss; that
-evidence decides the next step (a parser fix, or splitting the predicate so
-incidence no longer needs a count while the detection index still does).
+Impractical visits carry `count_hold_reason = "sampling_impractical"`; valid
+counts carry `NA`. A missing `clusterSize` never withdraws a count (see Eligible
+protocol-filtered detections). The raw `clusterSize` token is retained as
+`clusterSizeRaw`.
 
 The sample-incidence unit is one authoritative valid physical six-minute count,
 keyed by `visits$survey_id`. One or two bouts at a point-year remain separate
@@ -100,15 +89,32 @@ outside the formal six-minute count.
 
 ## Eligible protocol-filtered detections
 
-Community metrics use records that are all of:
+Community metrics use records (`enters_incidence`) that are all of:
 
 1. joined to an unambiguous valid visit;
 2. recorded in formal `pointCountMinute` 1–6;
 3. identified at the species or subspecies level and safely canonicalized to a
    genus + species binomial community unit;
 4. recorded with a nonblank, non-`unknown` detection method;
-5. carrying a positive finite integer `clusterSize` count;
-6. not recorded as a flyover.
+5. not recorded as a flyover.
+
+A `clusterSize` is not required for incidence. Presence, supported zeros,
+richness, detection frequency, ubiquity, Chao2, coverage, rarefaction,
+accumulation, maps, and search therefore use every such detection. The detection
+index (`enters_index`) additionally requires a positive finite integer
+`clusterSize`. Every birds-per-count figure (site, year, species, grid, and the
+2017–2024 window) and every bird total or top species by birds is `NA` whenever
+an `enters_incidence` detection in its scope is not `enters_index`, and the
+number of such detections is stated beside it (`detections_without_count`,
+`n_detections_without_count`, `n_detections_without_count_window`). A missing
+count is never read as zero birds and is never imputed.
+
+This is the audit 2026-10-18 item 16 split. In RELEASE-2026 only PUUM has such
+detections: crews entered a cluster size only for groups and left single birds
+blank at source (NEON protocol NEON.DOC.014041 Rev L requires a size of 1 for
+every non-clustered bird). Everywhere else, every NA `clusterSize` sits on an
+empty-minute line with no taxon. It replaces the PR #8 stopgap that withdrew
+PUUM's counts as unavailable.
 
 One biological species is one community unit. A reported parent binomial and any
 reported subspecies trinomials collapse to the normalized first two scientific-
@@ -124,15 +130,15 @@ operationally excluded from on-point richness, ubiquity, incidence, Chao2,
 accumulation, maps, search ranks, and the birds-per-count numerator. This filter
 does not infer territory or breeding status. Out-of-window incidentals,
 missing/unknown minute rows, missing/unknown detection methods, unsafe taxonomy,
-and invalid cluster counts remain traceable in the held ledger. All source rows
-are conserved. A count whose only otherwise-eligible detections are held for an
-invalid cluster count is withdrawn as unavailable (see Survey and opportunity
-grains), so a missing count never becomes a supported zero.
+remain traceable in the held ledger. No row is held for its cluster size. All
+source rows are conserved.
 
 ## Metric meanings
 
 - Birds per count is `eligible non-flyover birds / valid physical bouts`. It is a
-  detection index, not abundance, density, occupancy, or population size.
+  detection index, not abundance, density, occupancy, or population size. It is
+  `NA` with a stated count of detections without a usable `clusterSize` wherever
+  one exists in scope.
 - Detection frequency is the percentage of valid physical six-minute counts on
   which an eligible species was detected. It is a sample detection summary, not
   detection-corrected occupancy or a measure of geographic spread.
@@ -158,8 +164,9 @@ grains), so a missing count never becomes a supported zero.
   valid counts, positive counts, supported-zero counts, points, eligible birds,
   species-count incidences, singletons, doubletons, and the common rarefaction
   target. Positive plus supported-zero counts must equal `T_counts`. The common
-  target is the smallest 2017-2024 valid-count support in the 47-site roster;
-  after the cluster withdrawal that is PUUM's 39 counts (90 before). Contextual
+  target is the smallest 2017-2024 valid-count support in the 47-site roster
+  (PUUM's 90 counts). The window bird total and index are `NA` when
+  `n_detections_without_count_window` is above zero. Contextual
   top species, detection index, Board frequency, and point footprint are recomputed
   inside the same window rather than joined from the lifetime site index.
 - Rarefaction standardizes the number of sample counts only. Residual differences
@@ -244,8 +251,8 @@ counts and point-years, two-bout separation for incidence, point-year aggregatio
 for annual audit, duplicate/conflicting/orphan joins, flyover-only surveys, mixed
 flyover/eligible detections, point-count minute 88, missing and unknown minute
 tokens, row-order invariance, compound and missing methods, noninteger cluster
-counts, cluster-withdrawn counts (held, unavailable, and named by
-`count_hold_reason`), parent plus multiple subspecies collapse, parent-name display preference,
+counts, detections without a usable count (incidence kept, every bird figure in
+scope `NA` with its stated count), parent plus multiple subspecies collapse, parent-name display preference,
 all distance states and 0–200 m truncation accounting, empty incidence columns,
 bias-corrected Chao2 point/variance fixtures, the `Q2 == 0` coverage branch,
 2017–2024 cross-site exclusion, positive + supported-zero count conservation,

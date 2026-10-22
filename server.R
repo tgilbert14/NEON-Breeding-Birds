@@ -25,6 +25,7 @@ bird_report_export <- function(board, site, release, site_summary, visits, oppor
   body$site_n_supported_point_years <- rep(sum(opportunity$supported %in% TRUE), nr)
   body$site_n_supported_zero_point_years <- rep(sum(opportunity$outcome == "supported_zero"), nr)
   body$site_birds_per_count <- rep(site_summary$birds_per_count, nr)
+  body$site_n_detections_without_count <- rep(site_summary$n_detections_without_count %||% 0L, nr)
   body$site_flyover_birds <- rep(site_summary$flyover_birds %||% 0, nr)
   for (cc in setdiff(REPORT_KEEP, names(body))) body[[cc]] <- rep(NA, nr)
   body[, REPORT_KEEP, drop = FALSE]
@@ -54,7 +55,8 @@ server <- function(input, output, session) {
     observer_support=NULL, board=NULL,
     nvis=0, nopp=0, label=NULL, site=NULL, sp=NULL, ctx=NULL, is_demo=FALSE, grid=NULL, pendingSite=NULL)
   empty_board <- function() data.frame(
-    scientificName=character(), vernacular=character(), detections=integer(), index_birds=numeric(),
+    scientificName=character(), vernacular=character(), detections=integer(),
+    detections_without_count=integer(), index_birds=numeric(),
     n_points=integer(), n_detected_counts=integer(), n_point_years=integer(),
     n_grids=integer(), mean_cluster=numeric(),
     method=character(), n_observers=integer(), distance_n_observed=integer(),
@@ -247,7 +249,7 @@ server <- function(input, output, session) {
                   ifelse(h$year_min == h$year_max, as.character(h$year_min),
                          paste0(h$year_min, "–", h$year_max)), "—")
     df <- data.frame(Site = h$site, Name = h$name %||% h$site, State = h$state %||% "",
-                     `Detection index · 2017–2024` = h$detection_index_window,
+                     `Detection index · 2017–2024` = fmt_index(h$detection_index_window, 3),
                      `Valid counts detected` = h$n_detected_counts_window,
                      `Detection rows` = h$detection_rows_window, Years = yrs,
                      ` ` = mapply(go_btn, h$site, h$name %||% h$site),
@@ -300,9 +302,9 @@ server <- function(input, output, session) {
     df <- data.frame(Site = h$site, Name = h$name %||% h$site, State = h$state %||% "",
                      `Rarefied species` = h$S_rare, `Observed species` = h$S_obs,
                      `Valid counts` = h$T_counts, Points = h$n_points_window,
-                     `Birds/count` = round(h$birds_per_count_window, 2),
+                     `Birds/count` = fmt_index(h$birds_per_count_window, 2),
                      Coverage = ifelse(is.finite(h$coverage), paste0(round(100 * h$coverage), "%"), "—"),
-                     Top = h$top_species_window,
+                     Top = ifelse(is.na(h$top_species_window), "unavailable", h$top_species_window),
                      ` ` = mapply(go_btn, h$site, h$name %||% h$site),
                      check.names = FALSE, stringsAsFactors = FALSE)
     search_dt(df)
@@ -312,9 +314,13 @@ server <- function(input, output, session) {
   output$heroStats <- renderUI({
     sb <- site_birds(rv$obs, rv$points, rv$nvis, rv$opportunity, rv$visits,
                      rv$observer_support); if (is.null(sb)) return(NULL)
+    # The count-up animation reads a missing value as 0, so an unavailable value
+    # (PUUM's birds per count) renders as static "n/a" instead.
     hero <- function(v,l,suf="",icon,tone,info=NULL) div(class=paste0("hero-stat hero-",tone),
       div(class="hs-icon", bs_icon(icon)),
-      div(div(class="hs-v count-up", `data-target`=v, `data-suffix`=suf, "0"),
+      div(if (length(v) == 1L && is.finite(suppressWarnings(as.numeric(v))))
+            div(class="hs-v count-up", `data-target`=v, `data-suffix`=suf, "0") else
+            div(class="hs-v hs-v-na", "n/a"),
           div(class="hs-l", l, if (!is.null(info)) info)))
     div(class="hero-band",
       div(class="hero-title", bs_icon("broadcast"), tags$b(rv$label),
@@ -328,7 +334,9 @@ server <- function(input, output, session) {
         hero(sb$birds_per_count, "birds / count", icon="soundwave", tone="gold",
           info=info_pop("Birds per count", p("Average birds tallied in one 6-minute count, a ", tags$b("detection index, not a population"), ". Loud, conspicuous species inflate it; quiet, skulking ones are undercounted, so it can't be compared between species as abundance."),
             p(tags$b("Flyovers are excluded operationally."), " A detection method containing ‘flyover’ means a bird was recorded passing overhead; those rows do not enter this on-point community detection index",
-              if (!is.null(sb$flyover_birds) && sb$flyover_birds > 0) HTML(sprintf(", %s flyover bird%s retained in the audit here", fmt_int(sb$flyover_birds), if (sb$flyover_birds == 1) "" else "s")), "."))),
+              if (!is.null(sb$flyover_birds) && sb$flyover_birds > 0) HTML(sprintf(", %s flyover bird%s retained in the audit here", fmt_int(sb$flyover_birds), if (sb$flyover_birds == 1) "" else "s")), "."),
+            if ((sb$n_detections_without_count %||% 0L) > 0L)
+              p(tags$b("Unavailable here."), sprintf(" %s eligible detections have no recorded cluster size, so the number of birds in them is unknown and is not counted as zero. They still count toward species, detection frequency, and Chao2.", fmt_int(sb$n_detections_without_count))))),
         hero(sb$n_visits, "point-counts run", icon="clipboard-check", tone="terra",
           info=info_pop("Point-counts run", p("The total number of ", tags$b("6-minute counts"), " performed here. A point counted twice in one year counts as two. This is the effort behind the ", tags$b("birds / count"), " average.")))))
   })
@@ -337,6 +345,8 @@ server <- function(input, output, session) {
   output$topBar <- renderPlotly({
     brd <- rv$board; req(!is.null(brd))
     if (!nrow(brd)) return(note_plot("Supported counts, zero eligible in-window non-flyover detections"))
+    brd <- brd[is.finite(brd$index), , drop = FALSE]
+    if (!nrow(brd)) return(note_plot("Birds per count is unavailable here: eligible detections have no recorded cluster size"))
     brd <- head(brd[order(-brd$index),], 18)
     brd$lab <- factor(brd$vernacular, levels = rev(brd$vernacular))
     # Colour each bar by its canonical first-detection method, but draw one trace
@@ -360,7 +370,12 @@ server <- function(input, output, session) {
     brd <- rv$board; req(!is.null(brd))
     if (!nrow(brd)) return(insight_banner("clipboard-check", tone="gold",
       HTML(sprintf("NEON completed <b>%s</b> valid point-counts across <b>%s</b> supported point-years here, with <b>zero eligible non-flyover species detections</b>. That is a supported zero record, not missing survey effort and not proof that birds were absent.", fmt_int(rv$nvis), fmt_int(rv$nopp)))))
-    top <- brd[which.max(brd$index),]; freq <- brd[which.max(brd$detection_frequency),]
+    freq <- brd[which.max(brd$detection_frequency),]
+    n_without <- sum(brd$detections_without_count %||% 0L, na.rm = TRUE)
+    if (n_without > 0L || !all(is.finite(brd$index)))
+      return(insight_banner("soundwave", tone="navy", HTML(sprintf("<b>%s</b> appears on the largest share of valid six-minute counts (%.0f%%). The site has <span class='ci-hero'>%d</span> detected species. Birds per count is unavailable here: <b>%s</b> eligible detections have no recorded cluster size, so the number of birds in them is unknown. Every detection still counts toward species and detection frequency.",
+        freq$vernacular %||% freq$scientificName, freq$detection_frequency, nrow(brd), fmt_int(n_without)))))
+    top <- brd[which.max(brd$index),]
     insight_banner("soundwave", tone="navy", HTML(sprintf("<b>%s</b> has the highest detection index here (%.2f birds per count); <b>%s</b> appears on the largest share of valid six-minute counts (%.0f%%). The site has <span class='ci-hero'>%d</span> detected species.",
       top$vernacular %||% top$scientificName, top$index, freq$vernacular %||% freq$scientificName, freq$detection_frequency, nrow(brd))))
   })
@@ -372,15 +387,22 @@ server <- function(input, output, session) {
       tags$li(HTML(sprintf("Over <b>%s</b>, NEON ran <b>%s</b> valid six-minute counts across <b>%s</b> supported point-years.", yr_lab, fmt_int(rv$nvis), fmt_int(rv$nopp)))),
       tags$li(HTML("Those supported opportunities contained <b>zero eligible non-flyover species detections</b>. The scientific value is zero for this sampled record; unsurveyed opportunities remain unavailable rather than zero.")),
       tags$li(HTML("No detection index, observer-distance profile, or Chao2 point estimate is inferred from an empty detection record."))))
-    top <- brd[which.max(brd$index),]; freq <- brd[which.max(brd$detection_frequency),]
+    freq <- brd[which.max(brd$detection_frequency),]
     nm <- function(r) r$vernacular %||% r$scientificName
     eligible <- eligible_breeding_detections(rv$obs)
     sing_share <- round(100 * mean(eligible$method_singing %in% TRUE, na.rm=TRUE))
-    pts <- c(
-      sprintf("Over <b>%s</b>, NEON ran <b>%s</b> valid six-minute point-counts at <b>%d</b> points here. Those counts produced <b>%s</b> eligible in-window non-flyover birds across <b>%d</b> detected species.",
-        yr_lab, fmt_int(rv$nvis), sum(rv$points$n_visits > 0), fmt_int(sum(brd$index_birds)), nrow(brd)),
-      sprintf("The highest detection index belongs to the <b>%s</b> (<i>%s</i>), about <b>%.2f</b> birds per count; the <b>%s</b> was detected on <b>%.0f%%</b> of valid six-minute counts.",
-        nm(top), top$scientificName, top$index, nm(freq), freq$detection_frequency))
+    n_without <- sum(brd$detections_without_count %||% 0L, na.rm = TRUE)
+    pts <- if (n_without > 0L || !all(is.finite(brd$index))) c(
+      sprintf("Over <b>%s</b>, NEON ran <b>%s</b> valid six-minute point-counts at <b>%d</b> points here. Those counts produced <b>%s</b> eligible in-window non-flyover detections of <b>%d</b> species.",
+        yr_lab, fmt_int(rv$nvis), sum(rv$points$n_visits > 0), fmt_int(sum(brd$detections)), nrow(brd)),
+      sprintf("<b>%s</b> of those detections have no recorded cluster size, so bird totals and birds per count are unavailable here; a missing count is not read as zero birds. Species, detection frequency, and Chao2 use every detection. The <b>%s</b> was detected on <b>%.0f%%</b> of valid six-minute counts.",
+        fmt_int(n_without), nm(freq), freq$detection_frequency)) else {
+      top <- brd[which.max(brd$index),]
+      c(sprintf("Over <b>%s</b>, NEON ran <b>%s</b> valid six-minute point-counts at <b>%d</b> points here. Those counts produced <b>%s</b> eligible in-window non-flyover birds across <b>%d</b> detected species.",
+          yr_lab, fmt_int(rv$nvis), sum(rv$points$n_visits > 0), fmt_int(sum(brd$index_birds)), nrow(brd)),
+        sprintf("The highest detection index belongs to the <b>%s</b> (<i>%s</i>), about <b>%.2f</b> birds per count; the <b>%s</b> was detected on <b>%.0f%%</b> of valid six-minute counts.",
+          nm(top), top$scientificName, top$index, nm(freq), freq$detection_frequency))
+    }
     if (is.finite(sing_share)) pts <- c(pts, sprintf("<b>%d%%</b> of eligible detections included <i>singing</i> as a recorded detection channel; other records included calling or visual channels. This method mix does not establish territory or breeding status.", sing_share))
     if (!is.null(ch)) {
       cov <- site_coverage(rv$obs, rv$visits)
@@ -435,6 +457,9 @@ server <- function(input, output, session) {
   output$birdBoard <- renderPlotly({
     brd <- rv$board; req(!is.null(brd))
     if (!nrow(brd)) return(note_plot("No eligible species to place on the Bird Board"))
+    n_unplaced <- sum(!is.finite(brd$index))
+    brd <- brd[is.finite(brd$index), , drop = FALSE]
+    if (!nrow(brd)) return(note_plot(sprintf("Birds per count is unavailable for all %d species here: their detections have no recorded cluster size", n_unplaced)))
     brd$reliable <- brd$detections >= 3
     brd$col <- method_col(brd$method); brd$col[!brd$reliable] <- "rgba(138,129,117,0.35)"   # faded ink, parchment-friendly
     brd$tip <- paste0("<span class='smt-pin-emoji'>\U0001F426</span> <b>", brd$vernacular %||% brd$scientificName, "</b><br/>",
@@ -458,7 +483,8 @@ server <- function(input, output, session) {
     mx <- stats::median(brd$detection_frequency); my <- stats::median(brd$index[brd$reliable])
     xr <- range(brd$detection_frequency); yr <- range(brd$index); px <- diff(xr)*0.02; py <- diff(yr)*0.02
     qlab <- function(x,y,t,xa,ya) list(text=t, x=x, y=y, xref="x", yref="y", showarrow=FALSE, xanchor=xa, yanchor=ya, font=list(color=qcol, size=10.5))
-    ann <- list(list(text=sprintf("at <b>%s</b> · each dot is a species · valid-count detection frequency × detection index", rv$site %||% "this site"), x=0, y=1.07, xref="paper", yref="paper", showarrow=FALSE, xanchor="left", font=list(color=muted, size=11)),
+    ann <- list(list(text=sprintf("at <b>%s</b> · each dot is a species · valid-count detection frequency × detection index%s", rv$site %||% "this site",
+        if (n_unplaced > 0L) sprintf(" · %d species without a recorded cluster size not placed", n_unplaced) else ""), x=0, y=1.07, xref="paper", yref="paper", showarrow=FALSE, xanchor="left", font=list(color=muted, size=11)),
       qlab(xr[2]-px, yr[2]-py, "FREQUENTLY DETECTED \U0001F3C6", "right", "top"),
       qlab(xr[1]+px, yr[2]-py, "HIGH INDEX · LOW DETECTION FREQUENCY", "left", "top"),
       qlab(xr[2]-px, yr[1]+py, "HIGH DETECTION FREQUENCY · LOW INDEX", "right", "bottom"),
@@ -540,7 +566,7 @@ server <- function(input, output, session) {
         div(class="qc-head-badges", glow_badge(paste0(r$detections, " detections"), DDL$sky),
             glow_badge(r$method, method_col(r$method)))),
       div(class="qc-tiles",
-        tile(r$index, "birds/count"), tile(paste0(r$detection_frequency,"%"), "valid counts detected"),
+        tile(if (is.finite(r$index)) r$index else "n/a", "birds/count"), tile(paste0(r$detection_frequency,"%"), "valid counts detected"),
         tile(r$n_points, "points"), tile(r$n_grids, "grids"),
         tile(dist_used, "finite distances used · 0–200 m"),
         tile(dist_outside, "finite distances outside 0–200 m"),
@@ -569,7 +595,7 @@ server <- function(input, output, session) {
       if (!is.null(my) && nrow(my)) div(class="qc-cap-scroll", tags$table(class="inspect-tbl",
         tags$thead(tags$tr(tags$th("Year"), tags$th("Birds"), tags$th("Birds/count"), tags$th("Valid counts"), tags$th("Supported point-years"))),
         tags$tbody(lapply(seq_len(nrow(my)), function(i) tags$tr(
-          tags$td(my$year[i]), tags$td(my$birds[i]), tags$td(sprintf("%.2f", my$birds_per_count[i])),
+          tags$td(my$year[i]), tags$td(if (is.na(my$birds[i])) "n/a" else my$birds[i]), tags$td(fmt_index(my$birds_per_count[i])),
           tags$td(my$n_valid_visits[i]), tags$td(my$n_supported_point_years[i])))))) else p(class="qc-cap-note","—"),
       qc_block,
       p(class="qc-cap-note", style="margin-top:8px", bs_icon("info-circle"),
@@ -630,15 +656,21 @@ server <- function(input, output, session) {
     obs <- rv$obs; pts <- rv$points; req(obs, pts)
     eligible <- eligible_breeding_detections(obs)
     grid <- eligible %>% dplyr::group_by(.data$plotID) %>%
-      dplyr::summarise(richness = dplyr::n_distinct(.data$communityScientificName), birds = sum(.data$clusterSize, na.rm=TRUE), .groups="drop")
+      dplyr::summarise(richness = dplyr::n_distinct(.data$communityScientificName),
+                       detections = dplyr::n(),
+                       birds = bird_birds_or_na(.data$clusterSize, .data$enters_index), .groups="drop")
     gv <- pts %>% dplyr::group_by(.data$plotID) %>% dplyr::summarise(lat=stats::median(.data$lat, na.rm=TRUE), lng=stats::median(.data$lng, na.rm=TRUE), visits=sum(.data$n_visits), .groups="drop")
     g <- dplyr::left_join(gv, grid, by="plotID")
     g$richness <- ifelse(is.na(g$richness) & g$visits > 0, 0L, g$richness)
-    g$birds <- ifelse(is.na(g$birds) & g$visits > 0, 0, g$birds)
+    # Zero birds only where a surveyed grid had no eligible detection; a grid whose
+    # detections lack a recorded cluster size keeps birds per count unavailable.
+    g$birds <- ifelse(is.na(g$detections) & g$visits > 0, 0, g$birds)
     g$per_visit <- ifelse(g$visits>0, round(g$birds/g$visits,1), NA_real_)
     g <- g[g$visits > 0, , drop=FALSE]
-    metric <- input$mapMetric %||% "richness"; val <- g[[metric]]; val[is.na(val)] <- 0
-    dom <- if (diff(range(val,na.rm=TRUE))>0) range(val,na.rm=TRUE) else c(val[1]-1,val[1]+1)
+    metric <- input$mapMetric %||% "richness"; val <- g[[metric]]
+    if (identical(metric, "richness")) val[is.na(val)] <- 0
+    vr <- if (any(is.finite(val))) range(val, na.rm = TRUE) else c(0, 1)
+    dom <- if (diff(vr) > 0) vr else c(vr[1] - 1, vr[1] + 1)
     # warm field-guide ramp (parchment -> goldfinch -> rust -> deep) = "more birds, warmer"
     pal <- leaflet::colorNumeric(c("#f3e9d2","#e8a317","#c1502e","#7a2e16"), domain=dom)
     rr <- range(g$richness, na.rm=TRUE); g$radius <- if (diff(rr)>0) 7 + 13*(g$richness-rr[1])/diff(rr) else 11
@@ -646,7 +678,7 @@ server <- function(input, output, session) {
       leaflet::addCircleMarkers(lng=~lng, lat=~lat, radius=~radius, fillColor=pal(val), color="#fff", weight=1, fillOpacity=0.85,
         layerId=~plotID,
         label=~lapply(sprintf("<b>%s</b><br>%d species · %s birds/count<br><span style='color:#c1502e'>\U0001F446 click for the bird list</span>", short_point(plotID), richness, ifelse(is.na(per_visit),"—",per_visit)), htmltools::HTML)) %>%
-      leaflet::addLegend("bottomright", pal=pal, values=val, title=if (metric=="richness") "species" else "birds/count")
+      leaflet::addLegend("bottomright", pal=pal, values=val, title=if (metric=="richness") "species" else "birds/count", na.label="n/a")
   })
   observeEvent(input$map_marker_click, { id <- input$map_marker_click$id; if (!is.null(id)) rv$grid <- id })
   output$gridPanel <- renderUI({
@@ -660,7 +692,7 @@ server <- function(input, output, session) {
       m <- gs$method[i]; if (is.na(m)) m <- "—"
       tags$tr(
         tags$td(tags$b(lbl), tags$br(), tags$em(class="grid-sci", gs$scientificName[i])),
-        tags$td(class="grid-num", gs$birds[i]), tags$td(class="grid-num", gs$detections[i]),
+        tags$td(class="grid-num", if (is.na(gs$birds[i])) "n/a" else gs$birds[i]), tags$td(class="grid-num", gs$detections[i]),
         tags$td(span(class="grid-method", style=sprintf("color:%s", method_col(m)), m)))
     })
     div(class="grid-card",
@@ -715,9 +747,9 @@ server <- function(input, output, session) {
     if (sum(is.finite(d$S_rare)) == nrow(d) && diff(range(d$S_rare)) > 0) {
       rr <- range(d$S_rare); d$rad <- 7 + 9 * (d$S_rare - rr[1]) / diff(rr)
     } else d$rad <- 10
-    pop <- sprintf("<div style='font-family:system-ui,sans-serif;min-width:210px'><b>%s · %s</b><br><span style='color:#7a6f5d'>%s · %s · 2017–2024</span><br><b>%s</b> rarefied species · <b>%d</b> observed<br><b>%s</b> valid counts at <b>%s</b> points · <b>%.2f</b> birds/count<br><span style='color:#7a6f5d'>estimated coverage %s</span><br><a href='#' style='color:#c1502e;font-weight:700' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;\">\U0001F426 Explore this site &rarr;</a><br><a href='#' style='color:#2f7fb5;font-weight:600' onclick=\"Shiny.setInputValue('siteInfo','%s',{priority:'event'});return false;\">About this site</a></div>",
+    pop <- sprintf("<div style='font-family:system-ui,sans-serif;min-width:210px'><b>%s · %s</b><br><span style='color:#7a6f5d'>%s · %s · 2017–2024</span><br><b>%s</b> rarefied species · <b>%d</b> observed<br><b>%s</b> valid counts at <b>%s</b> points · <b>%s</b> birds/count<br><span style='color:#7a6f5d'>estimated coverage %s</span><br><a href='#' style='color:#c1502e;font-weight:700' onclick=\"smtLoadStart('%s · loading…');Shiny.setInputValue('pickSite','%s',{priority:'event'});return false;\">\U0001F426 Explore this site &rarr;</a><br><a href='#' style='color:#2f7fb5;font-weight:600' onclick=\"Shiny.setInputValue('siteInfo','%s',{priority:'event'});return false;\">About this site</a></div>",
                    d$site, d$name, d$blab, d$state, d$S_rare, d$S_obs,
-                   fmt_int(d$T_counts), fmt_int(d$n_points_window), d$birds_per_count_window,
+                   fmt_int(d$T_counts), fmt_int(d$n_points_window), fmt_index(d$birds_per_count_window),
                    ifelse(is.finite(d$coverage), paste0(round(100 * d$coverage), "%"), "unavailable"),
                    gsub("'", "", d$name), d$site, d$site)
     leaflet::leaflet(d) %>% add_suite_basemap("CartoDB.Positron") %>% leaflet::setView(-96, 41, 3) %>%
@@ -810,7 +842,7 @@ server <- function(input, output, session) {
       g$S_obs, " species detected · ", g$S_rare, " rarefied · ", g$coverage_lab, "<br/>",
       g$n_points_window, " points · ", g$T_counts, " valid counts · comparison window ",
       g$analysis_year_min, "–", g$analysis_year_max, " (bird support ", g$bird_year_lab, ")<br/>",
-      "top: <em>", g$top_species_window, "</em></span>",
+      "top: <em>", ifelse(is.na(g$top_species_window), "unavailable (cluster sizes missing)", g$top_species_window), "</em></span>",
       "<br/><span class='smt-open' role='button' tabindex='0' data-action='site' data-tag='", g$site, "'>\U0001F426 Open this site &rarr;</span>",
       "<br/><em class='smt-pin-hint'>Tap the dot to pin this card</em>")
     sref <- 2 * max(g$n_points_window, na.rm = TRUE) / (26^2)

@@ -225,6 +225,12 @@ glow_badge <- function(label, color = "#c1502e", glow = color)
 card_head <- function(icon, title, ...)
   bslib::card_header(class = "with-info", bsicons::bs_icon(icon), tags$span(class = "ch-title", " ", title), ...)
 fmt_int <- function(x) format(round(as.numeric(x)), big.mark = ",", trim = TRUE)
+# A detection index can be unavailable (eligible detections without a usable
+# clusterSize, as at PUUM); show "n/a", never a zero or the literal "NA".
+fmt_index <- function(x, digits = 2) {
+  x <- suppressWarnings(as.numeric(x))
+  ifelse(is.finite(x), formatC(x, format = "f", digits = digits), "n/a")
+}
 
 # temperature display — Fahrenheit (default, US audience) or Celsius. Stored data
 # is always °C; these convert for display only. (Spearman/rank stats are unit-free.)
