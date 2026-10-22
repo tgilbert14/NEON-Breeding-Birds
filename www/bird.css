@@ -448,7 +448,10 @@ body {
 }
 /* Bootstrap's float + negative margin on .form-check-input would lift the dot
    above-left of its label; keep it inline, centred beside the text. */
-.tb-temp input[type=radio] { float:none; position:static; flex:0 0 auto; margin:0 5px 0 0; }
+.tb-temp input[type=radio], .tb-temp .radio-inline input[type=radio],
+.tb-temp .form-check .form-check-input { float:none; position:static; flex:0 0 auto; margin:0 5px 0 0; }
+/* the group label is screen-reader only; it must not take a 44 px row above the dots */
+.tb-temp .control-label { position:absolute; min-height:0; padding:0; margin:0; }
 .tb-theme .form-check, .tb-theme .bslib-input-dark-mode { min-height:44px; display:flex; align-items:center; margin:0; }
 .tb-help { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
 @media (max-width:600px) {
