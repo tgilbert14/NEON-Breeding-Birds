@@ -34,6 +34,18 @@ stopifnot(!is.null(SITE_CLIMATE), nrow(SITE_CLIMATE) == 47L,
           nrow(temperature_frame) == 45L,
           !any(c("BARR", "TOOL") %in% as.character(temperature_frame$site)))
 
+# Audit item 21: the page must carry a real <title> and lang = "en".
+# bslib's page functions silently ignore unknown arguments such as
+# window_title, so render the document and check the bytes a browser sees.
+# Shiny takes <html lang> from the page object's "lang" attribute; save_html()
+# always writes lang="en" itself, so the attribute is what is checked.
+page_html_path <- tempfile(fileext = ".html")
+htmltools::save_html(ui, page_html_path)
+page_html <- paste(readLines(page_html_path, warn = FALSE), collapse = "\n")
+stopifnot(grepl("<title>NEON Breeding Bird Explorer</title>", page_html, fixed = TRUE),
+          identical(attr(ui, "lang"), "en"),
+          !grepl("window_title", page_html, fixed = TRUE))
+
 candidate <- NULL
 for (site in as.character(SITE_INDEX$site)) {
   bundle <- load_site_bundle(site)

@@ -233,7 +233,7 @@ assert(identical(schema$release, "RELEASE-2026"), "Bundle schema release mismatc
 assert(identical(as.character(schema$detection_index_denominator),
                  "valid point-count bouts") &&
        identical(as.character(schema$valid_visit_rule),
-                 "samplingImpractical == OK"),
+                 "samplingImpractical == OK AND not withdrawn as detections_without_cluster_size"),
        "Bundle schema detection-index denominator or valid-visit rule mismatch.")
 assert(grepl("visits.survey_id", as.character(schema$incidence_unit), fixed = TRUE) &&
        grepl("point x year", as.character(schema$annual_audit_unit), fixed = TRUE),
@@ -362,7 +362,7 @@ for (site in expected_sites) {
   visit_cols <- c(
     "survey_id", "occasion_id", "site", "pointkey", "plotID", "pointID", "eventID",
     "year", "bout", "startDate", "endDate", "samplingImpractical", "sampling_state",
-    "valid_count", "protocol_minutes", "samplingProtocolVersion", "observedHabitat",
+    "valid_count", "count_hold_reason", "protocol_minutes", "samplingProtocolVersion", "observedHabitat",
     "nlcdClass", "lat", "lng", "startCloudCoverPercentage", "endCloudCoverPercentage",
     "observedAirTemp", "kmPerHourObservedWindSpeed", "eligible_detection_rows",
     "eligible_birds", "eligible_species", "flyover_rows", "flyover_birds",
@@ -386,7 +386,7 @@ for (site in expected_sites) {
     "observerDistanceRaw", "observerDistance", "distance_state", "detectionMethod",
     "detection_method_state",
     "method_channel", "method_singing", "method_calling", "method_visual", "method_drumming",
-    "clusterSize", "sexOrAge", "matched_visit", "valid_count", "is_flyover",
+    "clusterSize", "clusterSizeRaw", "sexOrAge", "matched_visit", "valid_count", "is_flyover",
     "enters_breeding_metrics", "hold_reason"
   )
   point_cols <- c(
@@ -444,9 +444,40 @@ for (site in expected_sites) {
   assert(!anyDuplicated(opportunities$occasion_id), paste(site, "has duplicated point-year keys."))
   expected_survey <- paste(visits$site, visits$eventID, visits$plotID, visits$pointID, sep = "|")
   assert(identical(as.character(visits$survey_id), expected_survey), paste(site, "survey key is not authoritative."))
-  expected_valid <- toupper(trimws(as.character(visits$samplingImpractical))) == "OK"
-  expected_valid[is.na(expected_valid)] <- FALSE
-  assert(identical(visits$valid_count %in% TRUE, expected_valid), paste(site, "valid-count state does not equal samplingImpractical == OK."))
+  protocol_ok <- toupper(trimws(as.character(visits$samplingImpractical))) == "OK"
+  protocol_ok[is.na(protocol_ok)] <- FALSE
+  # Audit item 16 stopgap, re-derived from the public detection ledgers alone: a
+  # protocol-valid count whose otherwise-eligible species detections all lack a
+  # positive integer clusterSize is withdrawn as unavailable, never a zero.
+  detection_all <- rbind(obs, held)
+  detection_unit <- community_unit(detection_all$reportedTaxonRank,
+                                   detection_all$reportedScientificName)
+  detection_method <- tolower(trimws(as.character(detection_all$detectionMethod)))
+  detection_method_known <- !blank(detection_method) & detection_method != "unknown"
+  detection_flyover <- grepl("flyover", detection_method)
+  detection_flyover[is.na(detection_flyover)] <- FALSE
+  detection_cluster_valid <- is.finite(detection_all$clusterSize) &
+    detection_all$clusterSize > 0 & detection_all$clusterSize == floor(detection_all$clusterSize)
+  detection_protocol_ok <- detection_all$matched_visit %in% TRUE &
+    as.character(detection_all$survey_id) %in% as.character(visits$survey_id[protocol_ok])
+  detection_core <- detection_protocol_ok & detection_all$in_protocol_window %in% TRUE &
+    detection_unit$eligible & detection_method_known & !detection_flyover
+  blocked_ids <- setdiff(
+    unique(as.character(detection_all$survey_id[detection_core & !detection_cluster_valid])),
+    unique(as.character(detection_all$survey_id[detection_core & detection_cluster_valid])))
+  expected_blocked <- protocol_ok & as.character(visits$survey_id) %in% blocked_ids
+  expected_valid <- protocol_ok & !expected_blocked
+  assert(identical(visits$valid_count %in% TRUE, expected_valid),
+         paste(site, "valid-count state does not equal samplingImpractical == OK minus cluster-withdrawn counts."))
+  expected_count_hold <- ifelse(!protocol_ok, "sampling_impractical",
+    ifelse(expected_blocked, "detections_without_cluster_size", NA_character_))
+  assert(same_chr(visits$count_hold_reason, expected_count_hold),
+         paste(site, "count_hold_reason does not re-derive from sampling state and held detections."))
+  cluster_raw_value <- suppressWarnings(as.numeric(detection_all$clusterSizeRaw))
+  assert(identical(is.na(cluster_raw_value), is.na(detection_all$clusterSize)) &&
+         all(cluster_raw_value[!is.na(cluster_raw_value)] ==
+               detection_all$clusterSize[!is.na(cluster_raw_value)]),
+         paste(site, "clusterSize does not re-derive from the retained raw clusterSize token."))
   visit_year_value <- suppressWarnings(as.numeric(visits$year))
   visit_year <- suppressWarnings(as.integer(visit_year_value))
   assert(all(is.finite(visit_year_value)) && all(visit_year_value == visit_year) &&
@@ -656,7 +687,8 @@ for (site in expected_sites) {
 
   if (nrow(held)) {
     expected_hold_reason <- ifelse(!(held$matched_visit %in% TRUE), "orphan_detection_no_visit",
-      ifelse(!(held$valid_count %in% TRUE), "detection_on_unusable_visit",
+      ifelse(!(as.character(held$survey_id) %in% as.character(visits$survey_id[protocol_ok])),
+             "detection_on_unusable_visit",
         ifelse(held$point_count_minute_state == "incidental_minute_88", "incidental_outside_point_count",
           ifelse(held$point_count_minute_state == "source_missing", "missing_point_count_minute",
             ifelse(!(held$in_protocol_window %in% TRUE), "invalid_point_count_minute",
@@ -669,7 +701,13 @@ for (site in expected_sites) {
                            c("species", "subspecies") & !held_unit$eligible,
                          "unsafe_species_canonicalization",
                     ifelse(!held_method_known,
-                           "missing_or_unknown_detection_method", NA_character_)))))))))
+                           "missing_or_unknown_detection_method",
+                      ifelse(!(held$valid_count %in% TRUE), "detection_on_unusable_visit",
+                             NA_character_))))))))))
+    held_visit <- match(as.character(held$survey_id), as.character(visits$survey_id))
+    assert(identical(held$valid_count %in% TRUE,
+                     !is.na(held_visit) & expected_valid[ifelse(is.na(held_visit), 1L, held_visit)]),
+           paste(site, "held detection valid_count does not rejoin to its visit's analysis validity."))
     assert(identical(as.character(held$hold_reason), expected_hold_reason) && !anyNA(expected_hold_reason),
            paste(site, "held reasons do not re-derive from held-row state."))
   }

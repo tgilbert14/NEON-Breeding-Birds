@@ -629,6 +629,71 @@ check(any(site_audit$reportedScientificName == "Flyus only" & site_audit$is_flyo
       any(site_audit$hold_reason == "missing_or_unknown_detection_method") &&
       any(site_audit$hold_reason == "invalid_cluster_size"),
       "site-wide audit reaches flyover-only, coarse-only, protocol-, method-, and cluster-held detections")
+# Audit item 16 stopgap: a protocol-valid count whose only otherwise-eligible
+# species detections lack a usable clusterSize is withdrawn as unavailable.
+withdrawal_visits <- data.frame(
+  survey_id = c("w-1", "w-2", "w-3"), pointkey = "PUUM_001_21", year = 2021L,
+  bout = c("1", "2", "1"), samplingImpractical = c("OK", "OK", "high wind"),
+  valid_count = c(TRUE, FALSE, FALSE),
+  count_hold_reason = c(NA, "detections_without_cluster_size", "sampling_impractical"),
+  eligible_detection_rows = c(1L, 0L, 0L), eligible_birds = c(2, 0, 0),
+  eligible_species = c(1L, 0L, 0L), flyover_rows = 0L, flyover_birds = 0,
+  support_state = c("supported", "held", "held"),
+  outcome = c("positive", "unavailable", "unavailable"),
+  stringsAsFactors = FALSE)
+withdrawal_visits$pointkey[3] <- "PUUM_001_22"
+validated_withdrawal <- bird_validate_visits(withdrawal_visits)
+check(identical(validated_withdrawal$support_state, c("supported", "held", "held")),
+      "a cluster-withdrawn protocol-OK count is held, not supported")
+check(sum(validated_withdrawal$valid_count) == 1L,
+      "a cluster-withdrawn count leaves every analysis denominator")
+tampered_withdrawal <- withdrawal_visits; tampered_withdrawal$valid_count[2] <- TRUE
+tampered_withdrawal$support_state <- NULL
+expect_error(bird_validate_visits(tampered_withdrawal), "count_hold_reason disagrees with valid_count",
+             "a withdrawn count cannot be relabelled as a valid count")
+mislabelled_withdrawal <- withdrawal_visits
+mislabelled_withdrawal$count_hold_reason[2] <- "sampling_impractical"
+expect_error(bird_validate_visits(mislabelled_withdrawal), "disagrees with samplingImpractical",
+             "a protocol-OK count cannot be mislabelled as sampling-impractical")
+unknown_withdrawal <- withdrawal_visits; unknown_withdrawal$count_hold_reason[2] <- "zero_birds"
+expect_error(bird_validate_visits(unknown_withdrawal), "unrecognized count_hold_reason",
+             "an unknown count hold reason fails closed")
+
+# Audit 2026-10-18: both robust-scale QC flags were unreachable because MAD = 0
+# on integer-clumped data. These fixtures mirror the measured shapes so neither
+# flag can silently die again.
+qc_row <- function(n, pointkey, cluster, name = "Flockus gregarius") data.frame(
+  survey_id = paste0("qc-", pointkey, "-", seq_len(n)), pointkey = pointkey,
+  plotID = sub("_[^_]*$", "", pointkey), year = 2022L, bout = "1",
+  scientificName = name, taxonRank = "species", vernacularName = "Test flocker",
+  clusterSize = cluster, detectionMethod = "calling", pointCountMinute = "2",
+  observerDistance = "40", stringsAsFactors = FALSE)
+flock_obs <- rbind(qc_row(30, "QCPL_001_21", rep(1, 30)), qc_row(1, "QCPL_001_22", 200),
+                   qc_row(4, "QCPL_001_23", rep(2, 4)))
+flock_qc <- bird_qc(flock_obs, "Flockus gregarius")
+flock_keys <- vapply(flock_qc$flags, function(f) f$key, character(1))
+check("cluster" %in% flock_keys && nrow(flock_qc$sets$cluster) == 1L &&
+        flock_qc$sets$cluster$clusterSize == 200,
+      "floored flock flag fires on a 200-bird flock of a singleton-counted species and not on pairs")
+srer_points <- data.frame(
+  pointkey = c(sprintf("SRER_018_%02d", 1:9), sprintf("SRER_020_%02d", 1:9),
+               sprintf("SRER_%03d_%02d", rep(1:10, each = 9), rep(1:9, 10))),
+  n_visits = c(rep(1, 18), rep(8, 90)), stringsAsFactors = FALSE)
+check(stats::mad(srer_points$n_visits) == 0, "SRER-shaped point effort has MAD = 0")
+effort_obs <- rbind(qc_row(3, "SRER_018_01", rep(1, 3), "Campylorhynchus brunneicapillus"),
+                    qc_row(9, "SRER_001_01", rep(1, 9), "Campylorhynchus brunneicapillus"))
+effort_qc <- bird_qc(effort_obs, "Campylorhynchus brunneicapillus", srer_points)
+effort_keys <- vapply(effort_qc$flags, function(f) f$key, character(1))
+check("loweffort" %in% effort_keys && nrow(effort_qc$sets$loweffort) == 3L &&
+        all(effort_qc$sets$loweffort$pointkey == "SRER_018_01"),
+      "floored under-effort flag fires on one-visit points against a site median of 8")
+even_points <- data.frame(pointkey = sprintf("EVEN_001_%02d", 1:9), n_visits = 8,
+                          stringsAsFactors = FALSE)
+even_qc <- bird_qc(qc_row(5, "EVEN_001_01", rep(1, 5), "Campylorhynchus brunneicapillus"),
+                   "Campylorhynchus brunneicapillus", even_points)
+check(!"loweffort" %in% vapply(even_qc$flags, function(f) f$key, character(1)),
+      "under-effort flag stays silent when every point has equal effort")
+
 codebook <- bird_codebook()
 declared <- unique(c(SPCSV_KEEP, BOARD_KEEP, GRADIENT_KEEP, GRIDCSV_KEEP, REPORT_KEEP,
                      SITE_AUDIT_KEEP, QC_KEEP,

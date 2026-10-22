@@ -309,9 +309,16 @@
   document.addEventListener("click", function (e) {
     if (e.target.closest(".qc-flag-click")) revealQcInspector();
   });
+  /* QC flags are role="button" divs: Enter and Space must activate them, and
+     Space must not scroll the page. The synthetic click runs the inline
+     onclick and bubbles to the click listener above, which reveals the
+     inspector, so it is not called a second time here. */
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
-    if (e.target.closest && e.target.closest(".qc-flag-click")) revealQcInspector();
+    var f = e.target.closest && e.target.closest(".qc-flag-click");
+    if (!f || e.repeat) return;
+    e.preventDefault();
+    f.click();
   });
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;

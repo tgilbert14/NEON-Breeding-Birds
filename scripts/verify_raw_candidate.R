@@ -289,6 +289,7 @@ for (site in expected_sites) {
     samplingImpractical = as.character(pp$samplingImpractical),
     sampling_state = clean_state(pp$samplingImpractical),
     valid_count = pp_valid,
+    count_hold_reason = ifelse(pp_valid, NA_character_, "sampling_impractical"),
     protocol_minutes = ifelse(pp_valid, 6, 0),
     samplingProtocolVersion = col_chr(pp, "samplingProtocolVersion"),
     observedHabitat = col_chr(pp, "observedHabitat"),
@@ -334,6 +335,7 @@ for (site in expected_sites) {
   reported_taxon_id <- col_chr(cd, "taxonID")
   reported_vernacular <- col_chr(cd, "vernacularName")
   unit <- community_unit(rank, scientific)
+  cluster_raw <- col_chr(cd, "clusterSize")
   cluster <- suppressWarnings(as.numeric(cd$clusterSize))
   cluster_valid <- is.finite(cluster) & cluster > 0 & cluster == floor(cluster)
   method <- as.character(cd$detectionMethod)
@@ -344,8 +346,22 @@ for (site in expected_sites) {
   is_flyover <- grepl("flyover", tolower(method)); is_flyover[is.na(is_flyover)] <- FALSE
   eligible <- matched_valid & minute$in_window & is_species & method_known &
     !is_flyover & cluster_valid
+  # Independent re-derivation of the audit item 16 stopgap: a protocol-valid
+  # count with no eligible detection but at least one otherwise-eligible species
+  # detection lacking a positive integer clusterSize is unavailable, not zero.
+  protocol_valid <- matched_valid
+  cluster_blocked <- protocol_valid & minute$in_window & is_species & method_known &
+    !is_flyover & !cluster_valid
+  blocked_surveys <- setdiff(unique(cd_survey[cluster_blocked]), unique(cd_survey[eligible]))
+  pp_blocked <- pp_valid & pp_survey %in% blocked_surveys
+  pp_valid <- pp_valid & !pp_blocked
+  expected_visits$valid_count <- pp_valid
+  expected_visits$count_hold_reason[pp_blocked] <- "detections_without_cluster_size"
+  expected_visits$protocol_minutes <- ifelse(pp_valid, 6, 0)
+  matched_valid <- matched
+  matched_valid[matched] <- pp_valid[visit_match[matched]]
   reason <- ifelse(!matched, "orphan_detection_no_visit",
-            ifelse(!matched_valid, "detection_on_unusable_visit",
+            ifelse(!protocol_valid, "detection_on_unusable_visit",
               ifelse(minute$state == "incidental_minute_88", "incidental_outside_point_count",
                 ifelse(minute$state == "source_missing", "missing_point_count_minute",
                   ifelse(!minute$in_window, "invalid_point_count_minute",
@@ -354,7 +370,9 @@ for (site in expected_sites) {
                         ifelse(tolower(trimws(rank)) %in% c("species", "subspecies") & !is_species,
                                "unsafe_species_canonicalization",
                           ifelse(!method_known,
-                                 "missing_or_unknown_detection_method", NA_character_)))))))))
+                                 "missing_or_unknown_detection_method",
+                            ifelse(!matched_valid, "detection_on_unusable_visit",
+                                   NA_character_))))))))))
 
   expected_channel <- method_channel(method)
   component <- function(pattern) {
@@ -402,6 +420,7 @@ for (site in expected_sites) {
     method_visual = component("visual"),
     method_drumming = component("drum"),
     clusterSize = cluster,
+    clusterSizeRaw = cluster_raw,
     sexOrAge = col_chr(cd, "sexOrAge"),
     matched_visit = matched,
     valid_count = matched_valid,

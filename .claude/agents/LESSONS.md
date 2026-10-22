@@ -1,0 +1,4 @@
+# Breeding Birds lessons
+
+- [2026-10-21] wren/neonize · confirmed · Withdrawing counts at the network-minimum site moves the common rarefaction target for every site (PUUM 90 to 39 counts lowered rarefied richness across the network, median 10.7 species). Before shipping any denominator change, report the new common target and the cross-site deltas, and rehearse the full verifier on transformed committed bundles so a five-hour refresh does not fail at validation.
+- [2026-10-22] twinblade · confirmed · A refresh dispatched from a branch whose diff touches .github/workflows cannot publish: GITHUB_TOKEN has no workflows permission, so the review-branch push is rejected after the full five-hour run (Birds run 39691408336). Seed the review branch at the producer revision first, or keep workflow edits out of a data-candidate branch.

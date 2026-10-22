@@ -1,5 +1,176 @@
 # Breeding Birds build and test handoff
 
+## 2026-10-21 · Audit wave 2: PUUM cluster withdrawal, QC keyboard, title, SRER default, QC floors, registry, producer pin, release watch (America/Phoenix)
+
+- **Scope:** NEON suite audit 2026-10-18 items 16 (PUUM false zeros), 21 (page
+  title and lang), 23 (QC flags unreachable by keyboard) and the Wave 2 Breeding
+  Birds line (SRER default, MAD floors on the two dead QC flags, neonUtilities pin,
+  RELEASE-2027 watch, in-app suite registry, keepInView). Source identity is
+  unchanged: `DP1.10003.001`, `RELEASE-2026`, DOI `10.48443/v6hs-mx57`.
+- **Revisions:** base `master` `67b3b3989a004c9a4b59444657bd8e261d6d8093`
+  (after PR #7); branch `fix/birds-wave2-audit-2026-10`.
+- **Item 16 stopgap (science):** a protocol-OK count with no eligible detection
+  but at least one otherwise-eligible species detection lacking a positive integer
+  `clusterSize` is withdrawn: `valid_count = FALSE`, new visit column
+  `count_hold_reason = "detections_without_cluster_size"`, outcome `unavailable`,
+  out of every denominator. Implemented independently in
+  `scripts/bundle_bird_data.R`, `scripts/verify_raw_candidate.R` (raw oracle) and
+  `scripts/verify_bundle.R` (public-ledger oracle), plus a runtime fail-closed
+  check in `bird_validate_visits()`. Schema stays v4 with two additive columns
+  (`visits.count_hold_reason`, detection `clusterSizeRaw`) and a new
+  `valid_visit_rule` string. `fetch_bird_all.R` writes an aggregate per-site
+  clusterSize line (rows, class, NA, blank, non-numeric) to the step summary.
+- **UI and QC:** `title = "NEON Breeding Bird Explorer"` and `lang = "en"` replace
+  the ignored `window_title`/`fillable` arguments; one delegated Enter/Space
+  handler on `.qc-flag-click` (preventDefault, ignores key repeat, synthetic
+  click); the picker opens on AZ / SRER; the under-effort flag floors its scale at
+  `max(MAD, IQR/1.349, 0.5)` visits and the flock flag at
+  `max(MAD, IQR/1.349, log(2)/2)` on the log scale with a cap of
+  `log1p(max(10 x median, p99.5))`; a ten-app "NEON Explorer Suite" card in About
+  (links match Small Mammal's registry). No map in this app sets `keepInView`, so
+  that line needs no change here.
+- **Producer:** `neonUtilities@4.0.2` pinned in the producer install (cache key
+  rolled to `...-neonutilities-4.0.2-v3`), a `>= 4.0.1` floor in the fetch, and a
+  separate `release_watch` job that reads NEON's anonymous product metadata and
+  raises a named warning plus a step-summary line when a release newer than
+  `BIRD_RELEASE` is listed. It never changes the pinned build. Checked live today:
+  newest listed release is `RELEASE-2026`.
+- **Local commands (macOS, R 4.5.2) and outcomes:**
+  `scripts/test_helpers.R` 137 checks passed (128 before; new fixtures cover the
+  flock and under-effort reachability, equal-effort silence, and the withdrawn
+  count validator; the QC fixtures fail against the old helpers);
+  `test_bird_evidence_privacy.R`, `test_release_stamp.R`, `test_env_helpers.R`,
+  `test_env_batching.R`, `test_verify_env_candidate.R` passed; the CI static
+  block, `check_custom_message_handlers.mjs`, `check_cover.mjs`, `git diff
+  --check` passed; `test_server_runtime.R` passed with a new guard that renders
+  the page for `<title>` and checks the page object's `lang` attribute (it is
+  `NULL` on the old UI, so the guard fails there); `actionlint` reports only the
+  four pre-existing shellcheck notes. Expected failure, observed: the branch
+  `verify_bundle.R` rejects the committed bundles at the schema valid-visit rule
+  until the refresh rebuilds them, and the committed manifest and stamp do not
+  cover the changed runtime files. CI on the code PR head is therefore red by
+  design; the automation candidate from the refresh is the mergeable head.
+- **Rehearsal:** a scratch copy of the committed bundles was transformed with the
+  new rule (raw token approximated from the parsed value), derived indexes were
+  rebuilt, the scratch stamp rewritten, and the branch `verify_bundle.R` passed:
+  26,314 valid counts (66 supported zeros) and 24,490 supported point-years (60
+  supported-zero point-years), against 26,365 / 117 / 24,509 / 79 on master. Only
+  PUUM changed (51 counts withdrawn). Tampering one withdrawn PUUM count back to
+  valid was rejected. The Shiny lifecycle passed on the rehearsal.
+- **PUUM before / after (rehearsal; confirm on the refresh candidate):** valid
+  counts 90 / 39; supported-zero counts 51 / 0; richness 6 / 6; Chao2 7.5 / 7.5
+  (Q1 3, Q2 1); birds per count 2.84 / 6.56. Richness and Chao2 do not move
+  because the held detections still cannot enter incidence; that is the next step.
+- **Network side effect:** PUUM was the 47-site minimum, so the common
+  rarefaction target falls from 90 to 39 valid counts. Every site's rarefied
+  richness drops (median 10.7 species, max 18.2; SRER 67.0 to 54.3); rank
+  agreement 0.988; the temperature Spearman stays 0.351 (n = 45). Raised to the
+  lead before dispatch.
+- **Browser check (local Shiny, 1440 and 375 px):** tab title and `lang` correct,
+  no `window_title` body attribute; picker on AZ / SRER; Cactus Wren at SRER now
+  shows the under-effort flag on 24 detections; Space and Enter on the focused
+  flag open the inspector with the default prevented, key repeat ignored; the
+  registry renders nine 44 px links and one column at 375 px with no horizontal
+  overflow.
+- **Independent review (Opus 5.5 at max; the Fable reviewer hit the account's
+  Fable limit):** a synthetic 47-site raw fixture through the real producer,
+  sanitizer, raw oracle and per-site bundle oracle found no disagreement and no
+  validator failure, across clusterSize stored as double, integer and character,
+  with all tamper cases caught. Fixed after review, all outside the release
+  payload: the fetch summary now reports NA, blank or non-numeric clusterSize
+  (not only NA); the release watch degrades to a warning on an unparsable or
+  empty release list instead of failing the run; the `lang` guard checks the
+  page attribute, because `save_html()` always writes `lang="en"`. Deferred: the
+  flock-floor comment in `R/bird_helpers.R` calls `log(2)/2` half the 1-to-2-bird
+  step (on the log1p scale it is half a doubling of 1 + flock size); it is a
+  payload file, so it waits for the next refresh. Calibration notes for wren: the
+  flock flag now fires in 91 of 238 species-site units (up to 15% of a unit's
+  detections; for singleton-counted species it means more than about 10 birds),
+  and the under-effort flag at 19 of 47 sites, including borderline points
+  (LENO 11 visits against a median of 13, WOOD 6 against 9). Both follow the
+  audit's specified formulas. `neonUtilities@4.0.2` is version-pinned but still
+  comes from live CRAN (published after the dated snapshot); a dated Posit
+  Package Manager URL pin would match the geospatial pins.
+- **Residual risks:** the raw oracle path was not executed locally (no token);
+  the rehearsal approximated `clusterSizeRaw`; richness, Chao2 and the index at
+  PUUM still come from the 39 clean counts; the in-app registry duplicates Small
+  Mammal's list by hand.
+- **Refresh run [39691408336](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/39691408336)
+  on `d81e99fb7093d2c31bacf060c81395f67d65ec2e` (UTC):** `probe_token` and
+  `release_watch` passed; `produce_candidate` passed 2026-10-21 23:08:26 to
+  2026-10-22 03:13:48 (pinned `neonUtilities@4.0.2` installed); `validate_candidate`
+  passed 03:13:51 to 03:53:30: the raw oracle reconciled every visit and detection
+  in all 47 bundles, both derived-index rebuilds were byte-identical, the full
+  bundle oracle reported 26,314 valid counts (66 supported zeros) and 24,490
+  supported point-years (60 supported-zero point-years), the common target is 39
+  counts, 137 helper checks and the Shiny lifecycles passed, and the release
+  instance is `sha256:8167a297d2594bcd88b39162b4ebae0470267e330a8bd212e9067f404d10a6ae`
+  (121 runtime files, 91 pinned packages). The producer log reports PUUM at 39
+  valid counts, 0 supported zeros, 26 point-years, 0 zero point-years and 6
+  eligible species, exactly the rehearsal values. Validated artifact
+  `breeding-birds-release-2026-d81e99fb...`: 57,322,420 bytes, digest
+  `sha256:86155d9d8d48ecafc90ad3c4a1dd6dc8e8fb1231fd3a820cdbac632350fbcda7`,
+  expires 2026-10-29 03:53 UTC.
+- **Publish failure:** `publish_candidate` built candidate `238571e` (57 files)
+  but GitHub rejected the push: the `GITHUB_TOKEN` cannot create or update a
+  workflow file without the `workflows` permission, and the candidate's history
+  carries this branch's `refresh-data.yml` change while the remote review branch
+  still held `e97e56c` (the audit's byte-identical October no-op). No branch or
+  production byte changed. The fix that keeps the bot's provenance path is to
+  point the review branch at `d81e99f` first (a lease-protected force push over
+  `e97e56c`), then re-run only the failed publish job, so the bot's push adds the
+  data commit alone. That force push needs Tim's approval and was not made.
+- **clusterSize evidence (producer log, aggregate only):** neonUtilities returns
+  `clusterSize` as an integer column at every site, with NA and never blank or
+  text. PUUM has 1,038 NA in 1,153 rows (90%). Other sites carry NA too (for
+  example BONA 2,103 of 5,848), but there those rows do not withdraw counts. So
+  the app's own parsing loses nothing.
+- **Why PUUM's counts are blank (bundle and protocol evidence, 2026-10-22):** at
+  SRER, BONA and HARV every NA `clusterSize` row is an empty-minute line with no
+  taxon and no method. At PUUM 895 NA rows are species-rank detections with a
+  known method (ʻApapane 494, ʻŌmaʻo 132, Hawaiʻi ʻAmakihi 122), spread over 2018
+  (280), 2021 (382) and 2024 (376), while the recorded PUUM values are almost
+  never 1 (1: 9, 2: 32, 3: 39, 4: 23, 5 or more: 12). NEON protocol
+  NEON.DOC.014041 Rev L (2024-04-17, change ECO-07079) says the cluster size of a
+  non-clustered bird is always 1 (SOP B) and records a clarification to enter
+  the number of individuals for every observation, even when it is not a
+  cluster; its field steps still say to record cluster information if
+  available. The NEON user guide (Rev G) and the product change log say nothing
+  about PUUM. Reading: PUUM crews entered a cluster size only for groups and left
+  single birds blank at source; this is not a parsing loss.
+- **Exploratory PUUM numbers for the next step (not shipped):** with incidence
+  no longer requiring a count, all 90 counts are positive (0 supported zeros),
+  richness is 9 (adds Cardinalis cardinalis, Cettia diphone, Lophura
+  leucomelanos), Chao2 9 (Q1 1, Q2 0), and the network rarefaction target
+  returns to 90. Birds per count would be 12.63 if a blank PUUM count is read as
+  one bird, against 6.56 under this stopgap (recorded clusters over the 39
+  remaining counts) and 2.84 before it; so the stopgap's PUUM index still
+  undercounts. Reading a blank as one bird is imputation, which the contract
+  forbids today, so it needs wren's rule text and the lead's approval.
+- **Candidate adopted onto PR #8:** commit `5dd7324` copies the validated
+  artifact's 106 files byte-for-byte (57 change: all 47 site bundles, the site,
+  cross-site and search indexes, both receipts, the schema, the demo bundle, the
+  stamp pair and the manifest; the same change the bot's rejected commit had).
+  Tarball sha256 `f640bf7c2470f4046ab2fc2323eba7df18f611217e61fdbf5a6fae9731ab97fe`.
+  Local gates on those bytes: the stamp re-verifies to release instance
+  `sha256:8167a297...` over all 125 payload files (so the download is intact and
+  the later non-payload commits change no payload byte), the exact manifest
+  (121 files), the bundle oracle (26,314 / 66 / 24,490 / 60), the Shiny
+  lifecycles and 137 helper checks pass. PUUM from the candidate bundles: valid
+  counts 39, supported zeros 0, richness 6, Chao2 7.5 (Q1 3, Q2 1, T 39), birds
+  per count 6.56, coverage 0.936; 51 counts carry `detections_without_cluster_size`
+  and 8 otherwise clean rows on them sit in held as `detection_on_unusable_visit`.
+  Rarefied richness at all 47 sites equals the rehearsal; common target 39;
+  temperature Spearman 0.351 (n = 45). The automation review branch was not
+  touched (still `e97e56c`); seeding it is optional now.
+- **Next action:** Tim reviews and merges PR #8 once its exact-head CI is green;
+  Connect then republishes from `master`, and the production smoke must show
+  Pages and Connect serving release instance `sha256:8167a297...`. Then the next
+  step is the enters_incidence / enters_index split (restores PUUM richness 9 and
+  the target of 90), with an explicit wren/lead decision on PUUM's index: NA with
+  a stated reason, or blank read as one bird under a documented PUUM recording
+  rule. Until then, PUUM's birds-per-count headline is an undercount.
+
 ## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
 
 - **Trigger/evidence:** the reviewed Birds manifest records exact `bslib`

@@ -5,7 +5,7 @@
   "incidence_unit": "valid physical six-minute point-count keyed by visits.survey_id; repeated counts are protocol samples, not independent places",
   "annual_audit_unit": "point x year opportunity; one or two valid bouts retained in n_valid_bouts",
   "detection_index_denominator": "valid point-count bouts",
-  "valid_visit_rule": "samplingImpractical == OK",
+  "valid_visit_rule": "samplingImpractical == OK AND not withdrawn as detections_without_cluster_size",
   "observer_support": "site/species aggregate counts only; raw measuredBy remains only in producer-local evidence",
   "cross_job_evidence": "schema-v2 exact two-table scientific projection; source brd_perpoint has no endDate; public visits.endDate is retained as typed NA; observer identity, personnel, remarks, and source UIDs excluded",
   "species_community_unit": "safe normalized genus + species binomial; parent species and subspecies collapse; ambiguous nomenclature fails closed",
