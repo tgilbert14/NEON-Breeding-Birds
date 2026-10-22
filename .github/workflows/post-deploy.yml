@@ -3,6 +3,10 @@ name: Verify Breeding Birds production
 on:
   push:
     branches: [master]
+  # Weekly re-check (Mondays 14:30 UTC) so a Connect rollback or failed redeploy
+  # between merges turns a scheduled run red instead of going unnoticed.
+  schedule:
+    - cron: "30 14 * * 1"
   workflow_dispatch:
 
 permissions:
