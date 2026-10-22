@@ -45,7 +45,7 @@ body {
 }
 
 /* ---- Fraunces serif on display surfaces only (body stays Rubik) ------------ */
-.app-title, .brand-title, .tab-head-text h4, .card-header, .splash h3,
+.app-title, .brand-title, .tab-head-text h2, .card-header, .splash h3,
 .hs-v, .qc-id, .stat-value, .about-card h4, .home-btn > div:first-of-type {
   font-family: 'Fraunces', Georgia, 'Times New Roman', serif !important;
   font-optical-sizing: auto; letter-spacing: 0;
@@ -191,7 +191,7 @@ body {
 [data-bs-theme="dark"] .card-header:has(.nav-tabs) { background: #2b2318 !important; }
 [data-bs-theme="dark"] .brand-title,
 [data-bs-theme="dark"] .bio-links-title,
-[data-bs-theme="dark"] .tab-head-text h4,
+[data-bs-theme="dark"] .tab-head-text h2,
 [data-bs-theme="dark"] .hr-indiv-lab,
 [data-bs-theme="dark"] .stat-sub { color: var(--pine) !important; }
 [data-bs-theme="dark"] .tab-intro .bi,
@@ -446,6 +446,9 @@ body {
   min-height:44px; display:inline-flex; align-items:center; padding:0 7px;
   font-size:13px; font-weight:600; color:var(--ink); margin:0;
 }
+/* Bootstrap's float + negative margin on .form-check-input would lift the dot
+   above-left of its label; keep it inline, centred beside the text. */
+.tb-temp input[type=radio] { float:none; position:static; flex:0 0 auto; margin:0 5px 0 0; }
 .tb-theme .form-check, .tb-theme .bslib-input-dark-mode { min-height:44px; display:flex; align-items:center; margin:0; }
 .tb-help { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
 @media (max-width:600px) {
@@ -484,6 +487,21 @@ body {
   .hero-title { flex-wrap:wrap; gap:6px 10px; }
   .hero-title .hero-change, .hero-title .hero-report { padding-left:0; border-left:0; }
 }
+@media (max-width:576px) {
+  .hero-title .hero-change, .hero-title .hero-report { display:inline-flex; align-items:center; min-height:44px; }
+}
+/* the site name is the page h1 once a site loads; keep the banner's look */
+.hero-title .hero-title-h { font-size:inherit; font-weight:700; line-height:inherit;
+  color:inherit; font-family:inherit; margin:0; }
+
+/* national picker popup: Explore / About are 44 px block buttons */
+.leaflet-popup-content .pm-pop-btn { display:flex; align-items:center; justify-content:center;
+  width:100%; min-height:44px; margin-top:8px; padding:6px 12px; border-radius:8px;
+  font-weight:700; text-decoration:none; text-align:center; }
+.leaflet-popup-content .pm-pop-explore { background:#c1502e; border:1px solid #c1502e; color:#fff; }
+.leaflet-popup-content .pm-pop-explore:hover, .leaflet-popup-content .pm-pop-explore:focus-visible { background:#a23f22; border-color:#a23f22; color:#fff; }
+.leaflet-popup-content .pm-pop-about { background:#fffdf6; border:1px solid #c9bda4; color:#2b2722; font-weight:600; }
+.leaflet-popup-content .pm-pop-about:hover, .leaflet-popup-content .pm-pop-about:focus-visible { border-color:#2b2722; color:#2b2722; }
 
 /* ---- interaction and loading contract ---------------------------------- */
 .load-overlay[aria-hidden="true"] { display:none !important; }

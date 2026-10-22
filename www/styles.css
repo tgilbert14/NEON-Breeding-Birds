@@ -40,7 +40,7 @@
 /* the navy --pine token used as TEXT is unreadable on dark -> light blue */
 [data-bs-theme="dark"] .brand-title,
 [data-bs-theme="dark"] .bio-links-title,
-[data-bs-theme="dark"] .tab-head-text h4,
+[data-bs-theme="dark"] .tab-head-text h2,
 [data-bs-theme="dark"] .hr-indiv-lab,
 [data-bs-theme="dark"] .stat-sub,
 [data-bs-theme="dark"] .tab-intro .bi,
@@ -320,7 +320,7 @@ body {
 /* ---- tab heads -------------------------------------------------------- */
 .main-tabs-wrap { margin-top: 4px; }
 .tab-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; padding: 14px 4px 6px; }
-.tab-head-text h4 { font-weight: 800; color: var(--pine); margin: 0; font-size: 21px; }
+.tab-head-text h2 { font-weight: 800; color: var(--pine); margin: 0; font-size: 21px; }
 .tab-head-text p { color: var(--muted); font-size: 13.5px; font-weight: 450; margin: 4px 0 0; max-width: 660px; line-height: 1.5; }
 .tab-intro { color: var(--muted); font-size: 12.5px; margin: 10px 4px 4px; display: flex; align-items: center; gap: 6px; }
 .tab-intro .bi { color: var(--pine); }
@@ -930,6 +930,9 @@ table.dataTable tbody tr:active { background: #dfe8f4 !important; }
   .ds-emoji, .podium-card, .dossier-card .glow-badge { animation: none !important; }
   .tag-badge.is-legendary::after, .podium-card.is-legendary::after { animation: none; opacity: 0; }
   .smt-pin.smt-pulse { animation: none !important; }
+  /* the indeterminate loading bar holds still as a static half-tone fill */
+  .load-bar::after { animation: none !important; left: 0; width: 100%; opacity: .5; }
+  .ec, .chart-insight { animation: none !important; }
 }
 
 /* =========================================================================
