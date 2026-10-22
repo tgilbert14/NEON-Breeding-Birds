@@ -171,6 +171,15 @@ jobs:
       - name: Render a bundled site through the Shiny server
         run: Rscript --vanilla scripts/test_server_runtime.R
 
+      - name: Run the synthetic 47-site release chain
+        run: |
+          set -euo pipefail
+          # Producer, evidence sanitizer, raw oracle, derived builders (twice, byte
+          # equal), scratch stamp and bundle oracle on a fixture with missing,
+          # invalid and text clusterSize tokens, in a temporary copy of the tree.
+          bash scripts/test_pipeline_fixture.sh character
+          bash scripts/test_pipeline_fixture.sh double
+
       - name: Upload unvalidated manifest for diagnosis
         if: failure() && steps.manifest.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

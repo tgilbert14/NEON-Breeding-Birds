@@ -225,7 +225,7 @@ Pins that must move together:
 - **Fixtures**: `scripts/test_bird_evidence_privacy.R`,
   `scripts/test_release_stamp.R`, `scripts/test_verify_env_candidate.R`,
   `scripts/test_env_batch_producer_parity.R`, `scripts/test_env_batching.R`.
-- **App**: `global.R` `NEON_RELEASE`, `NEON_DOI` and `APP_RELEASE_MARKER`;
+- **App**: `global.R` `NEON_RELEASE`, `NEON_DOI`, `NEON_DATA_SPAN` and `APP_RELEASE_MARKER`;
   the `ddl-app-ready` marker in `ui.R`; release wording in `server.R`,
   `R/bird_helpers.R` (codebook), `R/site_metadata.R` (cross-site window,
   `BIRD_CROSS_SITE_YEAR_MAX`) and `R/bird_evidence_contract.R`.
