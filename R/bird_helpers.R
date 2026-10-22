@@ -1281,7 +1281,7 @@ bird_qc <- function(obs, sci, points = NULL) {
             "Flock size far above this species' own typical range (judged on the log scale, so ordinary flocks don't flag). Often genuine for gregarious species, noted for review, not presumed wrong.")
     }
   }
-  # 6 — missing distance: only surface when it's a MEANINGFUL share (>=10%). A handful of
+  # 6: missing distance. Only surface when it's a MEANINGFUL share (>=25%, the threshold below). A handful of
   # NA-distance flyovers is routine and not worth a flag (that just cries wolf on every species).
   miss <- which(eligible & d$distance_state != "observed")
   pct <- if (sum(eligible)) round(100 * length(miss) / sum(eligible)) else 0

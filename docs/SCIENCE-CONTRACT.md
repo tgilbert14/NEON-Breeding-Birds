@@ -293,7 +293,10 @@ manifest-contract SHA-256
 `80ac001287046d72983a2e1ee4fd6c5354d75b19b4f1c451d913d7c8d210b9cf`,
 and release ID
 `sha256:28cf09453f25d5d8fc509d414c7549fbefec45f6f89dc611946360944976a3ac`.
-The final manifest covers 121 runtime files and 91 pinned packages.
+The final manifest covers 121 runtime files and 91 pinned packages. These hashes
+record the Pass 7 release of 2026-07-29. Later code and data changes moved the
+payload and release identity; the current values live in `data/release_stamp.json`
+(byte-identical to `docs/release.json`), which CI and the post-deploy smoke verify.
 
 Publisher output `e3ec1cd35cc75891ac6eebd87da307d8266f8ca5`, recovery head
 `ffd0f05d13a716118d1efc63a0abbbfaca7f054a`, and merged production revision
