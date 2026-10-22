@@ -128,11 +128,27 @@
   files or lost inside neonUtilities' typed read still needs one read of the raw
   CSV text, which decides between a source note and the enters_incidence /
   enters_index split.
-- **Next action:** with Tim's approval, seed `automation/breeding-birds-release-2026`
-  at `d81e99f`, re-run the failed publish job, merge `fix/birds-wave2-audit-2026-10`
-  into the published candidate, and open the review PR. The alternative is to
-  commit the validated artifact's bytes onto this PR's branch, as Plant
-  Diversity did. Merge only a green exact head.
+- **Candidate adopted onto PR #8:** commit `5dd7324` copies the validated
+  artifact's 106 files byte-for-byte (57 change: all 47 site bundles, the site,
+  cross-site and search indexes, both receipts, the schema, the demo bundle, the
+  stamp pair and the manifest; the same change the bot's rejected commit had).
+  Tarball sha256 `f640bf7c2470f4046ab2fc2323eba7df18f611217e61fdbf5a6fae9731ab97fe`.
+  Local gates on those bytes: the stamp re-verifies to release instance
+  `sha256:8167a297...` over all 125 payload files (so the download is intact and
+  the later non-payload commits change no payload byte), the exact manifest
+  (121 files), the bundle oracle (26,314 / 66 / 24,490 / 60), the Shiny
+  lifecycles and 137 helper checks pass. PUUM from the candidate bundles: valid
+  counts 39, supported zeros 0, richness 6, Chao2 7.5 (Q1 3, Q2 1, T 39), birds
+  per count 6.56, coverage 0.936; 51 counts carry `detections_without_cluster_size`
+  and 8 otherwise clean rows on them sit in held as `detection_on_unusable_visit`.
+  Rarefied richness at all 47 sites equals the rehearsal; common target 39;
+  temperature Spearman 0.351 (n = 45). The automation review branch was not
+  touched (still `e97e56c`); seeding it is optional now.
+- **Next action:** Tim reviews and merges PR #8 once its exact-head CI is green;
+  Connect then republishes from `master`, and the production smoke must show
+  Pages and Connect serving release instance `sha256:8167a297...`. Then one raw
+  read of PUUM's `clusterSize` text decides the next step (source note, or the
+  enters_incidence / enters_index split that restores the target of 90).
 
 ## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
 
