@@ -95,11 +95,44 @@
   the rehearsal approximated `clusterSizeRaw`; richness, Chao2 and the index at
   PUUM still come from the 39 clean counts; the in-app registry duplicates Small
   Mammal's list by hand.
-- **Next action:** dispatch `Propose immutable NEON breeding-bird refresh` on the
-  exact branch head, confirm the PUUM numbers and the clusterSize summary lines
-  on the published `automation/breeding-birds-release-2026` candidate, and merge
-  only its green exact head. Then record the raw clusterSize finding and choose
-  the parser fix or the enters_incidence / enters_index split.
+- **Refresh run [39691408336](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/39691408336)
+  on `d81e99fb7093d2c31bacf060c81395f67d65ec2e` (UTC):** `probe_token` and
+  `release_watch` passed; `produce_candidate` passed 2026-10-21 23:08:26 to
+  2026-10-22 03:13:48 (pinned `neonUtilities@4.0.2` installed); `validate_candidate`
+  passed 03:13:51 to 03:53:30: the raw oracle reconciled every visit and detection
+  in all 47 bundles, both derived-index rebuilds were byte-identical, the full
+  bundle oracle reported 26,314 valid counts (66 supported zeros) and 24,490
+  supported point-years (60 supported-zero point-years), the common target is 39
+  counts, 137 helper checks and the Shiny lifecycles passed, and the release
+  instance is `sha256:8167a297d2594bcd88b39162b4ebae0470267e330a8bd212e9067f404d10a6ae`
+  (121 runtime files, 91 pinned packages). The producer log reports PUUM at 39
+  valid counts, 0 supported zeros, 26 point-years, 0 zero point-years and 6
+  eligible species, exactly the rehearsal values. Validated artifact
+  `breeding-birds-release-2026-d81e99fb...`: 57,322,420 bytes, digest
+  `sha256:86155d9d8d48ecafc90ad3c4a1dd6dc8e8fb1231fd3a820cdbac632350fbcda7`,
+  expires 2026-10-29 03:53 UTC.
+- **Publish failure:** `publish_candidate` built candidate `238571e` (57 files)
+  but GitHub rejected the push: the `GITHUB_TOKEN` cannot create or update a
+  workflow file without the `workflows` permission, and the candidate's history
+  carries this branch's `refresh-data.yml` change while the remote review branch
+  still held `e97e56c` (the audit's byte-identical October no-op). No branch or
+  production byte changed. The fix that keeps the bot's provenance path is to
+  point the review branch at `d81e99f` first (a lease-protected force push over
+  `e97e56c`), then re-run only the failed publish job, so the bot's push adds the
+  data commit alone. That force push needs Tim's approval and was not made.
+- **clusterSize evidence (producer log, aggregate only):** neonUtilities returns
+  `clusterSize` as an integer column at every site, with NA and never blank or
+  text. PUUM has 1,038 NA in 1,153 rows (90%). Other sites carry NA too (for
+  example BONA 2,103 of 5,848), but there those rows do not withdraw counts. So
+  the app's own parsing loses nothing. Whether PUUM's values are blank in NEON's
+  files or lost inside neonUtilities' typed read still needs one read of the raw
+  CSV text, which decides between a source note and the enters_incidence /
+  enters_index split.
+- **Next action:** with Tim's approval, seed `automation/breeding-birds-release-2026`
+  at `d81e99f`, re-run the failed publish job, merge `fix/birds-wave2-audit-2026-10`
+  into the published candidate, and open the review PR. The alternative is to
+  commit the validated artifact's bytes onto this PR's branch, as Plant
+  Diversity did. Merge only a green exact head.
 
 ## 2026-08-05 · bslib manifest-producer drift hardening (America/Phoenix)
 
