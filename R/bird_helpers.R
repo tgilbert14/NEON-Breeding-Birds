@@ -147,10 +147,14 @@ method_components <- function(x) {
 BIRD_DISTANCE_STATES <- c("observed", "sentinel_not_estimable", "source_missing", "invalid")
 BIRD_POINT_MINUTE_STATES <- c("standard_minute", "incidental_minute_88",
                               "source_missing", "invalid_or_unknown")
+# invalid_cluster_size is no longer produced (a count never causes a hold since
+# the incidence/index split); the runtime still accepts it on older bundles,
+# where such rows stay held and never enter a metric. The release oracles
+# re-derive every hold reason exactly, so new data cannot carry it.
 BIRD_DETECTION_HOLD_REASONS <- c(
   "orphan_detection_no_visit", "detection_on_unusable_visit",
   "incidental_outside_point_count", "missing_point_count_minute",
-  "invalid_point_count_minute", "missing_taxon",
+  "invalid_point_count_minute", "invalid_cluster_size", "missing_taxon",
   "unsafe_species_canonicalization", "missing_or_unknown_detection_method")
 
 bird_valid_cluster_size <- function(x) {

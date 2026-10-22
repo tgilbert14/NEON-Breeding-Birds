@@ -68,11 +68,12 @@ shiny::testServer(app_server, {
             rv$nopp == sum(candidate$opportunity$supported), nrow(rv$board) > 0L)
 
   # Force both a plot and its surrounding UI through their real render paths.
+  prepared_obs <- bird_prepare_obs(candidate$obs)
   distance_support <- aggregate(
-    as.integer(candidate$obs$distance_state == "observed" &
-      is.finite(candidate$obs$observerDistance) & candidate$obs$observerDistance >= 0 &
-      candidate$obs$observerDistance <= 200 & candidate$obs$enters_incidence),
-    list(scientificName = candidate$obs$communityScientificName), sum, na.rm = TRUE)
+    as.integer(prepared_obs$distance_state == "observed" &
+      is.finite(prepared_obs$observerDistance) & prepared_obs$observerDistance >= 0 &
+      prepared_obs$observerDistance <= 200 & prepared_obs$enters_incidence),
+    list(scientificName = prepared_obs$communityScientificName), sum, na.rm = TRUE)
   names(distance_support)[2] <- "n"
   usable <- distance_support$scientificName[distance_support$n >= 8L]
   if (length(usable)) {
