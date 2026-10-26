@@ -64,8 +64,12 @@ excludes(docs, "Generated editorial illustration · not field documentation or m
 excludes(docs, "art-note", "docs/index.html");
 includes(docs, "Public NEON <strong>DP1.10003.001</strong>", "docs/index.html");
 includes(docs, "47 bundled field sites", "docs/index.html");
-includes(docs, "detection index—not population size", "docs/index.html");
-includes(docs, "What the counts can—and cannot—say", "docs/index.html");
+includes(docs, "detection index, not population size", "docs/index.html");
+includes(docs, "What the counts can and cannot say", "docs/index.html");
+includes(docs, "<strong>NEON Explorer Suite</strong> <span>→ NEON Cross-Product Response Atlas</span>", "docs/index.html suite route");
+assert(!/<a\b[^>]*\bclass\s*=\s*["'][^"']*\bdriver-route\b[^>]*\baria-label\s*=/i.test(docs),
+  "docs/index.html: the suite route must take its accessible name from its visible text (no aria-label)");
+includes(docs, "<span>Who’s singing</span> <em>where?</em>", "docs/index.html h1 word spacing");
 includes(docs, "og-image-v2.png", "docs/index.html");
 includes(docs, 'content="1200"', "docs/index.html");
 includes(docs, 'content="630"', "docs/index.html");
@@ -101,6 +105,8 @@ includes(ui, "bird_poster <- function()", "ui.R");
 includes(ui, 'class = "brd-poster"', "ui.R");
 includes(ui, 'aria-label` = "Who’s singing where?"', "ui.R");
 includes(ui, "Follow the birds NEON hears and sees across 47 breeding-season field sites.", "ui.R");
+includes(ui, 'detection index, not population size."', "ui.R poster note");
+includes(ui, '"Whole suite: ", tags$strong("NEON Cross-Product Response Atlas")', "ui.R suite route");
 includes(ui, 'class = "brd-poster-cta", href = "#site-picker-start"', "ui.R");
 includes(ui, "target.focus({preventScroll:true})", "ui.R");
 includes(ui, 'id = "site-picker-start", class = "picker-start", tabindex = "-1"', "ui.R");
@@ -127,6 +133,43 @@ for (const stale of ["46 breeding-season", "46-site", "46 sites", "All 46", "19 
 }
 for (const retired of ["canvas-confetti", "sweetalert2", "fonts.googleapis.com", "fonts.gstatic.com", "cdn.jsdelivr.net", "MASCOT_CRITTER", "splash-guide"]) {
   excludes(ui, retired, "ui.R");
+}
+
+// Settled copy rule: no em dash (U+2014) in visible cover or poster text; an en
+// dash in a number range is fine. Covers the <title>, every meta content
+// attribute, alt/aria-label/title attributes and element text in docs/index.html
+// (style and script bodies and HTML comments excluded), and every string literal
+// inside ui.R's bird_poster() (R comments excluded).
+const EM_DASH = "—";
+function emDashContext(text) {
+  const at = text.indexOf(EM_DASH);
+  return JSON.stringify(text.slice(Math.max(0, at - 40), at + 40));
+}
+const coverMarkup = docs
+  .replace(/<!--[\s\S]*?-->/g, " ")
+  .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+  .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ");
+const coverVisible = [];
+for (const meta of coverMarkup.match(/<meta\b[^>]*>/gi) || []) {
+  const content = meta.match(/\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+  if (content) coverVisible.push(["meta content", content[1] ?? content[2]]);
+}
+for (const attr of coverMarkup.matchAll(/\b(alt|aria-label|title)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
+  coverVisible.push([`${attr[1]} attribute`, attr[2] ?? attr[3]]);
+}
+coverVisible.push(["element text", coverMarkup.replace(/<[^>]*>/g, " ")]);
+for (const [where, text] of coverVisible) {
+  assert(!text.includes(EM_DASH), `docs/index.html: em dash in visible ${where}: ${emDashContext(text)}`);
+}
+const posterStart = ui.indexOf("bird_poster <- function()");
+assert(posterStart >= 0, "ui.R: bird_poster() not found");
+const posterEnd = ui.indexOf("\n}\n", posterStart);
+assert(posterEnd > posterStart, "ui.R: end of bird_poster() not found");
+for (const line of ui.slice(posterStart, posterEnd).split("\n")) {
+  const code = line.replace(/^\s*#.*$/, "");
+  for (const literal of code.match(/"(?:[^"\\]|\\.)*"/g) || []) {
+    assert(!literal.includes(EM_DASH), `ui.R bird_poster(): em dash in visible string ${literal}`);
+  }
 }
 
 // Responsive/focus/loading implementation contracts.

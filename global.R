@@ -53,10 +53,13 @@ add_suite_basemap <- function(map, basemap = "light_all", noWrap = FALSE) {
 
 source("R/site_metadata.R", local = FALSE)
 source("R/bird_helpers.R", local = FALSE)
+source("R/report_pdf.R", local = FALSE)
 
 NEON_DPID <- "DP1.10003.001"   # Breeding landbird point counts
 NEON_RELEASE <- "RELEASE-2026"
 NEON_DOI <- "10.48443/v6hs-mx57"
+# Bird record covered by the pinned release (moves with a release rollover).
+NEON_DATA_SPAN <- "June 2013 to July 2024"
 APP_RELEASE_MARKER <- "breeding-birds-release-2026-v1"
 LIVE_FETCH <- FALSE              # production and local runtime are bundle-only
 
@@ -112,9 +115,9 @@ if (!identical(stamp_chr("release_id"), RELEASE_STAMP_ID)) {
 
 SITE_DIR  <- "data/sites"
 DEMO_PATH <- "data-sample/demo.rds"
-# Demo fallback is the CLBJ oak-savanna bundle; ordinary entry asks the visitor to
+# Demo fallback is the SRER bundle (the suite's default site); ordinary entry asks the visitor to
 # choose any of the 47 release sites, so the demo is only a local resilience path.
-DEMO_META <- list(site = "CLBJ", label = "CLBJ · LBJ National Grassland · demo")
+DEMO_META <- list(site = "SRER", label = "SRER · Santa Rita Experimental Range · demo")
 
 read_bundle <- function(f) {
   if (!file.exists(f)) return(NULL)
@@ -124,8 +127,64 @@ read_bundle <- function(f) {
   if (!identical(out$meta$release, NEON_RELEASE) || !identical(as.integer(out$meta$schema_version), 4L)) return(NULL)
   if (!nrow(out$opportunity)) NULL else out
 }
-load_site_bundle <- function(site) read_bundle(file.path(SITE_DIR, paste0(site, ".rds")))
+# A site code is accepted only when it is a single four-letter code in the
+# release roster. Every path that reaches the file system goes through this
+# check first, so a forged pickSite / site value can never build another path.
+is_release_site_code <- function(site) {
+  is.character(site) && length(site) == 1L && !is.na(site) &&
+    grepl("^[A-Z]{4}$", site) && site %in% neon_sites$site
+}
+load_site_bundle <- function(site) {
+  if (!is_release_site_code(site)) return(NULL)
+  read_bundle(file.path(SITE_DIR, paste0(site, ".rds")))
+}
 load_demo <- function() { b <- load_site_bundle(DEMO_META$site); if (!is.null(b)) b else read_bundle(DEMO_PATH) }
+
+# ---- prepared-site cache (app scope) ---------------------------------------
+# Site bundles are immutable within a release, so the validated preparation of a
+# site (effort checks, held ledger, species board, hero summary) is identical
+# for every visitor. Each successful preparation is kept for the life of the R
+# process, keyed by site code; a failed preparation is never stored.
+bird_empty_board <- function() data.frame(
+  scientificName=character(), vernacular=character(), detections=integer(),
+  detections_without_count=integer(), index_birds=numeric(),
+  n_points=integer(), n_detected_counts=integer(), n_point_years=integer(),
+  n_grids=integer(), mean_cluster=numeric(),
+  method=character(), n_observers=integer(), distance_n_observed=integer(),
+  distance_n_used=integer(), distance_n_outside_truncation=integer(),
+  distance_n_unavailable=integer(), ubiquity=numeric(), n_visits=numeric(), index=numeric(),
+  detection_frequency=numeric(), distance_usable_pct=numeric(), observer_support_complete=logical(),
+  opportunity_complete=logical(), flyover_detections=integer(), flyover_birds=numeric(),
+  total_birds=numeric(), stringsAsFactors=FALSE)
+prepare_site_bundle <- function(b) {
+  nvis <- sum(b$visits$valid_count %in% TRUE)
+  nopp <- sum(b$opportunity$supported %in% TRUE)
+  if (nvis <= 0L || nopp <= 0L) stop("site has no supported survey effort")
+  bird_validate_effort(b$opportunity, b$visits, b$obs)
+  held <- bird_prepare_held(b$held)
+  board <- species_board(b$obs, b$points, nvis, b$opportunity, b$visits,
+                         b$meta$observer_support)
+  if (is.null(board)) board <- bird_empty_board()
+  if (nrow(board)) {
+    missing_name <- is.na(board$vernacular) | !nzchar(trimws(board$vernacular))
+    board$vernacular[missing_name] <- board$scientificName[missing_name]
+    missing_method <- is.na(board$method) | !nzchar(trimws(board$method))
+    board$method[missing_method] <- "unknown"
+  }
+  sb <- site_birds(b$obs, b$points, nvis, b$opportunity, b$visits,
+                   b$meta$observer_support, board = board)
+  list(nvis=nvis, nopp=nopp, board=board, held=held, sb=sb)
+}
+SITE_PREP_CACHE <- new.env(parent = emptyenv())
+site_prep_get <- function(site) {
+  if (!is_release_site_code(site)) return(NULL)
+  SITE_PREP_CACHE[[site]]
+}
+site_prep_put <- function(site, bundle, prepared) {
+  if (is_release_site_code(site))
+    assign(site, list(bundle = bundle, prepared = prepared), envir = SITE_PREP_CACHE)
+  invisible(NULL)
+}
 
 SITE_INDEX <- tryCatch(readRDS("data/site_index.rds"), error = function(e) NULL)
 BUNDLED <- if (!is.null(SITE_INDEX)) SITE_INDEX$site else character(0)
@@ -217,7 +276,15 @@ asset_url <- function(path) { f <- file.path("www", path)
   v <- if (file.exists(f)) as.integer(as.numeric(file.mtime(f))) else 0L; sprintf("%s?v=%s", path, v) }
 spin <- function(x, img = NULL) shinycssloaders::withSpinner(x, color = DDL$sky, type = 6)
 info_pop <- function(title, ..., placement = "auto")
-  bslib::popover(tags$span(class = "info-dot", bsicons::bs_icon("info-circle")), ..., title = title, placement = placement)
+  bslib::popover(tags$span(class = "info-dot", `aria-label` = paste("About:", title),
+                           bsicons::bs_icon("info-circle")), ..., title = title, placement = placement)
+# Data-derived text placed inside a JavaScript string in an onclick attribute:
+# drop quote, backslash and line-break characters first (an entity would be
+# decoded back before the script runs). Use js_attr_text() inside raw HTML
+# strings; tag attributes are escaped by htmltools, so use js_str_text() there.
+js_str_text <- function(x) gsub("['\"\\\\\r\n<>]", "", as.character(x))
+js_attr_text <- function(x) htmltools::htmlEscape(js_str_text(x), attribute = TRUE)
+esc_html <- function(x) htmltools::htmlEscape(as.character(x))
 insight_banner <- function(icon, ..., tone = "navy")
   div(class = paste("chart-insight", paste0("ci-", tone)), bsicons::bs_icon(icon), div(class = "ci-text", ...))
 glow_badge <- function(label, color = "#c1502e", glow = color)
@@ -225,15 +292,21 @@ glow_badge <- function(label, color = "#c1502e", glow = color)
 card_head <- function(icon, title, ...)
   bslib::card_header(class = "with-info", bsicons::bs_icon(icon), tags$span(class = "ch-title", " ", title), ...)
 fmt_int <- function(x) format(round(as.numeric(x)), big.mark = ",", trim = TRUE)
+# A detection index can be unavailable (eligible detections without a usable
+# clusterSize, as at PUUM); show "n/a", never a zero or the literal "NA".
+fmt_index <- function(x, digits = 2) {
+  x <- suppressWarnings(as.numeric(x))
+  ifelse(is.finite(x), formatC(x, format = "f", digits = digits), "n/a")
+}
 
 # temperature display — Fahrenheit (default, US audience) or Celsius. Stored data
 # is always °C; these convert for display only. (Spearman/rank stats are unit-free.)
 temp_val  <- function(c, unit = "F") if (identical(unit, "C")) c else c * 9 / 5 + 32
 temp_unit_lab <- function(unit = "F") if (identical(unit, "C")) "°C" else "°F"
-temp_disp <- function(c, unit = "F") {                       # vectorised; NA -> "—"
+temp_disp <- function(c, unit = "F") {                       # vectorised; NA -> "n/a"
   c <- suppressWarnings(as.numeric(c))
   s <- if (identical(unit, "C")) sprintf("%.1f°C", c) else sprintf("%.0f°F", c * 9 / 5 + 32)
-  s[is.na(c)] <- "—"; s
+  s[is.na(c)] <- "n/a"; s
 }
 
 # ---- biome classification (cross-site gradient color / legend) --------------

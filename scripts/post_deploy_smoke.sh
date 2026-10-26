@@ -77,7 +77,24 @@ while (( SECONDS < deadline )); do
   fi
 
   if [[ "$pages_ready" == true && "$pages_release_ready" == true && "$app_ready" == true ]]; then
-    echo "OK: Pages and Connect serve exact validated release instance $expected_release_id."
+    # The exact release is live, so page structure failures are real, not lag.
+    structure_failures=()
+    title_pattern='<title[^>]*>[^<]*[^<[:space:]][^<]*</title>'
+    if ! grep -Eiq "$title_pattern" <<<"$app_body"; then
+      structure_failures+=("Connect app page has no non-empty <title> element.")
+    fi
+    if ! grep -Eiq '<html[^>]*[[:space:]]lang="en"' <<<"$app_body"; then
+      structure_failures+=('Connect app page has no <html> tag with lang="en".')
+    fi
+    if ! grep -Eiq "$title_pattern" <<<"$pages_body"; then
+      structure_failures+=("Pages cover has no non-empty <title> element.")
+    fi
+    if (( ${#structure_failures[@]} )); then
+      printf 'FAIL: %s\n' "${structure_failures[@]}" >&2
+      echo "Release instance $expected_release_id is live, but the page structure checks above failed." >&2
+      exit 1
+    fi
+    echo "OK: Pages and Connect serve exact validated release instance $expected_release_id, with <title> on both and lang=\"en\" on the app."
     exit 0
   fi
   echo "Attempt $attempt: waiting for exact Pages and Connect revision (pages=$pages_ready pages_release=$pages_release_ready app=$app_ready)..."

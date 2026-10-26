@@ -34,6 +34,18 @@ stopifnot(!is.null(SITE_CLIMATE), nrow(SITE_CLIMATE) == 47L,
           nrow(temperature_frame) == 45L,
           !any(c("BARR", "TOOL") %in% as.character(temperature_frame$site)))
 
+# Audit item 21: the page must carry a real <title> and lang = "en".
+# bslib's page functions silently ignore unknown arguments such as
+# window_title, so render the document and check the bytes a browser sees.
+# Shiny takes <html lang> from the page object's "lang" attribute; save_html()
+# always writes lang="en" itself, so the attribute is what is checked.
+page_html_path <- tempfile(fileext = ".html")
+htmltools::save_html(ui, page_html_path)
+page_html <- paste(readLines(page_html_path, warn = FALSE), collapse = "\n")
+stopifnot(grepl("<title>NEON Breeding Bird Explorer</title>", page_html, fixed = TRUE),
+          identical(attr(ui, "lang"), "en"),
+          !grepl("window_title", page_html, fixed = TRUE))
+
 candidate <- NULL
 for (site in as.character(SITE_INDEX$site)) {
   bundle <- load_site_bundle(site)
@@ -56,11 +68,12 @@ shiny::testServer(app_server, {
             rv$nopp == sum(candidate$opportunity$supported), nrow(rv$board) > 0L)
 
   # Force both a plot and its surrounding UI through their real render paths.
+  prepared_obs <- bird_prepare_obs(candidate$obs)
   distance_support <- aggregate(
-    as.integer(candidate$obs$distance_state == "observed" &
-      is.finite(candidate$obs$observerDistance) & candidate$obs$observerDistance >= 0 &
-      candidate$obs$observerDistance <= 200 & candidate$obs$enters_breeding_metrics),
-    list(scientificName = candidate$obs$communityScientificName), sum, na.rm = TRUE)
+    as.integer(prepared_obs$distance_state == "observed" &
+      is.finite(prepared_obs$observerDistance) & prepared_obs$observerDistance >= 0 &
+      prepared_obs$observerDistance <= 200 & prepared_obs$enters_incidence),
+    list(scientificName = prepared_obs$communityScientificName), sum, na.rm = TRUE)
   names(distance_support)[2] <- "n"
   usable <- distance_support$scientificName[distance_support$n >= 8L]
   if (length(usable)) {

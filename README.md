@@ -62,10 +62,13 @@ accumulation, annual series, and the Bird Board.
 
 Environmental overlays are context only. The 2017–2024 bird window selects the
 calendar months used for breeding-temperature context; the temperature values are
-coverage-qualified RELEASE-2026 month climatologies. Under that release,
-temperature and phenology support all 47 bird sites; precipitation has a source
-stream at 20 of 47, is summarized only from complete calendar years, and is never
-imputed.
+coverage-qualified RELEASE-2026 month climatologies. Under that release, the
+temperature and phenology source streams exist at all 47 bird sites, but a usable
+value exists at 45 of 47 for each: breeding-season temperature is unavailable at
+BARR and TOOL (one of two realized count months has coverage-qualified support),
+and peak green-up is unavailable at DCFS and KONA (too few green-up months).
+Precipitation has a source stream at 20 of 47 and a complete-calendar-year value
+at 6; it is never imputed.
 
 ## Bundle contract
 

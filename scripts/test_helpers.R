@@ -75,7 +75,7 @@ obs <- data.frame(
   clusterSize = c(rep(1, 10), 5, 20, 2, 1, 1, 1, 1),
   matched_visit = TRUE,
   valid_count = TRUE,
-  enters_breeding_metrics = c(rep(TRUE, 10), FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE),
+  enters_incidence = c(rep(TRUE, 10), FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, TRUE),
   hold_reason = NA_character_,
   stringsAsFactors = FALSE)
 
@@ -97,7 +97,8 @@ add_visit_summaries <- function(ledger, detections) {
       out$flyover_birds[idx] <<- vapply(groups, function(i) sum(rows$clusterSize[i]), numeric(1))
     } else {
       out$eligible_detection_rows[idx] <<- vapply(groups, length, integer(1))
-      out$eligible_birds[idx] <<- vapply(groups, function(i) sum(rows$clusterSize[i]), numeric(1))
+      out$eligible_birds[idx] <<- vapply(groups,
+        function(i) sum(rows$clusterSize[i][rows$enters_index[i] %in% TRUE]), numeric(1))
       out$eligible_species[idx] <<- vapply(groups,
         function(i) length(unique(rows$communityScientificName[i])), integer(1))
     }
@@ -158,7 +159,7 @@ expect_error(distance_audit("999", "observed"), "disagree", "distance raw/state 
 protocol_rows <- obs[rep(1L, 3L), , drop = FALSE]
 protocol_rows$eventID <- paste0("protocol-event-", seq_len(nrow(protocol_rows)))
 protocol_rows$pointCountMinute <- c("88", NA, "unknown")
-protocol_rows$enters_breeding_metrics <- FALSE
+protocol_rows$enters_incidence <- FALSE
 protocol_rows$hold_reason <- c("incidental_outside_point_count", "missing_point_count_minute",
                                "invalid_point_count_minute")
 protocol_prepared <- bird_prepare_obs(protocol_rows)
@@ -182,12 +183,12 @@ obs_with_protocol_holds <- rbind(obs, protocol_rows)
 unknown_method_row <- obs[1, , drop = FALSE]
 unknown_method_row$eventID <- "unknown-method-event"
 unknown_method_row$detectionMethod <- NA_character_
-unknown_method_row$enters_breeding_metrics <- FALSE
+unknown_method_row$enters_incidence <- FALSE
 unknown_method_row$hold_reason <- "missing_or_unknown_detection_method"
 unknown_method_prepared <- bird_prepare_obs(unknown_method_row)
 check(unknown_method_prepared$method_unknown &&
       unknown_method_prepared$detection_method_state == "missing_or_unknown" &&
-      !unknown_method_prepared$enters_breeding_metrics &&
+      !unknown_method_prepared$enters_incidence &&
       !nrow(eligible_breeding_detections(unknown_method_row)),
       "missing detectionMethod fails closed with an explicit audit state")
 unknown_literal <- unknown_method_row
@@ -200,11 +201,12 @@ check(all(eligible_breeding_detections(obs)$detectionMethod != "unknown"),
 fractional_cluster_row <- obs[1, , drop = FALSE]
 fractional_cluster_row$eventID <- "fractional-cluster-event"
 fractional_cluster_row$clusterSize <- 1.5
-fractional_cluster_row$enters_breeding_metrics <- FALSE
-fractional_cluster_row$hold_reason <- "invalid_cluster_size"
-check(!nrow(eligible_breeding_detections(fractional_cluster_row)) &&
-      !bird_prepare_obs(fractional_cluster_row)$enters_breeding_metrics,
-      "fractional clusterSize fails closed because bird counts must be integer-valued")
+fractional_cluster_row$enters_incidence <- TRUE
+fractional_cluster_row$hold_reason <- NA_character_
+fractional_prepared <- bird_prepare_obs(fractional_cluster_row)
+check(nrow(eligible_breeding_detections(fractional_cluster_row)) == 1L &&
+      fractional_prepared$enters_incidence && !fractional_prepared$enters_index,
+      "a fractional clusterSize keeps the detection in incidence but out of the integer-count index")
 
 # Visit/opportunity validation, including normalized alias support and failures.
 opp <- bird_validate_opportunity(opportunity, obs)
@@ -383,7 +385,7 @@ window_obs$vernacularName <- window_obs$scientificName
 window_obs$taxonRank <- "species"
 window_obs$is_species <- TRUE
 window_obs$clusterSize <- 1L
-window_obs$enters_breeding_metrics <- TRUE
+window_obs$enters_incidence <- TRUE
 window_visits <- data.frame(
   survey_id = window_obs$survey_id, pointkey = window_obs$pointkey,
   year = window_obs$year, bout = "1", valid_count = TRUE,
@@ -412,7 +414,7 @@ canonical_obs$is_species <- TRUE
 canonical_obs$detectionMethod <- c("singing", "calling", "visual", "singing")
 canonical_obs$clusterSize <- 1
 canonical_obs$pointCountMinute <- 1:4
-canonical_obs$enters_breeding_metrics <- TRUE
+canonical_obs$enters_incidence <- TRUE
 canonical_obs$hold_reason <- NA_character_
 canonical_prepared <- bird_prepare_obs(canonical_obs)
 check(identical(canonical_prepared$communityScientificName,
@@ -501,7 +503,7 @@ check(!"vernacular" %in% names(canonical_qc$sets),
 
 unsafe_obs <- canonical_obs[1, , drop = FALSE]
 unsafe_obs$scientificName <- "Alpha avis (Linnaeus)"
-unsafe_obs$enters_breeding_metrics <- FALSE
+unsafe_obs$enters_incidence <- FALSE
 unsafe_obs$is_species <- FALSE
 unsafe_prepared <- bird_prepare_obs(unsafe_obs)
 check(!unsafe_prepared$is_species && is.na(unsafe_prepared$communityScientificName) &&
@@ -585,19 +587,18 @@ check("missing" %in% names(gamma_qc$sets) && !"methodmissing" %in% names(gamma_q
       "QC keeps distance provenance while unknown methods fail before metrics")
 
 # Every emitted column is documented and every keep-vector column is generated.
-all_held_rows <- rbind(protocol_rows, unknown_method_row, fractional_cluster_row)
+all_held_rows <- rbind(protocol_rows, unknown_method_row)
 detail <- species_detection_export(obs, all_held_rows, "Alpha avis")
 check(!length(setdiff(SPCSV_KEEP, names(detail))), "species export generates every declared column")
 held_detail <- detail[!is.na(detail$hold_reason), , drop = FALSE]
-check(nrow(held_detail) == 5L &&
+check(nrow(held_detail) == 4L &&
       setequal(held_detail$hold_reason,
                c("incidental_outside_point_count", "missing_point_count_minute",
-                 "invalid_point_count_minute", "missing_or_unknown_detection_method",
-                 "invalid_cluster_size")) &&
-      !any(held_detail$enters_breeding_metrics),
+                 "invalid_point_count_minute", "missing_or_unknown_detection_method")) &&
+      !any(held_detail$enters_incidence),
       "species export retains protocol/method held rows and explicit reasons")
 held_only_detail <- species_detection_export(obs[0, , drop = FALSE], protocol_rows, "Alpha avis")
-check(nrow(held_only_detail) == 3L && all(!held_only_detail$enters_breeding_metrics),
+check(nrow(held_only_detail) == 3L && all(!held_only_detail$enters_incidence),
       "species export supports a held-only detection ledger without inventing metrics")
 bad_held <- protocol_rows; bad_held$hold_reason[1] <- "mystery"
 expect_error(bird_prepare_held(bad_held), "unrecognized", "unknown held reason fails closed")
@@ -625,10 +626,261 @@ check(identical(names(site_audit), SITE_AUDIT_KEEP) &&
 check(any(site_audit$reportedScientificName == "Flyus only" & site_audit$is_flyover) &&
       any(site_audit$reportedScientificName == "Corvus sp." &
             site_audit$community_unit_state == "not_species_level") &&
-      sum(!is.na(site_audit$hold_reason)) == 5L &&
+      sum(!is.na(site_audit$hold_reason)) == 4L &&
       any(site_audit$hold_reason == "missing_or_unknown_detection_method") &&
-      any(site_audit$hold_reason == "invalid_cluster_size"),
-      "site-wide audit reaches flyover-only, coarse-only, protocol-, method-, and cluster-held detections")
+      !any(site_audit$hold_reason %in% "invalid_cluster_size"),
+      "site-wide audit reaches flyover-only, coarse-only, protocol- and method-held detections; no row is held for its count")
+# A held count names why it is not a valid six-minute count. Since the
+# incidence/index split (audit item 16) a missing clusterSize never withdraws a
+# count, so the retired withdrawal reason must fail closed.
+held_count_visits <- data.frame(
+  survey_id = c("h-1", "h-2"), pointkey = c("PUUM_001_21", "PUUM_001_22"), year = 2021L,
+  bout = "1", samplingImpractical = c("OK", "high wind"), valid_count = c(TRUE, FALSE),
+  count_hold_reason = c(NA, "sampling_impractical"),
+  eligible_detection_rows = c(1L, 0L), eligible_birds = c(0, 0),
+  eligible_species = c(1L, 0L), flyover_rows = 0L, flyover_birds = 0,
+  support_state = c("supported", "held"), outcome = c("positive", "unavailable"),
+  stringsAsFactors = FALSE)
+validated_held_counts <- bird_validate_visits(held_count_visits)
+check(identical(validated_held_counts$support_state, c("supported", "held")),
+      "an impractical count is held and named; a valid count carries no hold reason")
+withdraw_one <- function(d, reason) {
+  d$valid_count[1] <- FALSE; d$support_state[1] <- "held"; d$outcome[1] <- "unavailable"
+  d$eligible_detection_rows[1] <- 0L; d$eligible_species[1] <- 0L; d$count_hold_reason[1] <- reason
+  d
+}
+expect_error(bird_validate_visits(withdraw_one(held_count_visits, "detections_without_cluster_size")),
+             "unrecognized count_hold_reason",
+             "the retired cluster withdrawal cannot reappear")
+expect_error(bird_validate_visits(withdraw_one(held_count_visits, "sampling_impractical")),
+             "disagrees with samplingImpractical",
+             "a protocol-OK count cannot be mislabelled as sampling-impractical")
+relabelled <- held_count_visits; relabelled$count_hold_reason[1] <- "sampling_impractical"
+expect_error(bird_validate_visits(relabelled), "count_hold_reason disagrees with valid_count",
+             "a valid count cannot carry a hold reason")
+
+# Incidence/index split (audit item 16): a detection without a usable count
+# still counts toward incidence, but every birds-per-count figure in its scope
+# is NA, never zero.
+split_visits <- data.frame(
+  survey_id = c("s-1", "s-2", "s-3"),
+  pointkey = c("SPLT_001_21", "SPLT_001_22", "SPLT_001_23"),
+  year = 2021L, bout = "1", valid_count = TRUE, stringsAsFactors = FALSE)
+split_obs_template <- data.frame(
+  survey_id = c("s-1", "s-2", "s-2", "s-3"),
+  pointkey = c("SPLT_001_21", "SPLT_001_22", "SPLT_001_22", "SPLT_001_23"),
+  plotID = "SPLT_001", year = 2021L, bout = "1",
+  scientificName = c("Alpha avis", "Alpha avis", "Beta avis", "Beta avis"),
+  vernacularName = c("Alpha bird", "Alpha bird", "Beta bird", "Beta bird"),
+  taxonRank = "species", clusterSize = c(NA, 2, 3, 1), detectionMethod = "singing",
+  pointCountMinute = "2", observerDistance = "30", stringsAsFactors = FALSE)
+split_obs <- split_obs_template
+split_visits <- add_visit_summaries(split_visits, split_obs)
+check(identical(split_visits$outcome, rep("positive", 3L)) &&
+      identical(split_visits$eligible_birds, c(0, 5, 1)),
+      "a count whose only detection lacks a count is positive, with zero counted birds recorded")
+split_prepared <- bird_prepare_obs(split_obs)
+check(identical(split_prepared$enters_incidence, rep(TRUE, 4L)) &&
+      identical(split_prepared$enters_index, c(FALSE, TRUE, TRUE, TRUE)),
+      "a detection without a count enters incidence but not the detection index")
+split_inc <- bird_incidence_support(split_obs, split_visits)
+check(split_inc$T == 3L && setequal(split_inc$species, c("Alpha avis", "Beta avis")) &&
+      sum(split_inc$Y) == 4L,
+      "incidence, and so every count is positive, uses the detection without a count")
+split_board <- species_board(split_obs, nvis = 3, visits = split_visits)
+split_alpha <- split_board[split_board$scientificName == "Alpha avis", , drop = FALSE]
+split_beta <- split_board[split_board$scientificName == "Beta avis", , drop = FALSE]
+check(nrow(split_board) == 2L && split_alpha$detections == 2L &&
+      split_alpha$detections_without_count == 1L && is.na(split_alpha$index) &&
+      is.na(split_alpha$index_birds) && is.na(split_alpha$total_birds) &&
+      is.na(split_alpha$mean_cluster) && split_alpha$detection_frequency > 0,
+      "a species with a detection lacking a count keeps incidence but its bird figures are NA")
+check(split_beta$detections_without_count == 0L &&
+      isTRUE(all.equal(split_beta$index, round(4 / 3, 3))),
+      "a species whose detections all carry counts keeps its detection index")
+split_site <- site_birds(split_obs, nvis = 3, visits = split_visits)
+check(split_site$n_species == 2L && is.na(split_site$birds_per_count) &&
+      split_site$n_detections_without_count == 1L && is.na(split_site$top),
+      "the site index is NA with the number of detections lacking a count stated")
+split_year <- detection_by_year(split_obs, "Alpha avis")
+check(nrow(split_year) == 1L && split_year$detections == 2L && is.na(split_year$birds),
+      "a species-year with a detection lacking a count reports NA birds")
+split_grid <- grid_species(split_obs, "SPLT_001")
+check(is.na(split_grid$birds[split_grid$scientificName == "Alpha avis"]) &&
+      split_grid$birds[split_grid$scientificName == "Beta avis"] == 4,
+      "grid bird totals are NA only for the species with a missing count")
+split_opportunity <- data.frame(
+  pointkey = split_visits$pointkey, year = 2021L, n_valid_bouts = 1L, n_held_bouts = 0L,
+  n_bouts_recorded = 1L, supported = TRUE, outcome = "positive", stringsAsFactors = FALSE)
+split_annual <- annual_bird_summary(split_obs, split_opportunity, split_visits)
+check(nrow(split_annual) == 1L && is.na(split_annual$eligible_birds) &&
+      is.na(split_annual$birds_per_count) && split_annual$eligible_species == 2L &&
+      split_annual$eligible_detection_rows == 4L && split_annual$outcome == "positive",
+      "annual birds are NA when a detection lacks a count, while incidence still counts it")
+split_beta_year <- detection_by_year(split_obs, "Beta avis", split_opportunity)
+split_alpha_year <- detection_by_year(split_obs, "Alpha avis", split_opportunity)
+check(split_beta_year$birds == 4 && isTRUE(all.equal(split_beta_year$birds_per_count, 4 / 3)) &&
+      is.na(split_alpha_year$birds_per_count) && split_alpha_year$detected,
+      "species-year birds per count is NA only for the species with a missing count")
+split_points <- data.frame(pointkey = split_visits$pointkey, plotID = "SPLT_001",
+                           n_visits = 1L, stringsAsFactors = FALSE)
+split_point_summary <- point_summary(split_obs, split_points, split_opportunity)
+missing_point <- split_point_summary[split_point_summary$pointkey == "SPLT_001_21", ]
+counted_point <- split_point_summary[split_point_summary$pointkey == "SPLT_001_23", ]
+check(is.na(missing_point$birds) && is.na(missing_point$per_visit) &&
+      missing_point$richness == 1L && counted_point$birds == 1,
+      "a point whose only detection lacks a count reports NA birds, not zero")
+qc_split <- split_obs
+qc_split$observerDistance[1] <- "0"
+qc_split_flags <- bird_qc(qc_split, "Alpha avis")
+qc_split_keys <- vapply(qc_split_flags$flags, function(f) f$key, character(1))
+check("zero" %in% qc_split_keys && any(is.na(qc_split_flags$sets$zero$clusterSize)),
+      "distance QC still reviews a detection that lacks a count")
+
+check(identical(bird_birds_or_na(c(1, 2), c(TRUE, TRUE)), 3) &&
+      is.na(bird_birds_or_na(c(NA, 2), c(FALSE, TRUE))) &&
+      identical(bird_birds_or_na(numeric(), logical()), 0),
+      "bird totals are NA whenever a count in scope is missing")
+
+# Cluster-size states (wren's ruling, 2026-10-21): a blank count on a bird
+# record is read as one bird only in a listed site-year with the recording
+# signature; invalid present values are never read as one.
+cs_state <- bird_cluster_size_state(
+  raw_token = c("3", " 4 ", "2.0", "0", "-1", "1.5", "abc", NA, "", NA, NA),
+  names_bird = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE),
+  site = c(rep("PUUM", 9), "PUUM", "SRER"),
+  year = c(rep(2021L, 9), 2019L, 2021L))
+check(identical(cs_state, c("recorded", "recorded", "recorded", "invalid", "invalid", "invalid",
+                            "invalid", "blank_no_bird", "blank_read_as_one",
+                            "blank_unresolved", "blank_unresolved")),
+      "cluster-size states separate recorded, invalid, no-bird, read-as-one and unresolved")
+check(identical(bird_cluster_size_used(c("3", "", "0", NA), c("recorded", "blank_read_as_one", "invalid", "blank_unresolved")),
+                c(3, 1, NA, NA)),
+      "the used count is the recorded value, one for a read blank, and NA otherwise")
+puum_obs <- split_obs_template
+puum_obs$site <- "PUUM"; puum_obs$pointkey <- sub("SPLT", "PUUM", puum_obs$pointkey)
+puum_obs$plotID <- "PUUM_001"
+puum_prepared <- bird_prepare_obs(puum_obs)
+check(puum_prepared$cluster_size_state[1] == "blank_read_as_one" && puum_prepared$clusterSize[1] == 1 &&
+      all(puum_prepared$enters_index),
+      "in a listed PUUM year a blank bird count is read as one and enters the index")
+puum_tampered <- puum_prepared; puum_tampered$cluster_size_state[1] <- "recorded"
+expect_error(bird_prepare_obs(puum_tampered), "cluster_size_state does not re-derive",
+             "a forged cluster-size state fails closed")
+puum_visits <- data.frame(survey_id = c("s-1", "s-2", "s-3"),
+  pointkey = c("PUUM_001_21", "PUUM_001_22", "PUUM_001_23"), year = 2021L, bout = "1",
+  valid_count = TRUE, stringsAsFactors = FALSE)
+puum_visits <- add_visit_summaries(puum_visits, puum_obs)
+puum_site <- site_birds(puum_obs, nvis = 3, visits = puum_visits)
+check(puum_site$n_detections_count_read_as_one == 1L && puum_site$n_detections_without_count == 0L &&
+      isTRUE(all.equal(puum_site$birds_per_count, round(7 / 3, 2))) &&
+      identical(puum_site$read_as_one_years, 2021L) && puum_site$index_birds == 7,
+      "a read-as-one count enters the PUUM index and is stated beside it")
+puum_board <- species_board(puum_obs, nvis = 3, visits = puum_visits)
+check(puum_board$detections_count_read_as_one[puum_board$scientificName == "Alpha avis"] == 1L &&
+      puum_board$detections_count_read_as_one[puum_board$scientificName == "Beta avis"] == 0L,
+      "the Board states each species' detections read as one")
+check(grepl("(1 of 7 birds)", bird_cluster_read_caveat("PUUM", c(2018L, 2021L, 2024L), 1L, 7), fixed = TRUE) &&
+      grepl("2018, 2021 and 2024", bird_cluster_read_caveat("PUUM", c(2024L, 2018L, 2021L), 881L, 1137), fixed = TRUE) &&
+      grepl("881 of 1,137 birds", bird_cluster_read_caveat("PUUM", 2021L, 881L, 1137), fixed = TRUE) &&
+      is.null(bird_cluster_read_caveat("SRER", integer(), 0L, 10)),
+      "the read-as-one caveat states years and the share of birds, and only where it applies")
+na_caveat <- bird_cluster_read_caveat("PUUM", c(2018L, 2021L), 4L, NA_real_)
+check(!grepl("\\bNA\\b", na_caveat) && grepl("(4 birds read this way)", na_caveat, fixed = TRUE),
+      "the read-as-one caveat never prints NA when other detections leave the total unavailable")
+
+# Accumulation verdict (wren's ruling): Q1/T bands and reachability.
+check(bird_accumulation_verdict(25, 100)$band == "still rising" && bird_accumulation_verdict(25, 100)$per_n == 4L &&
+      bird_accumulation_verdict(4, 100)$band == "still rising" &&
+      bird_accumulation_verdict(1, 100)$band == "levelling off" &&
+      bird_accumulation_verdict(1, 200)$band == "nearly flat" &&
+      bird_accumulation_verdict(0, 90)$band == "flat" &&
+      grepl("flat: every detected species", bird_accumulation_verdict(0, 90)$text, fixed = TRUE),
+      "accumulation verdict bands are reachable and match the rule")
+check(grepl("about 2.5 species per valid count", bird_accumulation_verdict(5, 2)$text, fixed = TRUE) &&
+      !grepl("per 0 valid", bird_accumulation_verdict(5, 2)$text, fixed = TRUE),
+      "more singletons than counts reads as species per count, never one species per 0 counts")
+
+# Spearman interval and exact permutation p (wren's ruling).
+ci45 <- bird_spearman_ci(0.351, 45)
+check(isTRUE(all.equal(round(ci45, 2), c(0.05, 0.59))) && all(is.na(bird_spearman_ci(0.5, 9))),
+      "Bonett-Wright interval matches the ruling and is withheld below n = 10")
+check(isTRUE(all.equal(bird_spearman_exact_p(1:7, 1:7), 2 / factorial(7))) &&
+      isTRUE(all.equal(bird_spearman_exact_p(1:6, c(2, 1, 4, 3, 6, 5)),
+                       suppressWarnings(stats::cor.test(1:6, c(2, 1, 4, 3, 6, 5), method = "spearman", exact = TRUE)$p.value))) &&
+      is.na(bird_spearman_exact_p(1:10, 1:10)),
+      "exact permutation p matches enumeration and R's exact test, and is limited to n <= 9")
+perm9 <- bird_permutation_table(9L)
+x9 <- c(3.1, 0.4, 2.2, 5.9, 4.4, 1.7, 8.0, 6.3, 7.5); y9 <- c(2, 1, 5, 4, 3, 7, 9, 6, 8)
+check(nrow(perm9) == factorial(9) && !anyDuplicated(perm9) &&
+      isTRUE(all.equal(bird_spearman_exact_p(x9, y9),
+                       suppressWarnings(stats::cor.test(x9, y9, method = "spearman", exact = TRUE)$p.value))),
+      "the cached permutation table holds every ordering at n = 9 and the exact p still matches R")
+
+# Chao2 stability gate (wren's ruling): extrapolation and upper-bound gates.
+gate_extrap <- chao2_from_incidence(c(rep(1L, 20), rep(2L, 3), rep(5L, 10)), 100)
+check(gate_extrap$unstable && grepl("more than half", gate_extrap$suppressed_reason, fixed = TRUE),
+      "a Chao2 estimate that adds more than half the observed richness does not lead")
+gate_ok <- chao2_from_incidence(c(rep(1L, 2), rep(2L, 5), rep(8L, 30)), 100)
+check(!gate_ok$unstable && is.na(gate_ok$suppressed_reason),
+      "a well-supported Chao2 estimate still leads")
+
+# Ubiquity after the 2018 grid cut (wren's ruling): points last counted before
+# 2018 leave the denominator.
+ubq_visits <- data.frame(survey_id = c("u-1", "u-2", "u-3"),
+  pointkey = c("UBQ_001_21", "UBQ_001_22", "UBQ_001_23"), year = c(2017L, 2019L, 2019L),
+  bout = "1", valid_count = TRUE, stringsAsFactors = FALSE)
+ubq_obs <- data.frame(survey_id = c("u-1", "u-2"), pointkey = c("UBQ_001_21", "UBQ_001_22"),
+  plotID = "UBQ_001", year = c(2017L, 2019L), bout = "1", scientificName = c("Alpha avis", "Beta avis"),
+  vernacularName = c("Alpha bird", "Beta bird"), taxonRank = "species", clusterSize = 1,
+  detectionMethod = "singing", pointCountMinute = "2", observerDistance = "30", stringsAsFactors = FALSE)
+ubq_visits <- add_visit_summaries(ubq_visits, ubq_obs)
+ubq_board <- species_board(ubq_obs, nvis = 3, visits = ubq_visits)
+check(ubq_board$ubiquity[ubq_board$scientificName == "Alpha avis"] == 0 &&
+      ubq_board$ubiquity[ubq_board$scientificName == "Beta avis"] == 50 &&
+      all(ubq_board$ubiquity_points == 2L),
+      "ubiquity counts only points sampled since 2018")
+ubq_notes <- bird_site_design_notes("DELA", ubq_visits)
+check(any(grepl("1 point here was last counted before 2018", ubq_notes, fixed = TRUE)) &&
+      any(grepl("closed this site at the end of 2025", ubq_notes, fixed = TRUE)) &&
+      !any(grepl("before 2018", bird_site_design_notes("SRER", ubq_visits[2:3, ]), fixed = TRUE)),
+      "site design notes report the grid cut only where points were dropped")
+
+# Audit 2026-10-18: both robust-scale QC flags were unreachable because MAD = 0
+# on integer-clumped data. These fixtures mirror the measured shapes so neither
+# flag can silently die again.
+qc_row <- function(n, pointkey, cluster, name = "Flockus gregarius") data.frame(
+  survey_id = paste0("qc-", pointkey, "-", seq_len(n)), pointkey = pointkey,
+  plotID = sub("_[^_]*$", "", pointkey), year = 2022L, bout = "1",
+  scientificName = name, taxonRank = "species", vernacularName = "Test flocker",
+  clusterSize = cluster, detectionMethod = "calling", pointCountMinute = "2",
+  observerDistance = "40", stringsAsFactors = FALSE)
+flock_obs <- rbind(qc_row(30, "QCPL_001_21", rep(1, 30)), qc_row(1, "QCPL_001_22", 200),
+                   qc_row(4, "QCPL_001_23", rep(2, 4)))
+flock_qc <- bird_qc(flock_obs, "Flockus gregarius")
+flock_keys <- vapply(flock_qc$flags, function(f) f$key, character(1))
+check("cluster" %in% flock_keys && nrow(flock_qc$sets$cluster) == 1L &&
+        flock_qc$sets$cluster$clusterSize == 200,
+      "floored flock flag fires on a 200-bird flock of a singleton-counted species and not on pairs")
+srer_points <- data.frame(
+  pointkey = c(sprintf("SRER_018_%02d", 1:9), sprintf("SRER_020_%02d", 1:9),
+               sprintf("SRER_%03d_%02d", rep(1:10, each = 9), rep(1:9, 10))),
+  n_visits = c(rep(1, 18), rep(8, 90)), stringsAsFactors = FALSE)
+check(stats::mad(srer_points$n_visits) == 0, "SRER-shaped point effort has MAD = 0")
+effort_obs <- rbind(qc_row(3, "SRER_018_01", rep(1, 3), "Campylorhynchus brunneicapillus"),
+                    qc_row(9, "SRER_001_01", rep(1, 9), "Campylorhynchus brunneicapillus"))
+effort_qc <- bird_qc(effort_obs, "Campylorhynchus brunneicapillus", srer_points)
+effort_keys <- vapply(effort_qc$flags, function(f) f$key, character(1))
+check("loweffort" %in% effort_keys && nrow(effort_qc$sets$loweffort) == 3L &&
+        all(effort_qc$sets$loweffort$pointkey == "SRER_018_01"),
+      "floored under-effort flag fires on one-visit points against a site median of 8")
+even_points <- data.frame(pointkey = sprintf("EVEN_001_%02d", 1:9), n_visits = 8,
+                          stringsAsFactors = FALSE)
+even_qc <- bird_qc(qc_row(5, "EVEN_001_01", rep(1, 5), "Campylorhynchus brunneicapillus"),
+                   "Campylorhynchus brunneicapillus", even_points)
+check(!"loweffort" %in% vapply(even_qc$flags, function(f) f$key, character(1)),
+      "under-effort flag stays silent when every point has equal effort")
+
 codebook <- bird_codebook()
 declared <- unique(c(SPCSV_KEEP, BOARD_KEEP, GRADIENT_KEEP, GRIDCSV_KEEP, REPORT_KEEP,
                      SITE_AUDIT_KEEP, QC_KEEP,
@@ -636,5 +888,19 @@ declared <- unique(c(SPCSV_KEEP, BOARD_KEEP, GRADIENT_KEEP, GRIDCSV_KEEP, REPORT
 check(setequal(codebook$column[codebook$column != "_source"], declared),
       "codebook and all export keep-vectors have exact parity")
 check(!anyDuplicated(codebook$column), "codebook has one row per emitted column")
+
+# wren's sweep: on the committed 47-site bundles every non-flat accumulation
+# band occurs (2026-10-26 release: 15 still rising, 29 levelling off, 3 nearly
+# flat). Skipped where the release bundles are absent (synthetic fixtures).
+site_files <- list.files("data/sites", pattern = "^[A-Z]{4}[.]rds$", full.names = TRUE)
+if (length(site_files) == 47L) {
+  bands <- vapply(site_files, function(f) {
+    b <- readRDS(f)
+    ch <- chao2_points(bird_prepare_obs(b$obs), b$visits)
+    if (is.null(ch) || ch$S_obs == 0L) "none" else bird_accumulation_verdict(ch$Q1, ch$m)$band
+  }, character(1))
+  check(all(c("still rising", "levelling off", "nearly flat") %in% bands),
+        "every non-flat accumulation band occurs across the 47 release bundles")
+}
 
 cat(sprintf("OK: %d fail-closed bird science helper checks passed.\n", n_checks))

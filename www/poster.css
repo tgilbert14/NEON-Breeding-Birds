@@ -321,3 +321,7 @@
   .brd-poster-suite-link,
   .brd-poster-cta { border: 2px solid ButtonText; }
 }
+
+/* Release provenance under the site-picker heading. */
+.splash .picker-start p.picker-start-meta { margin: 6px auto 0; font-size: 13px; color: var(--ink2, #4a443c); }
+.splash .picker-start p.picker-start-meta a { color: inherit; text-decoration: underline; }

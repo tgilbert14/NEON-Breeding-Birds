@@ -11,6 +11,22 @@
 BIRD_CROSS_SITE_YEAR_MIN <- 2017L
 BIRD_CROSS_SITE_YEAR_MAX <- 2024L
 
+# NEON cut the point-count grids per site from 15 to 10 from 2018 (issue log
+# 2021-06-24). Ubiquity is denominated on points with a valid count in or after
+# this year, so points dropped by the cut do not dilute it (wren, 2026-10-21).
+BIRD_UBIQUITY_YEAR_MIN <- 2018L
+
+# Site-years whose crews wrote a clusterSize only for groups and left single
+# birds blank (wren's ruling, 2026-10-21; NEON.DOC.014041 Rev L SOP B sets a
+# non-clustered bird's cluster size to 1). In a listed site-year a blank count
+# on a record that names a bird is read as one bird. A listed site-year must
+# still show the recording signature: blank on at least half of its bird
+# records and a recorded 1 on fewer than half of its recorded sizes.
+BIRD_CLUSTER_READ_AS_ONE <- data.frame(
+  site = "PUUM", year = c(2018L, 2021L, 2024L), stringsAsFactors = FALSE)
+BIRD_CLUSTER_SIGNATURE_BLANK_MIN <- 0.5
+BIRD_CLUSTER_SIGNATURE_ONE_MAX <- 0.5
+
 neon_sites <- tibble::tribble(
   ~site,  ~domain, ~name,                                          ~state, ~lat,     ~lng,      ~bio,
   "HARV", "D01",  "Harvard Forest",                                "MA",   42.5369,  -72.1727,  "Transition hardwood forest of central Massachusetts, with maple, oak, and hemlock; NEON's flagship Northeast forest.",
@@ -78,7 +94,7 @@ state_choices <- function() {
                        ifelse(table(neon_sites$state)[st] == 1, "site", "sites")))
 }
 
-# Sites within one state -> "JORN — Jornada Experimental Range" choices
+# Sites within one state -> "JORN · Jornada Experimental Range" choices
 sites_in_state <- function(st) {
   rows <- neon_sites[neon_sites$state == st, ]
   rows <- rows[order(rows$name), ]

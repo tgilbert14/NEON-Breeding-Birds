@@ -23,7 +23,7 @@ bird_poster <- function() {
             class = "brd-poster-suite-link",
             href = "https://tgilbert14.github.io/NEON-Driver-Cascade/",
             target = "_blank", rel = "noopener",
-            "Whole suite: ", tags$strong("Driver Cascade"),
+            "Whole suite: ", tags$strong("NEON Cross-Product Response Atlas"),
             tags$span(`aria-hidden` = "true", " ↗")
           )
         )
@@ -47,7 +47,7 @@ bird_poster <- function() {
       ),
       p(
         class = "brd-poster-note",
-        "Public NEON DP1.10003.001 · birds per count is a detection index—not population size."
+        "Public NEON DP1.10003.001 · birds per count is a detection index, not population size."
       )
     ),
     tags$figure(class = "brd-poster-art",
@@ -75,8 +75,9 @@ bird_poster <- function() {
 }
 
 ui <- bslib::page_fillable(
-  theme = app_theme, fillable = FALSE,
-  window_title = "NEON Bird Explorer",
+  theme = app_theme,
+  title = "NEON Breeding Bird Explorer",
+  lang = "en",
   tags$head(
     tags$meta(name = "ddl-app-ready", content = "breeding-birds-release-2026-v1"),
     tags$meta(name = "ddl-release-instance", content = RELEASE_STAMP_ID),
@@ -144,7 +145,10 @@ ui <- bslib::page_fillable(
     div(id = "site-picker-start", class = "picker-start", tabindex = "-1",
       p(class = "picker-start-kicker", "Choose a place"),
       h2("Choose one field site."),
-      p("Tap a point on the map, choose by name, or browse the complete 47-site list.")),
+      p(class = "picker-start-meta",
+        sprintf("NEON %s · DOI ", NEON_RELEASE),
+        tags$a(href = paste0("https://doi.org/", NEON_DOI), target = "_blank", rel = "noopener", NEON_DOI),
+        sprintf(" · point counts from %s", NEON_DATA_SPAN))),
     div(class = "picker-map-wrap", leafletOutput("nationalPicker", height = "440px")),
 
     # ---- relocated select panel (was the sidebar) ----------------------
@@ -196,13 +200,13 @@ ui <- bslib::page_fillable(
           spin(plotlyOutput("seasonStrip", height = "260px")))),
       nav_panel(title = tagList(bs_icon("diagram-3-fill"), " Community"), value = "community",
         div(class = "tab-head", div(class = "tab-head-text",
-          h4("How many species were detected here?"),
+          h2("How many species were detected here?"),
           p("Observed richness, a bias-corrected incidence Chao2 extrapolation, and the complete valid physical-count ledger behind both."),
           span(class = "scope-chip scope-site", bs_icon("geo-alt-fill"), " Showing this site only"))),
         layout_columns(col_widths = c(7, 5),
           card(full_screen = TRUE,
             card_head("graph-up", "Species accumulation (by valid six-minute count)",
-              info_pop("Accumulation", p("As valid physical counts accumulate—including supported counts with zero eligible detections—how many species are observed. Two bouts remain two protocol samples. The final-five description applies only to the sampled curve; it is not a future prediction or proof that every resident species was found."))),
+              info_pop("Accumulation", p("As valid physical counts accumulate, including supported counts with zero eligible detections, how many species are observed. Two bouts remain two protocol samples. The final-five description applies only to the sampled curve; it is not a future prediction or proof that every resident species was found."))),
             uiOutput("accumInsight"), spin(plotlyOutput("accumPlot", height = "340px"))),
           card(full_screen = TRUE,
             card_head("calculator", "Incidence richness estimate (Chao2)",
@@ -210,11 +214,10 @@ ui <- bslib::page_fillable(
             uiOutput("chaoBanner")))),
       nav_panel(title = tagList(bs_icon("bullseye"), " Bird Board"), value = "board",
         div(class = "tab-head", div(class = "tab-head-text",
-          h4("Every species on one board",
+          h2("Every species on one board",
              info_pop("Bird Board",
                p("Each dot is a ", tags$b("species"), ", placed by ", tags$b("detection frequency"), " (% of valid physical six-minute counts with an eligible detection) and its ", tags$b("detection index"), " (birds per valid point-count). Repeated bouts are repeated protocol samples, not independent places; neither axis is detection-corrected occupancy or abundance."),
                p(tags$b("Tap a dot"), " to pin its card; tap “Open species profile” for its full detection profile. Faint dots are too few detections to place reliably."))),
-          p("Each dot is a species: valid-count detection frequency × birds per count. Tap to pin a card; open any species' full profile."),
           span(class = "scope-chip scope-site", bs_icon("geo-alt-fill"), " Showing this site only")),
           div(class = "sizelab-controls",
             selectInput("boardColor", tagList(bs_icon("palette"), " Colour by"),
@@ -226,13 +229,12 @@ ui <- bslib::page_fillable(
           div(class = "sizelab-toolbar",
             tags$button(class = "smt-snap-btn", type = "button", onclick = "smtSaveScatter()", bsicons::bs_icon("camera-fill"), " Download (with pinned cards)"),
             downloadButton("boardCsv", "Download table (CSV)", class = "smt-clear-btn"),
-            tags$button(class = "smt-clear-btn", type = "button", onclick = "smtClearPins()", bsicons::bs_icon("eraser-fill"), " Clear pins"),
-            tags$span(class = "sizelab-hint", bs_icon("hand-index-thumb"), " interactive · tap a dot to pin its card")),
+            tags$button(class = "smt-clear-btn", type = "button", onclick = "smtClearPins()", bsicons::bs_icon("eraser-fill"), " Clear pins")),
           div(class = "smt-pinnable", id = "boardPin", spin(plotlyOutput("birdBoard", height = "540px")))),
         uiOutput("spCardSlot")),
       nav_panel(title = tagList(bs_icon("globe-americas"), " Across the continent"), value = "climate",
         div(class = "tab-head", div(class = "tab-head-text",
-          h4("One protocol, 47 sites, a continent of climates"),
+          h2("One protocol, 47 sites, a continent of climates"),
           p("Each dot is a NEON site, placed by its breeding-season climate against its bird community. Tap a dot to pin its card or jump to that site."),
           span(class = "scope-chip scope-all", bs_icon("globe-americas"), " 47-site release roster; climate support is reported explicitly")),
           div(class = "sizelab-controls",
@@ -251,12 +253,11 @@ ui <- bslib::page_fillable(
           div(class = "sizelab-toolbar",
             tags$button(class = "smt-snap-btn", type = "button", onclick = "smtSaveClimate()", bsicons::bs_icon("camera-fill"), " Download (with pinned cards)"),
             downloadButton("gradientCsv", "Download table (CSV)", class = "smt-clear-btn"),
-            tags$button(class = "smt-clear-btn", type = "button", onclick = "smtClearPins()", bsicons::bs_icon("eraser-fill"), " Clear pins"),
-            tags$span(class = "sizelab-hint", bs_icon("hand-index-thumb"), " interactive · tap a site to pin its card")),
+            tags$button(class = "smt-clear-btn", type = "button", onclick = "smtClearPins()", bsicons::bs_icon("eraser-fill"), " Clear pins")),
           div(class = "smt-pinnable", id = "climatePin", spin(plotlyOutput("climateGradient", height = "560px"))))),
       nav_panel(title = tagList(bs_icon("search"), " Search"), value = "search",
         div(class = "tab-head", div(class = "tab-head-text",
-          h4("Search the network"),
+          h2("Search the network"),
           p("Look across all 47 NEON sites using the shared 2017–2024 valid-count window. Find every site where a species was detected, or compare effort-rarefied site richness. Pick a result to load that site's full Overview."),
           span(class = "scope-chip scope-all", bs_icon("globe-americas"), " All 47 NEON sites"))),
         radioButtons("searchMode", NULL, inline = TRUE,
@@ -290,7 +291,7 @@ ui <- bslib::page_fillable(
       nav_panel(title = tagList(bs_icon("feather"), " Species Profile"), value = "species", uiOutput("speciesProfile")),
       nav_panel(title = tagList(bs_icon("map-fill"), " Map"), value = "map",
         div(class = "tab-head", div(class = "tab-head-text",
-          h4("Bird grids across the site"),
+          h2("Bird grids across the site"),
           p("Each marker is a NEON point-count grid, sized by richness and coloured by your chosen metric. ", tags$b("Tap a grid"), " for the full list of birds detected there."),
           span(class = "scope-chip scope-site", bs_icon("geo-alt-fill"), " Showing this site only")),
           div(class = "map-controls",
@@ -301,10 +302,11 @@ ui <- bslib::page_fillable(
       nav_panel(title = tagList(bs_icon("info-circle"), " About"), value = "about", uiOutput("aboutPanel"))
     )),
   div(class = "ddl-footer",
-    div(tags$a(class = "custom-cta", href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer",
-      span(class = "hand", "\U0001F44B"), "Questions or feedback? Get in touch with Desert Data Labs.")),
-    p(style = "margin-top:12px", HTML("Built by <strong>Desert Data Labs</strong> · Tucson, AZ · get in touch →"),
-      tags$a(href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer", "desertdatalabs@gmail.com")),
-    p(style = "font-size:12px;opacity:.85", "Data: NEON Breeding Landbird Point Counts (DP1.10003.001). Not affiliated with NEON, Battelle, or the NSF. An educational data-exploration tool."))
+    p("Desert Data Labs · Tucson, AZ · ",
+      tags$a(href = "mailto:desertdatalabs@gmail.com?subject=NEON%20Bird%20Explorer",
+             style = "display:inline-flex;align-items:center;min-height:44px", "Feedback")),
+    p(style = "font-size:12.5px;color:var(--ink2)",
+      sprintf("Data: NEON Breeding Landbird Point Counts (DP1.10003.001), %s, DOI %s, point counts from %s, CC BY 4.0. Not affiliated with NEON, Battelle, or the NSF. An educational data-exploration tool.",
+              NEON_RELEASE, NEON_DOI, NEON_DATA_SPAN)))
   )
 )

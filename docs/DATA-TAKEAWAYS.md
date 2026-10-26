@@ -20,11 +20,12 @@ These are release and contract facts, not derived ecological findings:
 - Bird product: `DP1.10003.001`, immutable `RELEASE-2026`, DOI
   `10.48443/v6hs-mx57`.
 - Required bird-site roster: exactly 47 sites, including `PUUM`.
-- Air-temperature context: 47 of 47 bird sites.
-- Plant-phenology context: 47 of 47 bird sites.
-- Precipitation source-stream context: 20 of 47 bird sites. A public annual value
-  additionally requires a complete calendar year; unsupported values remain
-  missing and are never imputed.
+- Air-temperature context: source stream at 47 of 47 bird sites; a usable
+  breeding-season value at 45 (not BARR or TOOL).
+- Plant-phenology context: source stream at 47 of 47 bird sites; a usable peak
+  green-up at 45 (not DCFS or KONA).
+- Precipitation source-stream context: 20 of 47 bird sites, with a complete
+  calendar year at 6. Unsupported values remain missing and are never imputed.
 - Runtime is bundle-only. A visitor cannot change results through a live API fetch.
 
 ## What is being recomputed
@@ -48,8 +49,10 @@ another bout is a supported-zero count. At either stated grain:
 
 Eligible protocol-filtered community detections must join a valid visit, occur in
 formal point-count minutes 1–6, have a known detection method, have species/subspecies
-identification that safely canonicalizes to a genus + species binomial, have
-positive finite integer cluster size, and not be a flyover. Parent species and all
+identification that safely canonicalizes to a genus + species binomial, and not be
+a flyover; a cluster size is not required. Birds per count additionally needs a
+positive finite integer cluster size, and is unavailable (never zero) wherever an
+eligible detection lacks one, as at PUUM. Parent species and all
 reported subspecies share that one biological-species community unit. Exact
 reported taxonomy remains provenance. Minute 88 incidentals,
 missing/unknown minute values, flyovers, coarse identifications, invalid visits,

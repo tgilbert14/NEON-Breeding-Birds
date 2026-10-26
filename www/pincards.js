@@ -1,3 +1,4 @@
+// copied from tgilbert14/NEON-Small-Mammal-Tracker-App@62457f6 (www/pincards.js), the nearest commit to this repo's 2026-06-19 initial copy; adapted for Breeding Birds since.
 /* =========================================================================
    pincards.js — tap-to-pin cards + export-with-pins for the Size Lab scatter.
 
@@ -80,7 +81,7 @@
     var pin = document.createElement("div");
     pin.className = "smt-pin";
     pin.__box = box; pin.__key = key; pin.__dx = dx; pin.__dy = dy;
-    pin.innerHTML = "<button class='smt-pin-close' title='Close'>&times;</button>" + html;
+    pin.innerHTML = "<button class='smt-pin-close' type='button' title='Close card' aria-label='Close card'>&times;</button>" + html;
     pin.querySelectorAll("em.smt-pin-hint").forEach(function (em) {
       var br = em.previousElementSibling;
       if (br && br.tagName === "BR") br.remove();
@@ -260,7 +261,7 @@
           n.classList.contains("smt-pin-resize") || n.classList.contains("smt-snap-btn") ||
           n.classList.contains("smt-clear-btn"))); } })   // keep cards + leader lines; drop chrome buttons
         .then(function (url) { downloadUrl(url, name); toastDone("Saved ✓"); })
-        .catch(function () { toastDone("Render failed — try again", true); })
+        .catch(function () { toastDone("Render failed, try again", true); })
         .then(function () { saving = false; });
     }, 90);
   }
@@ -309,9 +310,16 @@
   document.addEventListener("click", function (e) {
     if (e.target.closest(".qc-flag-click")) revealQcInspector();
   });
+  /* QC flags are role="button" divs: Enter and Space must activate them, and
+     Space must not scroll the page. The synthetic click runs the inline
+     onclick and bubbles to the click listener above, which reveals the
+     inspector, so it is not called a second time here. */
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
-    if (e.target.closest && e.target.closest(".qc-flag-click")) revealQcInspector();
+    var f = e.target.closest && e.target.closest(".qc-flag-click");
+    if (!f || e.repeat) return;
+    e.preventDefault();
+    f.click();
   });
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;

@@ -1,3 +1,4 @@
+/* copied from tgilbert14/NEON-Small-Mammal-Tracker-App@62457f6 (www/styles.css), the nearest commit to this repo's 2026-06-19 initial copy; restyled and extended for Breeding Birds since. */
 /* =========================================================================
    NEON Small Mammal Tracker — styles.css
    Light "desert field" theme, Desert Data Labs / Girth-Index house style.
@@ -40,7 +41,7 @@
 /* the navy --pine token used as TEXT is unreadable on dark -> light blue */
 [data-bs-theme="dark"] .brand-title,
 [data-bs-theme="dark"] .bio-links-title,
-[data-bs-theme="dark"] .tab-head-text h4,
+[data-bs-theme="dark"] .tab-head-text h2,
 [data-bs-theme="dark"] .hr-indiv-lab,
 [data-bs-theme="dark"] .stat-sub,
 [data-bs-theme="dark"] .tab-intro .bi,
@@ -320,7 +321,7 @@ body {
 /* ---- tab heads -------------------------------------------------------- */
 .main-tabs-wrap { margin-top: 4px; }
 .tab-head { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; padding: 14px 4px 6px; }
-.tab-head-text h4 { font-weight: 800; color: var(--pine); margin: 0; font-size: 21px; }
+.tab-head-text h2 { font-weight: 800; color: var(--pine); margin: 0; font-size: 21px; }
 .tab-head-text p { color: var(--muted); font-size: 13.5px; font-weight: 450; margin: 4px 0 0; max-width: 660px; line-height: 1.5; }
 .tab-intro { color: var(--muted); font-size: 12.5px; margin: 10px 4px 4px; display: flex; align-items: center; gap: 6px; }
 .tab-intro .bi { color: var(--pine); }
@@ -930,6 +931,9 @@ table.dataTable tbody tr:active { background: #dfe8f4 !important; }
   .ds-emoji, .podium-card, .dossier-card .glow-badge { animation: none !important; }
   .tag-badge.is-legendary::after, .podium-card.is-legendary::after { animation: none; opacity: 0; }
   .smt-pin.smt-pulse { animation: none !important; }
+  /* the indeterminate loading bar holds still as a static half-tone fill */
+  .load-bar::after { animation: none !important; left: 0; width: 100%; opacity: .5; }
+  .ec, .chart-insight { animation: none !important; }
 }
 
 /* =========================================================================
@@ -1049,3 +1053,15 @@ svg.smt-pin-lines {
 [data-bs-theme="dark"] .qc-flag.warn { background: #352c12; color: #ecd28a; }
 [data-bs-theme="dark"] .qc-flag.info { background: #16263c; color: #a9c6e6; }
 [data-bs-theme="dark"] .qc-flag.clean { background: #163224; color: #9fd9b3; }
+
+/* NEON Explorer Suite registry card (About tab), shared with Small Mammal. */
+.about-suite-card { grid-column: 1 / -1; }
+.suite-app-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.suite-app-link { display: flex; align-items: center; min-height: 44px; padding: 9px 11px;
+  border: 1px solid var(--line); border-radius: 9px; background: var(--bg); text-decoration: none; }
+.suite-app-link:hover { border-color: var(--pine); box-shadow: 0 4px 12px var(--shadow); text-decoration: none; }
+.suite-app-link:focus-visible { outline: 3px solid var(--pine); outline-offset: 2px; }
+@media (max-width: 800px) {
+  .about-suite-card { grid-column: auto; }
+  .suite-app-grid { grid-template-columns: 1fr; }
+}
