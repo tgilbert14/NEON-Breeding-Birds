@@ -558,3 +558,7 @@ body.brd-loading { overflow:hidden; }
   }
   .load-overlay { background:Canvas !important; }
 }
+
+/* Survey design notes in the "About this site" card (NEON issue-log notes). */
+.site-info .si-notes { margin: 4px 0 0; padding-left: 18px; font-size: 0.86rem; line-height: 1.4; color: var(--ink2, #4a443c); }
+.site-info .si-notes li { margin: 2px 0; }
