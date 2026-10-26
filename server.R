@@ -181,8 +181,9 @@ server <- function(input, output, session) {
     session$sendCustomMessage("kickMaps", list())
   })
 
-  # ---- site report card (top-bar / hero "report" download) ----------------
-  # No PDF path exists in this app, so the report is a tidy species-row CSV.
+  # ---- site report (hero "report (PDF)" and "report (CSV)" downloads) -------
+  # The CSV is a tidy species-row table; the PDF (output$reportPdf, R/report_pdf.R)
+  # is a two-page printable summary built from the same loaded bundle.
   # Site/release/support fields repeat explicitly on each species row. A sampled
   # all-zero site emits one typed site_summary row; scientificName is never
   # overloaded with sentinel metadata text.
@@ -196,6 +197,15 @@ server <- function(input, output, session) {
       utils::write.csv(out, file, row.names = FALSE, na = "")
     },
     contentType = "text/csv")
+  output$reportPdf <- downloadHandler(
+    filename = function() sprintf("NEON-Birds_report_%s_%s.pdf",
+      gsub("[^A-Za-z0-9]+", "-", rv$site %||% "site"), format(Sys.Date(), "%Y%m%d")),
+    content = function(file) {
+      req(!is.null(rv$board), !is.null(rv$sb), is_release_site_code(rv$site))
+      render_bird_report_pdf(file, rv$site, neon_sites$name[match(rv$site, neon_sites$site)],
+        rv$obs, rv$held, rv$visits, rv$opportunity, rv$points, rv$board, rv$sb)
+    },
+    contentType = "application/pdf")
 
   pick_species <- function(sci, navigate=FALSE){ if (is.null(sci)||is.na(sci)||sci=="") return()
     if (is.null(rv$board) || !(sci %in% rv$board$scientificName)) return()
@@ -335,7 +345,8 @@ server <- function(input, output, session) {
     div(class="hero-band",
       div(class="hero-title", bs_icon("broadcast"), tags$h1(class="hero-title-h", rv$label),
         actionLink("changeSite", tagList(bs_icon("arrow-left-circle"), " change site"), class = "hero-change"),
-        downloadLink("reportCsv", tagList(bs_icon("file-earmark-arrow-down"), " report"), class = "hero-report")),
+        downloadLink("reportPdf", tagList(bs_icon("file-earmark-pdf"), " report (PDF)"), class = "hero-report"),
+        downloadLink("reportCsv", tagList(bs_icon("file-earmark-arrow-down"), " report (CSV)"), class = "hero-report")),
       div(class="hero-grid",
         hero(sb$n_species, "species", icon="feather", tone="navy",
           info=info_pop("Species", p("The number of different eligible bird species ", tags$b("detected"), " here across supported point counts. 'Detected' matters: a species can be present and still be missed, so observed richness is not a complete inventory."))),

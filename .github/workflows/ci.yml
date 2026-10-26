@@ -171,6 +171,9 @@ jobs:
       - name: Render a bundled site through the Shiny server
         run: Rscript --vanilla scripts/test_server_runtime.R
 
+      - name: Render the two-page PDF site report
+        run: Rscript --vanilla scripts/test_report_pdf.R
+
       - name: Run the synthetic 47-site release chain
         run: |
           set -euo pipefail

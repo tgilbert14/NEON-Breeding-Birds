@@ -188,9 +188,9 @@ function smtClosePickerPopups() {
   } catch (e) {}
 }
 
-// (The site report card is now a server-side PDF streamed by a Shiny
-//  downloadHandler — output$reportPdf, via the hero downloadLink — so the old
-//  browser-print path (smtPrintReport) has been removed.)
+// (The site report is a server-side PDF streamed by a Shiny downloadHandler:
+//  output$reportPdf, built by R/report_pdf.R and linked from the hero band as
+//  "report (PDF)" next to "report (CSV)". There is no browser-print path.)
 
 // ---- dismiss any open info popover (click-outside + Esc) -----------------
 // bslib/Bootstrap popovers don't close on an outside click by default, so make

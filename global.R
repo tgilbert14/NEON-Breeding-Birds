@@ -53,6 +53,7 @@ add_suite_basemap <- function(map, basemap = "light_all", noWrap = FALSE) {
 
 source("R/site_metadata.R", local = FALSE)
 source("R/bird_helpers.R", local = FALSE)
+source("R/report_pdf.R", local = FALSE)
 
 NEON_DPID <- "DP1.10003.001"   # Breeding landbird point counts
 NEON_RELEASE <- "RELEASE-2026"
