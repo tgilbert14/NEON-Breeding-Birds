@@ -104,13 +104,47 @@ a stale lifetime richness value fails release validation.
   Driver register and implication backlog entry is pending in the Driver
   repository.
 
+## Audit wave 2 finish (2026-10-26): incidence/index split and PUUM read-as-one
+
+- **Evidence:** PUUM's blank counts follow a recording convention that no other
+  site shows. Blank on 268 of 355, 369 of 380 and 360 of 377 bird records in 2018,
+  2021 and 2024, with a recorded 1 on only 5 of 87, 2 of 11 and 2 of 17 sizes;
+  in the 381 site-years elsewhere no bird record lacks a count and a recorded 1 is
+  74 to 99.9% of sizes. NEON.DOC.014041 Rev L, SOP B, sets a single bird's size
+  to 1. wren approved reading these blanks as one bird, scoped to the listed
+  site-years with a signature gate (contract text in `docs/SCIENCE-CONTRACT.md`).
+- **Opportunity contract:** the stopgap's withdrawal is gone. All 90 PUUM counts
+  are valid and positive; network totals return to 26,365 valid counts and
+  24,509 point-years, with 66 supported-zero counts (master had 117, 51 of them
+  PUUM's false zeros) and 60 supported-zero point-years.
+- **Eligible joins:** incidence no longer needs a count, and the index needs a
+  recorded count or a listed read-as-one blank. PUUM richness 9 (was 6), Chao2 9
+  (Q1 1, Q2 0, so it does not lead), birds per count 12.63 with 881 of 1,137
+  birds read as one. The common rarefaction target is 90 again, and rarefied
+  richness equals master at 46 of 47 sites. Cross-site `mean_ubiquity` is now
+  denominated on points counted since 2018 and moves at 22 sites. Temperature
+  against rarefied richness: rho 0.351 (95% CI 0.05 to 0.59), n = 45.
+- **Engineering learning:** a read-as-one rule is safe only as a listed,
+  evidenced, gated exception with a state column, independent derivations in
+  every oracle, and a count of affected records beside every figure. A real-data
+  rehearsal rebuilt from committed bundles proves such a change on all 47 sites
+  before the five-hour refresh.
+- **Decision:** **CONTEXT / HOLD DRIVER INGESTION / NO DRIVER BYTE CHANGE.** Any
+  pooled Driver context must use this rebuilt cross-site artifact (target 90),
+  never the stopgap's t = 39 values, and must carry PUUM's read-as-one count
+  wherever it uses the detection index. The Driver register and implication
+  backlog entry is pending in the Driver repository (the Atlas owner's).
+
 ## Driver use and prohibitions
 
 The Driver may describe a pooled cross-site association only after exact-release
 rebuild and support-complete validation. It must show `n`, coverage, the
 rarefaction target, missing environmental support, and the space-for-time/biome/
-latitude confounding boundary. Any Spearman result is descriptive `rho + n`, not
-an independent-site confidence interval. It must not infer that warming at one
+latitude confounding boundary. A Spearman result is descriptive: from 10 sites it
+carries a Bonett and Wright (2000) 95% interval with the caveat that nearby sites
+are alike, so the interval is likely too narrow; from 6 to 9 sites an exact
+permutation p and no interval; below 6 sites no rho (wren, 2026-10-21). It must
+not infer that warming at one
 site causes richness change, treat a non-detection as absence, compare raw
 richness across unequal effort, infer breeding status/territory from eligibility
 or singing, or use flyover-dominated counts as an on-point community signal.

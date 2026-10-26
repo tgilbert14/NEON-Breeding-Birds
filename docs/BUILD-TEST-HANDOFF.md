@@ -1,5 +1,67 @@
 # Breeding Birds build and test handoff
 
+## 2026-10-26 · Audit wave 2 finish: incidence/index split, PUUM read-as-one rule, wren's rulings, PDF report (America/Phoenix)
+
+- **Scope:** the finish ledger's Breeding Birds row (Tim, 2026-10-22): finish PR #8;
+  the real PUUM fix as a parser rule with wren's sign-off that restores the common
+  target of 90; the L12 path; the PDF report; every appendix finding in this repo;
+  the cross-cutting list. Source identity unchanged: `DP1.10003.001`,
+  `RELEASE-2026`, DOI `10.48443/v6hs-mx57`. Work runs on Opus 5.5 at max (Fable
+  capped), workers on Opus 5.5 at medium.
+- **Revisions:** base `master` `67b3b39`; PR #8 branch `fix/birds-wave2-audit-2026-10`
+  advanced by fast-forward from `452998c` to `00eed7c` (split `1582f16`, shell and
+  pipeline merges, helpers `1541141`, parser rule `a822497`, PDF `71a3045`, display
+  `9fa295b`, review fixes `00eed7c`).
+- **Science:** incidence no longer needs a count; the index needs
+  `cluster_size_state` `recorded` or `blank_read_as_one`. wren's rule reads a blank
+  count on a bird record as one bird only in listed site-years (PUUM 2018, 2021,
+  2024) that keep the signature (blank on at least half of bird records, recorded 1
+  on fewer than half of sizes); the producer stops if a listed year loses it and
+  reports unlisted blanks for review. Producer, raw oracle, bundle oracle and
+  runtime derive the state independently. Site index and cross-site tables gain
+  read-as-one counts; cross-site `mean_ubiquity` uses points counted since 2018.
+  Also wren's accumulation verdict, Chao2 gate, Bonett-Wright interval and exact
+  permutation p, protected-species caveat and issue-log notes, all on the page and
+  in the new two-page PDF report.
+- **Commands and outcomes (macOS, R 4.5.2):** `scripts/test_helpers.R` 166 checks
+  pass; `scripts/test_server_runtime.R`, `scripts/test_report_pdf.R` (7 renders,
+  two pages each, no literal NA), privacy, environment and stamp tests pass;
+  `bash scripts/test_pipeline_fixture.sh character|integer|double` pass, including
+  the producer refusing PUUM 2018 once its recorded sizes are all 1; suite lint 0
+  red, 0 yellow.
+- **Real-data rehearsal:** NEON-shaped raw tables rebuilt from the committed
+  bundles for all 47 sites, then the branch producer, raw oracle, derived rebuild
+  (byte-identical twice), scratch stamp, bundle oracle, runtime, helpers and PDF.
+  All pass. PUUM 2018 blank on 268 of 355 bird records with recorded 1 on 5 of 87
+  sizes; 2021 369 of 380 and 2 of 11; 2024 360 of 377 and 2 of 17; no unlisted
+  blank anywhere. PUUM: 90 valid counts, 0 supported zeros, 45 point-years,
+  9 species, Chao2 9 (Q1 1, Q2 0; gated by Q2 < 3), birds per count 12.63 with 881
+  of 1,137 birds read as one. Network: 26,365 valid counts (66 supported zeros),
+  24,509 point-years (60 zeros), common target 90, rarefied richness equal to
+  master at 46 of 47 sites. Temperature against rarefied richness rho 0.351 (95%
+  CI 0.05 to 0.59), against the index 0.48 (0.20 to 0.69), n = 45. Accumulation:
+  15 still rising, 29 levelling off, 3 nearly flat. Chao2 gated at 7 of 47 sites.
+- **Final review (Opus 5.5 at max, one round):** no disagreement among producer,
+  oracles and runtime; four tampers fail closed. Fixed in `00eed7c`: two sentences
+  of wren's text missing from the released schema string (now asserted), an NA in
+  the caveat when other detections lack a count, an overclaim in About, codebook
+  wording, a slow exact p at n = 9, `p = 0.00` at n = 6, a per-0-counts text, an
+  NA state guard, the PDF's coarse share, integer site-index types. Recorded for
+  wren: cross-site `mean_ubiquity` averages over species seen at points counted
+  since 2018 (wren's own computation), while the site board keeps a species seen
+  only at retired points at 0%.
+- **Refresh:** run [40349960545](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/40349960545)
+  dispatched 2026-10-26 15:30 UTC on `00eed7c1a135185a2e34ec9558f5a7984374faf7`.
+  Its publisher is expected to be rejected again (this branch edits a workflow
+  file), so the validated artifact is adopted onto PR #8 as in `5dd7324`.
+- **Residual risks:** the read-as-one listing is a reviewed judgment that a later
+  release could invalidate (the signature gate stops the refresh if so); the
+  monthly five-hour re-fetch stays until the doctrine owner rules on
+  `skip_download`.
+- **Next action:** adopt run 40349960545's validated artifact onto PR #8, confirm
+  exact-head CI green, then Tim merges; after the merge the production smoke must
+  show the new release instance on Pages and Connect.
+
 ## 2026-10-21 · Audit wave 2: PUUM cluster withdrawal, QC keyboard, title, SRER default, QC floors, registry, producer pin, release watch (America/Phoenix)
 
 - **Scope:** NEON suite audit 2026-10-18 items 16 (PUUM false zeros), 21 (page
