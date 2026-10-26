@@ -51,16 +51,33 @@
   since 2018 (wren's own computation), while the site board keeps a species seen
   only at retired points at 0%.
 - **Refresh:** run [40349960545](https://github.com/tgilbert14/NEON-Breeding-Birds/actions/runs/40349960545)
-  dispatched 2026-10-26 15:30 UTC on `00eed7c1a135185a2e34ec9558f5a7984374faf7`.
-  Its publisher is expected to be rejected again (this branch edits a workflow
-  file), so the validated artifact is adopted onto PR #8 as in `5dd7324`.
+  on `00eed7c1a135185a2e34ec9558f5a7984374faf7` (UTC): `probe_token` and
+  `release_watch` passed (one change-log warning, entry 110504: DELA operations
+  ended in fall 2025, already in the design notes); `produce_candidate` 15:30:30
+  to 19:42:47 printed PUUM's three signature lines (268/355 with 5/87, 369/380
+  with 2/11, 360/377 with 2/17) and no unlisted blank; `validate_candidate`
+  19:42:50 to 21:08:26: raw oracle reconciled all 47 bundles, derived rebuilds
+  byte-identical, common target 90, 166 helper checks, bundle oracle 26,365 valid
+  counts (66 supported zeros) and 24,509 point-years (60 zeros), release instance
+  `sha256:56d8a047bd148b64335862f9482a8b54afa2ca7a33e57fbece5a0e0ff6d831ed` over
+  126 payload files, content key changed; `publish_candidate` 21:08:29 to
+  21:08:40 passed this time (110 artifact members inside the four publishable
+  paths) and pushed `automation/breeding-birds-release-2026` to the bot's commit
+  `33b6db8` (parent `00eed7c`, 55 files), and opened issue #10.
+- **Adoption:** `33b6db8` is merged into PR #8 (`4d6f592`) instead of copying
+  bytes, so the bot's provenance stays in history. Local gates on the merged
+  tree: stamp verifies to `sha256:56d8a047...`, exact manifest (122 runtime
+  files), bundle oracle, app source, Shiny lifecycles, 167 helper checks (with
+  wren's 47-bundle band sweep) and the PDF test with PUUM all pass. The adopted
+  bundles give exactly the rehearsal's numbers above.
 - **Residual risks:** the read-as-one listing is a reviewed judgment that a later
   release could invalidate (the signature gate stops the refresh if so); the
   monthly five-hour re-fetch stays until the doctrine owner rules on
   `skip_download`.
-- **Next action:** adopt run 40349960545's validated artifact onto PR #8, confirm
-  exact-head CI green, then Tim merges; after the merge the production smoke must
-  show the new release instance on Pages and Connect.
+- **Next action:** Tim merges PR #8 once its exact-head CI is green; the
+  production smoke must then show release instance `sha256:56d8a047...` on Pages
+  and Connect. Then close issue #10 and delete
+  `automation/breeding-birds-release-2026` (fully merged by #8).
 
 ## 2026-10-21 · Audit wave 2: PUUM cluster withdrawal, QC keyboard, title, SRER default, QC floors, registry, producer pin, release watch (America/Phoenix)
 

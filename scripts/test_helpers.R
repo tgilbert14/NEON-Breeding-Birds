@@ -889,4 +889,18 @@ check(setequal(codebook$column[codebook$column != "_source"], declared),
       "codebook and all export keep-vectors have exact parity")
 check(!anyDuplicated(codebook$column), "codebook has one row per emitted column")
 
+# wren's sweep: on the committed 47-site bundles every non-flat accumulation
+# band occurs (2026-10-26 release: 15 still rising, 29 levelling off, 3 nearly
+# flat). Skipped where the release bundles are absent (synthetic fixtures).
+site_files <- list.files("data/sites", pattern = "^[A-Z]{4}[.]rds$", full.names = TRUE)
+if (length(site_files) == 47L) {
+  bands <- vapply(site_files, function(f) {
+    b <- readRDS(f)
+    ch <- chao2_points(bird_prepare_obs(b$obs), b$visits)
+    if (is.null(ch) || ch$S_obs == 0L) "none" else bird_accumulation_verdict(ch$Q1, ch$m)$band
+  }, character(1))
+  check(all(c("still rising", "levelling off", "nearly flat") %in% bands),
+        "every non-flat accumulation band occurs across the 47 release bundles")
+}
+
 cat(sprintf("OK: %d fail-closed bird science helper checks passed.\n", n_checks))

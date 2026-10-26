@@ -17,8 +17,8 @@ As of: 2026-10-26 · Version: `master` @ `67b3b39` (2026-10-21) · Stage: live; 
 | Deployed revision | `67b3b39` (live receipt and marker match master, probe 2026-10-26) | `post_deploy_smoke` |
 | NEON product | `DP1.10003.001` · `RELEASE-2026` · DOI `10.48443/v6hs-mx57` | the bundle meta |
 | Data through | July 2024 (RELEASE-2026 bird months end 2024-07) | the landing view (`NEON_DATA_SPAN`) |
-| Review branch | `automation/breeding-birds-release-2026` at `e97e56c`: the 2026-10-02 no-op build, superseded by PR #8 | `gh api repos/tgilbert14/NEON-Breeding-Birds/compare/master...automation/breeding-birds-release-2026` |
-| Last executed refresh | run on PR #8's head (see `docs/BUILD-TEST-HANDOFF.md`) | `node .claude/scripts/neon-suite-probe.mjs --app breeding-birds` |
+| Review branch | `automation/breeding-birds-release-2026` at `33b6db8`: run 40349960545's validated candidate, merged into PR #8; delete after #8 merges (issue #10) | `gh api repos/tgilbert14/NEON-Breeding-Birds/compare/master...automation/breeding-birds-release-2026` |
+| Last executed refresh | run 40349960545, 2026-10-26 (full fetch; release instance `sha256:56d8a047...`) | `node .claude/scripts/neon-suite-probe.mjs --app breeding-birds` |
 | 60-day schedule cutoff | 2026-12-20 | the probe |
 | Suite lint | 0 red on PR #8's head (2026-10-26) | `node .claude/scripts/neon-suite-lint.mjs --app breeding-birds --worktree` |
 | Open PRs, in merge order | #8 (this app's audit wave 2); #9 (doctrine session's playbook pointer) is independent | `gh pr list --repo tgilbert14/NEON-Breeding-Birds` |
@@ -32,7 +32,7 @@ As of: 2026-10-26 · Version: `master` @ `67b3b39` (2026-10-21) · Stage: live; 
 
 - [ ] Set `CARTO_BASEMAP_KEY` on the Connect content and republish (the live map runs the Esri grey fallback) · owner `Tim` · evidence `DEPLOY.md`
 - [ ] Add a master ruleset (PR required, CI checks required, no force push or deletion) · owner `Tim` · evidence probe `no-protection`
-- [ ] Delete the stale review branch `automation/breeding-birds-release-2026` after PR #8 merges · owner `Tim` · evidence probe `review-branch-waiting`
+- [ ] After PR #8 merges, close issue #10 and delete `automation/breeding-birds-release-2026` (fully merged) · owner `Tim` · evidence probe `review-branch-waiting`
 
 ## Later (P3: polish)
 

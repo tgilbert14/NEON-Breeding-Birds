@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 # Server-side PDF site report gate: render the two-page report for bundled sites
 # and check each file is a non-empty PDF with exactly two pages whose body stays
-# inside the page. PUUM is excluded: its committed bundle predates the current
-# code. Run from the repository root: Rscript --vanilla scripts/test_report_pdf.R
+# inside the page. PUUM exercises wren's read-as-one caveat on real data.
+# Run from the repository root: Rscript --vanilla scripts/test_report_pdf.R
 
 Sys.setenv(BRD_LIVE = "0")
 suppressPackageStartupMessages(source("global.R"))
@@ -66,7 +66,7 @@ render_site <- function(site, sb_override = NULL) {
 
 t0 <- Sys.time()
 files <- list()
-for (site in c("SRER", "JORN", "YELL", "TOOL")) files[[site]] <- render_site(site)
+for (site in c("SRER", "JORN", "YELL", "TOOL", "PUUM")) files[[site]] <- render_site(site)
 
 # The unavailable-index and read-as-one branches do not occur in the loadable
 # committed bundles, so exercise them on JORN's real data with the summary
@@ -137,6 +137,9 @@ if (nzchar(pdftotext)) {
     stop("read-as-one caveat missing", call. = FALSE)
   for (tt in list(t_un, t_r1, txt_of(f_both)))
     if (grepl("\\bNA\\b", tt)) stop("a report variant prints a literal NA", call. = FALSE)
+  t_puum <- gsub("\\s+", " ", txt_of(files$PUUM))
+  if (!grepl("left single birds blank", t_puum, fixed = TRUE) || grepl("\\bNA\\b", t_puum))
+    stop("PUUM report lacks the read-as-one caveat or prints NA", call. = FALSE)
   t_zero <- txt_of(f_zero)
   if (!grepl("supported zero record", t_zero, fixed = TRUE) || grepl("\\bNA\\b", t_zero))
     stop("all-zero report text is wrong", call. = FALSE)
