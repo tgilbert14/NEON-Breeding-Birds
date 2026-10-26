@@ -398,9 +398,13 @@ render_bird_report_pdf <- function(file, site, site_name, obs, held, visits, opp
   y <- y + 0.06
 
   y <- bpdf_h("Caveats", y)
+  share <- tryCatch(bird_coarse_record_share(obs, held), error = function(e) NULL)
+  protected <- if (!is.null(share) && share$k > 0L) paste(BIRD_PROTECTED_CAVEAT, sprintf(
+    "%s of %s bird records here are above species level, for protection or because the bird was not identified to species.",
+    bpdf_int(share$k), bpdf_int(share$n))) else BIRD_PROTECTED_CAVEAT
   cav <- c("Birds per count is a detection index, not abundance, density, or a population estimate.",
            "A species not detected was not necessarily absent: a non-detection is not absence.",
-           BIRD_PROTECTED_CAVEAT)
+           protected)
   if (!is.null(read_caveat)) cav <- c(cav, read_caveat)
   for (cv in cav) y <- bpdf_para(cv, y, 8.8, bullet = TRUE, gapAfter = 0.03)
   y <- y + 0.06

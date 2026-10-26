@@ -68,6 +68,13 @@ server <- function(input, output, session) {
     sprintf(" At %s the index reads each blank cluster size as one bird, because NEON crews there wrote a size only for groups; if any blank was an uncounted group, the true figure is higher.",
             paste(listed, collapse = " and "))
   }
+  # 2017-2024 detections read as one bird, per site (0 where none or unknown).
+  read_as_one_window <- function(sites) {
+    if (is.null(CROSS_SITE) || !"n_detections_count_read_as_one_window" %in% names(CROSS_SITE))
+      return(rep(0L, length(sites)))
+    v <- CROSS_SITE$n_detections_count_read_as_one_window[match(sites, CROSS_SITE$site)]
+    ifelse(is.na(v), 0L, as.integer(v))
+  }
   # Protected-species caveat plus this site's share of records above species level.
   richness_minimum_text <- function() {
     share <- bird_coarse_record_share(rv$obs, rv$held)
@@ -817,6 +824,11 @@ server <- function(input, output, session) {
                    fmt_int(d$T_counts), fmt_int(d$n_points_window), fmt_index(d$birds_per_count_window),
                    ifelse(is.finite(d$coverage), paste0(round(100 * d$coverage), "%"), "unavailable"),
                    js_attr_text(d$name), d$site, d$site)
+    # Name a read-as-one window index beside its birds per count (wren's ruling).
+    note <- ifelse(read_as_one_window(d$site) > 0L,
+                   " <span style='color:#7a6f5d'>(blank sizes read as one bird)</span>", "")
+    pop <- mapply(function(x, n) sub("birds/count<br>", paste0("birds/count", n, "<br>"), x, fixed = TRUE),
+                  pop, note, USE.NAMES = FALSE)
     ok <- grepl("^[A-Z]{4}$", d$site); d <- d[ok, , drop = FALSE]; pop <- pop[ok]
     leaflet::leaflet(d) %>% add_suite_basemap("CartoDB.Positron") %>% leaflet::setView(-96, 41, 3) %>%
       leaflet::addCircleMarkers(lng = ~lng, lat = ~lat, radius = ~rad, fillColor = ~bcol, color = "#fff", weight = 1, fillOpacity = 0.85,
@@ -915,6 +927,7 @@ server <- function(input, output, session) {
       g$S_obs, " species detected · ", g$S_rare, " rarefied · ", g$coverage_lab, "<br/>",
       g$n_points_window, " points · ", g$T_counts, " valid counts · comparison window ",
       g$analysis_year_min, "–", g$analysis_year_max, " (bird support ", g$bird_year_lab, ")<br/>",
+      ifelse(read_as_one_window(g$site) > 0L, "birds/count reads blank cluster sizes as one bird<br/>", ""),
       "top: <em>", ifelse(is.na(g$top_species_window), "unavailable (cluster sizes missing)", esc_html(g$top_species_window)), "</em></span>",
       "<br/><span class='smt-open' role='button' tabindex='0' data-action='site' data-tag='", htmltools::htmlEscape(g$site, attribute = TRUE), "'>\U0001F426 Open this site &rarr;</span>",
       "<br/><em class='smt-pin-hint'>Tap the dot to pin this card</em>")
@@ -953,8 +966,11 @@ server <- function(input, output, session) {
       sprintf("Spearman ρ not shown: only %d sites have %s (6 needed).", n_sites,
               if (identical(xvar, "precip")) "complete-year precipitation" else "this pairing") else
       if (!is.finite(rho)) sprintf("Descriptive Spearman ρ unavailable, n = %d", n_sites) else
-      if (n_sites <= 9L) sprintf("Descriptive Spearman ρ = %s, n = %d, exact permutation p = %.2f (too few sites for an interval)",
-        signed(rho), n_sites, bird_spearman_exact_p(g$xx, g$yy)) else {
+      if (n_sites <= 9L) {
+        p_exact <- bird_spearman_exact_p(g$xx, g$yy)
+        sprintf("Descriptive Spearman ρ = %s, n = %d, exact permutation p %s (too few sites for an interval)",
+          signed(rho), n_sites, if (is.finite(p_exact) && p_exact < 0.01) "< 0.01" else sprintf("= %.2f", p_exact))
+      } else {
         ci <- bird_spearman_ci(rho, n_sites)
         sprintf("Descriptive Spearman ρ = %s (95%% CI %s to %s), n = %d · the interval assumes independent sites; nearby sites are alike, so it is likely too narrow",
           signed(rho), signed(ci[1]), signed(ci[2]), n_sites)
@@ -964,7 +980,10 @@ server <- function(input, output, session) {
            x = 0, y = 1.21, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 11)),
       list(text = rho_text,
            x = 0, y = 1.135, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)),
-      list(text = sprintf("space-for-time, not one site warming · confounded by %s", conf),
+      list(text = sprintf("space-for-time, not one site warming · confounded by %s%s", conf,
+             if (identical(yc$col, "birds_per_count_window") && any(read_as_one_window(g$site) > 0L))
+               sprintf(" · at %s blank cluster sizes are read as one bird",
+                       paste(g$site[read_as_one_window(g$site) > 0L], collapse = ", ")) else ""),
            x = 0, y = 1.07, xref = "paper", yref = "paper", showarrow = FALSE, xanchor = "left", font = list(color = muted, size = 10.5)))
     p %>% plotly_theme() %>% plotly::layout(xaxis = list(title = list(text = xlab, standoff = 10)),
       yaxis = list(title = yc$lab, rangemode = "tozero"),
@@ -1031,7 +1050,9 @@ server <- function(input, output, session) {
         p("An (unofficial) explorer for NEON's ", tags$b("Breeding landbird point counts"), " (", tags$code("DP1.10003.001"), "). At each point, an observer records every bird detected by sight or sound in a ", tags$b("6-minute count"), ", with the distance to each, once or twice each breeding season. Only records from minutes 1–6 enter the metrics; NEON minute 88 incidentals and missing or unknown minute values remain auditable but are excluded.")),
       div(class="about-card", h4(bs_icon("soundwave"), " Detection index, not population"),
         p("Raw point-count totals are ", tags$b("detection-confounded"), ": a loud, conspicuous species and a quiet, skulking one at the same true density produce different counts. So the abundance axis here is a ", tags$b("detection index"), " (birds per point-count), never a population."),
-        p(tags$b("Cluster sizes."), " Birds per count needs a count on every detection. At PUUM, NEON crews wrote a cluster size only for groups in 2018, 2021 and 2024 and left single birds blank; the protocol counts a single bird as 1, so the index reads those blanks as one bird and says so wherever it is shown. A blank count anywhere else leaves birds per count unavailable, never zero, while the detection still counts toward species and detection frequency."),
+        p(tags$b("Cluster sizes."), sprintf(" Birds per count needs a count on every detection. At %s, NEON crews wrote a cluster size only for groups in %s and left single birds blank; the protocol counts a single bird as 1, so the index reads those blanks as one bird, and the site page, map and gradient cards, search captions and reports say so. A blank count anywhere else leaves birds per count unavailable, never zero, while the detection still counts toward species and detection frequency.",
+          paste(unique(BIRD_CLUSTER_READ_AS_ONE$site), collapse = ", "),
+          paste(BIRD_CLUSTER_READ_AS_ONE$year, collapse = ", "))),
         p(tags$b("Detection frequency"), " is the % of valid physical six-minute counts where a species was detected. Supported zero counts stay in that denominator; invalid or unavailable visits do not. Repeated bouts are repeated protocol samples, not independent places, and this remains a naïve detection summary, not detection-corrected occupancy. The distance panel is truncated to 0–200 m and is a relative area- and effort-standardized observation signature, not density or a fitted detection function.")),
       div(class="about-card", h4(bs_icon("calculator"), " How many species?"),
         p(tags$b("Bias-corrected Chao2"), " extrapolates richness from incidence across the complete valid physical-count ledger. Two valid bouts at one point-year remain two samples, while duplicate detections of a species within one count collapse to one incidence. Supported zero counts remain explicit. The estimator does not make repeated counts independent places or estimate occupancy. The point estimate does not lead when fewer than three species were found on exactly two counts, when it adds more than half the observed richness, or when its 95% upper bound is more than 1.7 times the estimate."),

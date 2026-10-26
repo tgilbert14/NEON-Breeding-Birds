@@ -352,7 +352,7 @@ bird_prepare_obs <- function(obs) {
     year = out$year)
   cluster_used <- bird_cluster_size_used(cluster_token, cluster_state)
   if ("cluster_size_state" %in% names(out)) {
-    if (any(as.character(out$cluster_size_state) != cluster_state))
+    if (!identical(as.character(out$cluster_size_state), as.character(cluster_state)))
       stop("cluster_size_state does not re-derive from the raw token, taxon and site-year", call. = FALSE)
     if (!identical(is.na(out$clusterSize), is.na(cluster_used)) ||
         any(out$clusterSize != cluster_used, na.rm = TRUE))
@@ -984,6 +984,11 @@ bird_accumulation_verdict <- function(q1, t) {
     text = "At its end the sampled curve was flat: every detected species was found on more than one count."))
   band <- if (25L * q1 >= t) "still rising" else if (100L * q1 < t) "nearly flat" else "levelling off"
   per_n <- as.integer(round(t / q1))
+  # More singletons than counts (only on a very short record): say species per
+  # count, never "one species per 0 valid counts".
+  if (per_n < 1L) return(list(band = band, per_n = per_n,
+    text = sprintf("At its end the sampled curve was %s, gaining about %s species per valid count.",
+                   band, format(round(q1 / t, 1), nsmall = 1))))
   list(band = band, per_n = per_n,
        text = sprintf("At its end the sampled curve was %s, gaining about one species per %d valid count%s.",
                       band, per_n, if (per_n == 1L) "" else "s"))
@@ -998,6 +1003,27 @@ bird_spearman_ci <- function(rho, n, level = 0.95) {
   tanh(atanh(rho) + c(-1, 1) * z * se)
 }
 
+# Every ordering of 1..n as matrix rows, built by inserting k at each position
+# (no recursion) and cached per n: n = 9 gives 362,880 rows.
+bird_permutation_cache <- new.env(parent = emptyenv())
+bird_permutation_table <- function(n) {
+  key <- as.character(n)
+  if (!is.null(bird_permutation_cache[[key]])) return(bird_permutation_cache[[key]])
+  p <- matrix(1L, 1L, 1L)
+  if (n >= 2L) for (k in 2:n) {
+    m <- nrow(p); out <- matrix(0L, m * k, k)
+    for (pos in seq_len(k)) {
+      rows <- (pos - 1L) * m + seq_len(m)
+      if (pos > 1L) out[rows, seq_len(pos - 1L)] <- p[, seq_len(pos - 1L)]
+      out[rows, pos] <- k
+      if (pos < k) out[rows, (pos + 1L):k] <- p[, pos:(k - 1L)]
+    }
+    p <- out
+  }
+  assign(key, p, envir = bird_permutation_cache)
+  p
+}
+
 # Exact two-sided permutation p for Spearman's rho with 2 <= n <= 9 (wren's
 # ruling): every ordering of the mid-ranks; p is the share with |rho*| at least
 # |rho|. Returns NA outside that range.
@@ -1008,11 +1034,7 @@ bird_spearman_exact_p <- function(x, y) {
   denom <- sqrt(sum(rx^2) * sum(ry^2))
   if (!is.finite(denom) || denom == 0) return(NA_real_)
   observed <- sum(rx * ry) / denom
-  perms <- function(v) {
-    if (length(v) <= 1L) return(matrix(v, nrow = 1L))
-    do.call(rbind, lapply(seq_along(v), function(i) cbind(v[i], perms(v[-i]))))
-  }
-  orderings <- perms(seq_len(n))
+  orderings <- bird_permutation_table(n)
   permuted <- matrix(ry[orderings], ncol = n)
   rho_star <- as.vector(permuted %*% rx) / denom
   mean(abs(rho_star) >= abs(observed) - 1e-12)
@@ -1040,14 +1062,21 @@ bird_coarse_record_share <- function(obs, held = NULL) {
 
 # On-page caveat for a site whose index counts blanks read as one bird.
 bird_cluster_read_caveat <- function(site, years, n_read, index_birds) {
-  if (!is.finite(n_read) || n_read <= 0) return(NULL)
+  n_read <- suppressWarnings(as.numeric(n_read)[1])
+  if (is.na(n_read) || n_read <= 0) return(NULL)
   yrs <- as.character(sort(unique(years)))
   year_text <- if (length(yrs) <= 1L) yrs else
     paste(paste(yrs[-length(yrs)], collapse = ", "), "and", yrs[length(yrs)])
+  index_birds <- suppressWarnings(as.numeric(index_birds)[1])
+  # When other detections lack any count, the total is unavailable (NA); the
+  # caveat then states only how many birds were read as one, never "NA".
+  share <- if (is.finite(index_birds))
+    sprintf("(%s of %s birds)", format(n_read, big.mark = ","), format(index_birds, big.mark = ",")) else
+    sprintf("(%s birds read this way)", format(n_read, big.mark = ","))
   sprintf(paste("At %s, NEON crews wrote a cluster size only for groups in %s and left single birds blank;",
                 "the protocol counts a single bird as 1. This figure counts each blank as one bird",
-                "(%s of %s birds). If any blank was an uncounted group, the true figure is higher."),
-          site, year_text, format(n_read, big.mark = ","), format(index_birds, big.mark = ","))
+                "%s. If any blank was an uncounted group, the true figure is higher."),
+          site, year_text, share)
 }
 
 # Survey-design notes from NEON's product issue log that change how a site's
@@ -1612,14 +1641,14 @@ BIRD_COL_DICT <- list(
   method_unknown  = c("logical", "TRUE when detectionMethod is blank, missing, or explicitly unknown."),
   cluster_size_state = c("category", "How the count was read (wren's ruling, 2026-10-21): recorded (a positive integer), blank_read_as_one (blank on a bird record in a listed site-year whose crews wrote sizes only for groups; read as one bird per NEON.DOC.014041 Rev L SOP B), blank_no_bird (blank on a line with no taxon), blank_unresolved (blank on a bird record elsewhere; birds per count stays NA), invalid (0, negative, fractional or text; never read as one)."),
   clusterSizeRaw  = c("source token", "clusterSize exactly as returned by the NEON release fetch, before numeric parsing. NA = blank at source (or a bundle built before raw capture). Lets a reader tell a blank source field from a parse loss."),
-  clusterSize     = c("# birds", "Source count of birds in the detection (a flock is one row with clusterSize > 1). Any detection counts toward incidence; only a positive finite integer count enters the detection index, and a missing or invalid count makes every birds-per-count figure in its scope NA."),
+  clusterSize     = c("# birds", "Count of birds used for the detection: the recorded cluster size (a flock is one row with clusterSize > 1), or 1 where cluster_size_state is blank_read_as_one; NA otherwise. The source token is clusterSizeRaw. Any detection counts toward incidence; only a recorded or read-as-one count enters the detection index, and a detection without one makes every birds-per-count figure in its scope NA."),
   matched_visit   = c("logical", "TRUE when the source detection matched exactly one authoritative brd_perpoint visit."),
   valid_count     = c("logical", "TRUE when the matched visit has samplingImpractical == OK. A missing clusterSize never makes a count invalid; it only makes the detection index unavailable."),
   is_species      = c("logical", "TRUE only when the reported species/subspecies name can be safely mapped to a canonical binomial community unit."),
   is_flyover      = c("logical", "TRUE if this detection was recorded as a bird passing overhead. It remains auditable but is operationally excluded from every on-point community metric."),
   joined_valid_visit = c("logical", "TRUE when the detection joins unambiguously to a valid brd_perpoint physical visit."),
   enters_incidence = c("logical", "Incidence predicate shared by every community metric (presence, richness, detection frequency, Chao2, coverage, rarefaction, accumulation, maps, search): valid joined visit + formal point-count minute 1-6 + safely canonicalized species/subspecies + known detection method + non-flyover. A clusterSize is not required."),
-  enters_index    = c("logical", "Detection-index predicate: enters_incidence AND a positive finite integer clusterSize. Birds per count sums clusterSize over these rows and is NA wherever an enters_incidence row in scope is not also enters_index."),
+  enters_index    = c("logical", "Detection-index predicate: enters_incidence AND cluster_size_state recorded or blank_read_as_one. Birds per count sums clusterSize over these rows and is NA wherever an enters_incidence row in scope is not also enters_index."),
   hold_reason     = c("category", "Why a source detection is held outside app metrics. NA denotes an auditable obs row; minute-specific values include incidental_outside_point_count, missing_point_count_minute, and invalid_point_count_minute. A count never causes a hold; invalid_cluster_size appears only in bundles built before the incidence/index split."),
   primary_method  = c("category", "Modal canonical detection channel across eligible non-flyover records for a species at the grid. NA = none recorded."),
   method          = c("category", "Modal canonical detection channel across eligible non-flyover records for the species."),
@@ -1652,11 +1681,11 @@ BIRD_COL_DICT <- list(
   flag            = c("category", "Which data-quality review flag this row tripped (the flag's title). 'verify, not wrong'; flagged rows are RETAINED, never deleted."),
   flag_key        = c("", "Machine key of the QC flag (vernacular / far / zero / visualfar / cluster / missing / methodmissing / loweffort)."),
   flag_level      = c("category", "Severity of the QC flag: high (almost certainly an error) / warn (worth a look) / info (a note)."),
-  n_species       = c("# species", "Observed biological-species richness at the site: distinct canonical binomial community units (= S_obs); subspecies never add richness. NEON publishes some protected species only above species level, so richness here is a minimum."),
-  S_obs           = c("# species", "Observed biological-species richness: distinct canonical binomial community units detected. NEON publishes some protected species only above species level, so richness here is a minimum."),
-  chao2           = c("# species", "Bias-corrected Chao2 sample-incidence richness extrapolation across valid physical counts: Sobs + ((T-1)/T) * Q1 * (Q1-1) / (2 * (Q2+1)). The point estimate does not lead when Q2 < 3. NEON publishes some protected species only above species level, so richness here is a minimum."),
+  n_species       = c("# species", "Observed biological-species richness at the site: distinct canonical binomial community units (= S_obs); subspecies never add richness. NEON publishes federally listed and sensitive species above species level at every site (state-listed too at HARV, BART and PUUM) and withholds some at GRSM, RMNP and YELL, so richness here is a minimum."),
+  S_obs           = c("# species", "Observed biological-species richness: distinct canonical binomial community units detected. NEON publishes federally listed and sensitive species above species level at every site (state-listed too at HARV, BART and PUUM) and withholds some at GRSM, RMNP and YELL, so richness here is a minimum."),
+  chao2           = c("# species", "Bias-corrected Chao2 sample-incidence richness extrapolation across valid physical counts: Sobs + ((T-1)/T) * Q1 * (Q1-1) / (2 * (Q2+1)). The point estimate does not lead when Q2 < 3. NEON publishes federally listed and sensitive species above species level at every site (state-listed too at HARV, BART and PUUM) and withholds some at GRSM, RMNP and YELL, so richness here is a minimum."),
   coverage        = c("0-1", "Chao/Jost incidence coverage across valid physical counts: estimated share of total incidence probability represented by already-detected species. This does not correct detectability or survey design."),
-  S_rare          = c("# species", "Species richness rarefied to t_used valid physical counts within the stated analysis window. Rarefaction standardizes sample-count support only; it does not equalize coverage, detectability, space, timing, or design. NEON publishes some protected species only above species level, so richness here is a minimum."),
+  S_rare          = c("# species", "Species richness rarefied to t_used valid physical counts within the stated analysis window. Rarefaction standardizes sample-count support only; it does not equalize coverage, detectability, space, timing, or design. NEON publishes federally listed and sensitive species above species level at every site (state-listed too at HARV, BART and PUUM) and withholds some at GRSM, RMNP and YELL, so richness here is a minimum."),
   t_used          = c("# valid physical counts", "Common valid physical-count support used for S_rare; the minimum T_counts across the exact 47-site 2017-2024 roster."),
   birds_per_count = c("birds / point-count", "Detection index = eligible in-window non-flyover birds / valid point-counts run. NA when any eligible detection in scope lacks a usable clusterSize; a missing count is never read as zero birds."),
   pct_singing     = c("% eligible detections", "Share of eligible detections whose raw method includes a singing component; compound methods are included."),

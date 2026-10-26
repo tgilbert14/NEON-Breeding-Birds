@@ -75,6 +75,11 @@ f_unavail <- render_site("JORN", list(n_detections_without_count = 12L, birds_pe
                                       index_birds = NA_real_))
 f_read1 <- render_site("JORN", list(n_detections_count_read_as_one = 340L,
                                     read_as_one_years = c(2017L, 2018L)))
+# Read-as-one counts beside detections with no count at all: the total is NA,
+# and the caveat must say so without printing NA.
+f_both <- render_site("JORN", list(n_detections_count_read_as_one = 40L, read_as_one_years = 2018L,
+                                   n_detections_without_count = 12L, birds_per_count = NA_real_,
+                                   index_birds = NA_real_))
 
 # Through the real Shiny download handler: load JORN, then an all-zero record
 # built from it (supported counts, no eligible detection), as
@@ -130,12 +135,14 @@ if (nzchar(pdftotext)) {
   t_r1 <- txt_of(f_read1)
   if (!grepl("left single birds blank", gsub("\\s+", " ", t_r1), fixed = TRUE))
     stop("read-as-one caveat missing", call. = FALSE)
+  for (tt in list(t_un, t_r1, txt_of(f_both)))
+    if (grepl("\\bNA\\b", tt)) stop("a report variant prints a literal NA", call. = FALSE)
   t_zero <- txt_of(f_zero)
   if (!grepl("supported zero record", t_zero, fixed = TRUE) || grepl("\\bNA\\b", t_zero))
     stop("all-zero report text is wrong", call. = FALSE)
   cat("  pdftotext text checks passed\n")
 } else cat("  pdftotext not found; text checks skipped\n")
 
-cat(sprintf("Rendered %d reports in %.1f s\n", length(files) + 2L,
+cat(sprintf("Rendered %d reports in %.1f s\n", length(files) + 3L,
             as.numeric(difftime(Sys.time(), t0, units = "secs"))))
 cat("OK\n")

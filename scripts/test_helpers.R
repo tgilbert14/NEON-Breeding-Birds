@@ -785,6 +785,9 @@ check(grepl("(1 of 7 birds)", bird_cluster_read_caveat("PUUM", c(2018L, 2021L, 2
       grepl("881 of 1,137 birds", bird_cluster_read_caveat("PUUM", 2021L, 881L, 1137), fixed = TRUE) &&
       is.null(bird_cluster_read_caveat("SRER", integer(), 0L, 10)),
       "the read-as-one caveat states years and the share of birds, and only where it applies")
+na_caveat <- bird_cluster_read_caveat("PUUM", c(2018L, 2021L), 4L, NA_real_)
+check(!grepl("\\bNA\\b", na_caveat) && grepl("(4 birds read this way)", na_caveat, fixed = TRUE),
+      "the read-as-one caveat never prints NA when other detections leave the total unavailable")
 
 # Accumulation verdict (wren's ruling): Q1/T bands and reachability.
 check(bird_accumulation_verdict(25, 100)$band == "still rising" && bird_accumulation_verdict(25, 100)$per_n == 4L &&
@@ -794,6 +797,9 @@ check(bird_accumulation_verdict(25, 100)$band == "still rising" && bird_accumula
       bird_accumulation_verdict(0, 90)$band == "flat" &&
       grepl("flat: every detected species", bird_accumulation_verdict(0, 90)$text, fixed = TRUE),
       "accumulation verdict bands are reachable and match the rule")
+check(grepl("about 2.5 species per valid count", bird_accumulation_verdict(5, 2)$text, fixed = TRUE) &&
+      !grepl("per 0 valid", bird_accumulation_verdict(5, 2)$text, fixed = TRUE),
+      "more singletons than counts reads as species per count, never one species per 0 counts")
 
 # Spearman interval and exact permutation p (wren's ruling).
 ci45 <- bird_spearman_ci(0.351, 45)
@@ -804,6 +810,12 @@ check(isTRUE(all.equal(bird_spearman_exact_p(1:7, 1:7), 2 / factorial(7))) &&
                        suppressWarnings(stats::cor.test(1:6, c(2, 1, 4, 3, 6, 5), method = "spearman", exact = TRUE)$p.value))) &&
       is.na(bird_spearman_exact_p(1:10, 1:10)),
       "exact permutation p matches enumeration and R's exact test, and is limited to n <= 9")
+perm9 <- bird_permutation_table(9L)
+x9 <- c(3.1, 0.4, 2.2, 5.9, 4.4, 1.7, 8.0, 6.3, 7.5); y9 <- c(2, 1, 5, 4, 3, 7, 9, 6, 8)
+check(nrow(perm9) == factorial(9) && !anyDuplicated(perm9) &&
+      isTRUE(all.equal(bird_spearman_exact_p(x9, y9),
+                       suppressWarnings(stats::cor.test(x9, y9, method = "spearman", exact = TRUE)$p.value))),
+      "the cached permutation table holds every ordering at n = 9 and the exact p still matches R")
 
 # Chao2 stability gate (wren's ruling): extrapolation and upper-bound gates.
 gate_extrap <- chao2_from_incidence(c(rep(1L, 20), rep(2L, 3), rep(5L, 10)), 100)

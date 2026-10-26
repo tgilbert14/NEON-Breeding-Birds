@@ -141,7 +141,9 @@ and a recorded 1 is 74 to 99.9% of recorded sizes.
 
 The rule covers every bird record in a listed site-year: species, coarse
 identifications, flyovers and minute 88. Eligibility does not change, so a flyover
-read as one bird enters only the flyover audit totals. The listing lives in
+read as one bird enters only the flyover audit totals. Those totals count flyovers
+with a usable count (recorded or read as one); a flyover with no usable count stays
+in the detection ledger and out of the audit totals. The listing lives in
 `BIRD_CLUSTER_READ_AS_ONE` (`R/site_metadata.R`); the producer, both oracles and
 the runtime derive the state independently, and the producer stops when a listed
 site-year has blanks without the signature. Every birds-per-count figure states

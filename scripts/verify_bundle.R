@@ -257,6 +257,9 @@ expected_read_as_one_listing <- paste0("Listed for RELEASE-2026: ", paste(
 assert(grepl(expected_read_as_one_listing, as.character(schema$cluster_size_rule), fixed = TRUE) &&
        grepl("NEON.DOC.014041 Rev L", as.character(schema$cluster_size_rule), fixed = TRUE) &&
        grepl("never read as one", as.character(schema$cluster_size_rule), fixed = TRUE) &&
+       grepl("It is not a statistical imputation, and NEON has not corrected these records.",
+             as.character(schema$cluster_size_rule), fixed = TRUE) &&
+       grepl("(0, negative, fractional, text)", as.character(schema$cluster_size_rule), fixed = TRUE) &&
        grepl("Validation fails if a listed site-year", as.character(schema$cluster_size_rule),
              fixed = TRUE) &&
        identical(unlist(schema$cluster_size_states, use.names = FALSE),
@@ -327,6 +330,13 @@ assert(identical(names(index), expected_index_fields) &&
        all(as.character(index$release) == "RELEASE-2026") &&
        all(as.integer(index$schema_version) == 4L),
        "Site index lacks the exact schema-v4 count/opportunity contract.")
+integer_index_fields <- c(
+  "n_species", "n_points", "n_visits", "n_supported_zero_counts", "n_opportunities",
+  "n_supported_zero", "n_detections_without_count", "n_detections_count_read_as_one",
+  "schema_version"
+)
+assert(all(vapply(index[integer_index_fields], is.integer, logical(1))),
+       "Site index count fields are not stored as integers.")
 
 cross_oracle_base <- vector("list", length(expected_sites))
 names(cross_oracle_base) <- expected_sites
