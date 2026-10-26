@@ -162,6 +162,42 @@ point_count_minute_fields <- function(x) {
               ifelse(whole & minute == 88L, "incidental_minute_88", "invalid_or_unknown"))))
   list(raw = raw, value = minute, state = state, in_window = in_window)
 }
+# A listed read-as-one site-year must still show the recording signature while
+# it has blanks: blank on at least half of its bird records, and a recorded 1
+# on fewer than half of its recorded sizes. If NEON corrects the records, or a
+# later release changes the practice, the refresh stops for a new ruling.
+cluster_signature_gate <- function(site, year, names_bird, blank, state, used) {
+  for (yr in BIRD_CLUSTER_READ_AS_ONE$year[BIRD_CLUSTER_READ_AS_ONE$site == site]) {
+    bird <- names_bird & year %in% yr
+    n_bird <- sum(bird)
+    n_blank <- sum(bird & blank)
+    recorded <- bird & state == "recorded"
+    n_recorded <- sum(recorded)
+    n_one <- sum(recorded & used %in% 1)
+    signature <- n_blank >= BIRD_CLUSTER_SIGNATURE_BLANK_MIN * n_bird &&
+      n_one < BIRD_CLUSTER_SIGNATURE_ONE_MAX * max(1L, n_recorded)
+    line <- sprintf(
+      "clusterSize read as one: %s %d, blank on %d of %d bird records, recorded 1 on %d of %d sizes%s",
+      site, as.integer(yr), n_blank, n_bird, n_one, n_recorded,
+      if (!n_blank) " (nothing to read)" else if (signature) "" else " (signature lost)")
+    cluster_review_lines <<- c(cluster_review_lines, line)
+    if (n_blank > 0L && !signature)
+      stop(line, ". The read-as-one listing needs a new review.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+# A blank count on a bird record in an unlisted site-year stays unresolved
+# (birds per count NA) and is reported for review.
+cluster_review_note <- function(site, year, state) {
+  unresolved <- state == "blank_unresolved"
+  if (!any(unresolved)) return(invisible(NULL))
+  years <- sort(unique(year[unresolved]))
+  cluster_review_lines <<- c(cluster_review_lines, sprintf(
+    "clusterSize review: %s has %d blank count(s) on bird records in unlisted site-year(s) %s; birds per count stays NA there until a reviewed ruling lists them",
+    site, sum(unresolved), paste(ifelse(is.na(years), "unknown", years), collapse = ", ")))
+  invisible(NULL)
+}
+cluster_review_lines <- character()
 sha256_file <- function(path) digest::digest(path, algo = "sha256", file = TRUE, serialize = FALSE)
 canonical_table <- bird_canonical_table
 
@@ -280,8 +316,6 @@ build_site <- function(site) {
   reported_rank <- col_chr(cd, "taxonRank")
   unit <- community_unit(reported_rank, reported_scientific)
   cluster_raw <- col_chr(cd, "clusterSize")
-  cluster <- suppressWarnings(as.numeric(cluster_raw))
-  cluster_valid <- is.finite(cluster) & cluster > 0 & cluster == floor(cluster)
   species <- unit$eligible
   flyover <- is_flyover_method(method_raw)
   matched <- !is.na(visit_match)
@@ -290,10 +324,9 @@ build_site <- function(site) {
   matched_valid[!matched] <- FALSE
   # Audit item 16, incidence/index split. A detection enters incidence (presence,
   # richness, Chao2, coverage, rarefaction, accumulation, maps, search) without a
-  # count. Only the detection index (birds per count) also needs a positive
-  # integer clusterSize; PUUM's crews left single birds blank at source.
+  # count. Only the detection index (birds per count) also needs a count, which
+  # the cluster-size state below supplies.
   incidence <- matched_valid & minute$in_window & species & method_known & !flyover
-  index_ok <- incidence & cluster_valid
 
   # The structural visit ledger owns point, year, and bout. A detection-side
   # timestamp can be stale or formatted differently; once the immutable physical
@@ -311,6 +344,29 @@ build_site <- function(site) {
   if (any(year_conflict) || any(bout_conflict))
     stop(sprintf("%s has detection/visit grain conflicts (year=%d, bout=%d).",
                  site, sum(year_conflict), sum(bout_conflict)), call. = FALSE)
+
+  # Cluster-size state (wren's ruling, 2026-10-21). clusterSizeRaw keeps the
+  # source token; clusterSize holds the count actually used. A blank on a record
+  # that names a bird is read as one bird only in a listed site-year
+  # (BIRD_CLUSTER_READ_AS_ONE), where crews wrote a size only for groups
+  # (NEON.DOC.014041 Rev L SOP B sets a non-clustered bird's size to 1).
+  cluster_token <- trimws(cluster_raw)
+  cluster_blank <- is.na(cluster_token) | !nzchar(cluster_token)
+  cluster_parsed <- suppressWarnings(as.numeric(cluster_token))
+  cluster_recorded <- !cluster_blank & is.finite(cluster_parsed) & cluster_parsed > 0 &
+    cluster_parsed == floor(cluster_parsed)
+  names_bird <- !is.na(reported_scientific) & nzchar(trimws(reported_scientific))
+  read_listed <- paste(det_site, det_year) %in%
+    paste(BIRD_CLUSTER_READ_AS_ONE$site, BIRD_CLUSTER_READ_AS_ONE$year)
+  cluster_state <- ifelse(cluster_recorded, "recorded",
+    ifelse(!cluster_blank, "invalid",
+      ifelse(!names_bird, "blank_no_bird",
+        ifelse(read_listed, "blank_read_as_one", "blank_unresolved"))))
+  cluster <- ifelse(cluster_state == "recorded", cluster_parsed,
+    ifelse(cluster_state == "blank_read_as_one", 1, NA_real_))
+  cluster_signature_gate(site, det_year, names_bird, cluster_blank, cluster_state, cluster)
+  cluster_review_note(site, det_year, cluster_state)
+  index_ok <- incidence & cluster_state %in% c("recorded", "blank_read_as_one")
 
   detection <- tibble::tibble(
     survey_id = cd_survey,
@@ -354,6 +410,7 @@ build_site <- function(site) {
     method_drumming = method_component("drum"),
     clusterSize = cluster,
     clusterSizeRaw = cluster_raw,
+    cluster_size_state = cluster_state,
     sexOrAge = col_chr(cd, "sexOrAge"),
     matched_visit = matched,
     valid_count = matched_valid,
@@ -520,7 +577,7 @@ for (site in expected_sites) {
 
   eligible <- bundle$obs[bundle$obs$enters_incidence %in% TRUE, , drop = FALSE]
   # Bird-count summaries need a usable count on every eligible detection; one
-  # without (PUUM) makes the index and the top species by birds unavailable.
+  # without makes the index and the top species by birds unavailable.
   n_without_count <- sum(!(eligible$enters_index %in% TRUE))
   totals <- if (nrow(eligible) && n_without_count == 0L)
     stats::aggregate(clusterSize ~ communityScientificName, eligible, sum) else NULL
@@ -536,6 +593,7 @@ for (site in expected_sites) {
     birds_per_count = if (bundle$meta$n_visits > 0 && n_without_count == 0L)
       round(sum(eligible$clusterSize) / bundle$meta$n_visits, 3) else NA_real_,
     n_detections_without_count = as.integer(n_without_count),
+    n_detections_count_read_as_one = as.integer(sum(eligible$cluster_size_state == "blank_read_as_one")),
     top_species = top,
     lat = bundle$meta$lat,
     lng = bundle$meta$lng,
@@ -547,6 +605,14 @@ for (site in expected_sites) {
               bundle$meta$n_visits, bundle$meta$n_supported_zero_counts,
               bundle$meta$n_opportunities, bundle$meta$n_supported_zero,
               index_rows[[site]]$n_species))
+}
+
+# Read-as-one evidence and unresolved blanks go to the log and the run summary.
+if (length(cluster_review_lines)) {
+  cat(paste0(cluster_review_lines, "\n"), sep = "")
+  summary_path <- Sys.getenv("GITHUB_STEP_SUMMARY", "")
+  if (nzchar(summary_path))
+    cat(paste0(cluster_review_lines, "\n"), file = summary_path, append = TRUE, sep = "")
 }
 
 site_index <- dplyr::bind_rows(index_rows)
@@ -569,7 +635,20 @@ schema <- list(
   species_community_unit = "safe normalized genus + species binomial; parent species and subspecies collapse; ambiguous nomenclature fails closed",
   source_taxonomy_provenance = "reportedTaxonID, reportedScientificName, reportedVernacularName, and reportedTaxonRank preserve exact source values",
   breeding_detection_rule = "enters_incidence = matched valid visit AND pointCountMinute in 1:6 AND safely canonicalized taxonRank in species/subspecies AND known detectionMethod AND not flyover; clusterSize is not required",
-  detection_index_rule = "enters_index = enters_incidence AND positive finite integer clusterSize; a site, year, species, grid, or window with any enters_incidence detection outside enters_index reports birds per count as NA and states the number of detections without a usable count",
+  detection_index_rule = "enters_index = enters_incidence AND cluster_size_state in recorded or blank_read_as_one (clusterSize then holds a positive finite integer count); a site, year, species, grid, or window with any enters_incidence detection outside enters_index reports birds per count as NA and states the number of detections without a usable count",
+  cluster_size_rule = paste0(
+    "clusterSizeRaw keeps the source token and clusterSize holds the count used. ",
+    "A blank clusterSize on a record that names a bird (non-blank reported taxon) is read as one bird ",
+    "when its site-year is listed and shows the recording signature: blank on at least half of that ",
+    "site-year's bird records, and 1 on fewer than half of its recorded sizes. NEON.DOC.014041 Rev L, ",
+    "SOP B, sets the cluster size of a non-clustered bird to 1, and these crews wrote a size only for ",
+    "groups. Listed for RELEASE-2026: ",
+    paste(sprintf("%s %d", BIRD_CLUSTER_READ_AS_ONE$site, BIRD_CLUSTER_READ_AS_ONE$year), collapse = ", "),
+    ". A blank line with no taxon is not a detection. A blank bird record in an unlisted site-year ",
+    "leaves birds per count NA with its stated count and is reported for review. A present value that ",
+    "is not a positive integer is invalid and is never read as one. Validation fails if a listed ",
+    "site-year still has blanks but no longer shows the signature."),
+  cluster_size_states = c("recorded", "blank_read_as_one", "blank_no_bird", "blank_unresolved", "invalid"),
   visit_outcomes = c("positive", "supported_zero", "unavailable"),
   point_year_outcomes = c("positive", "supported_zero", "unavailable"),
   cross_site_rule = list(

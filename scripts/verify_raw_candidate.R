@@ -336,8 +336,36 @@ for (site in expected_sites) {
   reported_vernacular <- col_chr(cd, "vernacularName")
   unit <- community_unit(rank, scientific)
   cluster_raw <- col_chr(cd, "clusterSize")
-  cluster <- suppressWarnings(as.numeric(cd$clusterSize))
-  cluster_valid <- is.finite(cluster) & cluster > 0 & cluster == floor(cluster)
+  # Independent re-derivation of wren's cluster-size ruling (2026-10-21). The
+  # source token decides recorded, invalid, or blank; a blank on a record whose
+  # reported scientific name is present is read as one bird only in a listed
+  # site-year, and stays unresolved elsewhere.
+  cluster_chr <- trimws(cluster_raw)
+  cluster_num <- suppressWarnings(as.numeric(cluster_chr))
+  token_blank <- blank(cluster_chr)
+  token_count <- !token_blank & is.finite(cluster_num) & cluster_num >= 1 & cluster_num %% 1 == 0
+  bird_named <- !blank(scientific)
+  read_key <- paste(det_site, det_year, sep = "|")
+  listed_key <- paste(BIRD_CLUSTER_READ_AS_ONE$site, BIRD_CLUSTER_READ_AS_ONE$year, sep = "|")
+  cluster_state <- rep("invalid", length(cluster_chr))
+  cluster_state[token_count] <- "recorded"
+  cluster_state[token_blank & !bird_named] <- "blank_no_bird"
+  cluster_state[token_blank & bird_named & read_key %in% listed_key] <- "blank_read_as_one"
+  cluster_state[token_blank & bird_named & !(read_key %in% listed_key)] <- "blank_unresolved"
+  cluster <- rep(NA_real_, length(cluster_chr))
+  cluster[cluster_state == "recorded"] <- cluster_num[cluster_state == "recorded"]
+  cluster[cluster_state == "blank_read_as_one"] <- 1
+  cluster_valid <- cluster_state %in% c("recorded", "blank_read_as_one")
+  for (listed_year in BIRD_CLUSTER_READ_AS_ONE$year[BIRD_CLUSTER_READ_AS_ONE$site == site]) {
+    in_year <- bird_named & !is.na(det_year) & det_year == listed_year
+    n_blank_year <- sum(in_year & token_blank)
+    if (n_blank_year == 0L) next
+    sizes <- cluster_num[in_year & token_count]
+    assert(n_blank_year / sum(in_year) >= BIRD_CLUSTER_SIGNATURE_BLANK_MIN &&
+             sum(sizes == 1) / max(1L, length(sizes)) < BIRD_CLUSTER_SIGNATURE_ONE_MAX,
+           site, " ", listed_year,
+           ": a listed read-as-one site-year has blank counts without the recording signature.")
+  }
   method <- as.character(cd$detectionMethod)
   method_token <- tolower(trimws(method))
   method_known <- !blank(method_token) & method_token != "unknown"
@@ -345,8 +373,8 @@ for (site in expected_sites) {
   is_species <- unit$eligible
   is_flyover <- grepl("flyover", tolower(method)); is_flyover[is.na(is_flyover)] <- FALSE
   # Independent re-derivation of the incidence/index split (audit item 16):
-  # incidence needs no count; the detection index also needs a positive integer
-  # clusterSize. A count never causes a hold.
+  # incidence needs no count; the detection index also needs a recorded count or
+  # a blank read as one bird. A count never causes a hold.
   eligible <- matched_valid & minute$in_window & is_species & method_known & !is_flyover
   index_ok <- eligible & cluster_valid
   reason <- ifelse(!matched, "orphan_detection_no_visit",
@@ -407,6 +435,7 @@ for (site in expected_sites) {
     method_drumming = component("drum"),
     clusterSize = cluster,
     clusterSizeRaw = cluster_raw,
+    cluster_size_state = cluster_state,
     sexOrAge = col_chr(cd, "sexOrAge"),
     matched_visit = matched,
     valid_count = matched_valid,

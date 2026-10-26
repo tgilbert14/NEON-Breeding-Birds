@@ -47,6 +47,8 @@ rows <- lapply(files, function(path) {
     birds_per_count = if (nvis > 0 && n_without_count == 0L)
       round(sum(sp$clusterSize) / nvis, 3) else NA_real_,
     n_detections_without_count = as.integer(n_without_count),
+    n_detections_count_read_as_one = if (nrow(sp))
+      as.integer(sum(sp$cluster_size_state == "blank_read_as_one")) else 0L,
     top_species = top,
     lat = as.numeric(b$meta$lat),
     lng = as.numeric(b$meta$lng),

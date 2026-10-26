@@ -24,7 +24,22 @@ Rscript --vanilla scripts/make_pipeline_fixture.R "$FX" "$MODE"
 export BIRD_RAW_DIR="$FX/raw" BIRD_RECEIPT="$FX/receipt.json" BIRD_OUTPUT_ROOT="$ROOT"
 echo "== producer"
 Rscript --vanilla scripts/bundle_bird_data.R > "$FX/bundle.log" 2>&1 || { tail -20 "$FX/bundle.log"; exit 1; }
-grep -E "Bundling (PUUM|SRER|GUAN)" "$FX/bundle.log"
+grep -E "Bundling (PUUM|SRER|GUAN)|clusterSize (read as one|review)" "$FX/bundle.log"
+echo "== cluster-size states (wren's ruling)"
+Rscript --vanilla -e '
+b <- readRDS("data/sites/PUUM.rds")
+d <- rbind(as.data.frame(b$obs), as.data.frame(b$held))
+print(table(d$year, d$cluster_size_state))
+one <- d[d$cluster_size_state == "blank_read_as_one", ]
+stopifnot(nrow(one) == 7L, all(one$year == 2018L), all(one$clusterSize == 1),
+          all(is.na(one$clusterSizeRaw) | !nzchar(trimws(one$clusterSizeRaw))),
+          sum(one$enters_index) == 4L,
+          sum(d$cluster_size_state == "blank_no_bird" & d$year == 2018L) == 1L,
+          all(d$year[d$cluster_size_state == "blank_unresolved"] == 2019L),
+          all(is.na(d$clusterSize[d$cluster_size_state %in% c("blank_unresolved", "invalid", "blank_no_bird")])))
+idx <- readRDS("data/site_index.rds")
+stopifnot(idx$n_detections_count_read_as_one[idx$site == "PUUM"] == 4L,
+          all(idx$n_detections_count_read_as_one[idx$site != "PUUM"] == 0L))'
 echo "== sanitize and scan"
 Rscript --vanilla scripts/sanitize_bird_evidence.R
 Rscript --vanilla scripts/scan_bird_evidence.R
@@ -48,4 +63,14 @@ BIRD_RELEASE_STAMP_MODE=write BIRD_WRITE_PAGES_RELEASE=1 Rscript --vanilla scrip
 cp "$WORK/manifest_final.json" manifest.json
 echo "== bundle oracle"
 Rscript --vanilla scripts/verify_bundle.R
+echo "== producer refuses a listed site-year that lost its signature"
+LOST="$WORK/lost"
+mkdir -p "$LOST/fixture"
+FIXTURE_SIGNATURE_LOST=1 Rscript --vanilla scripts/make_pipeline_fixture.R "$LOST/fixture" "$MODE" > /dev/null
+if BIRD_RAW_DIR="$LOST/fixture/raw" BIRD_RECEIPT="$LOST/fixture/receipt.json" BIRD_OUTPUT_ROOT="$LOST/out" \
+    Rscript --vanilla scripts/bundle_bird_data.R > "$LOST/bundle.log" 2>&1; then
+  echo "FAIL: the producer accepted PUUM 2018 without the read-as-one signature."
+  exit 1
+fi
+grep "PUUM 2018, blank on 7 of 13 bird records, recorded 1 on 6 of 6 sizes (signature lost)" "$LOST/bundle.log"
 echo "OK: synthetic 47-site release chain passed ($MODE)."

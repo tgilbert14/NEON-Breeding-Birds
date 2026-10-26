@@ -65,6 +65,8 @@ for (path in files) {
   n_without_count_window <- if (nrow(sp)) as.integer(sum(!(sp$enters_index %in% TRUE))) else 0L
   n_birds_window <- if (n_without_count_window > 0L) NA_real_ else
     if (nrow(sp)) sum(sp$clusterSize) else 0
+  n_read_as_one_window <- if (nrow(sp))
+    as.integer(sum(sp$cluster_size_state == "blank_read_as_one")) else 0L
 
   species_birds <- if (nrow(sp) && n_without_count_window == 0L) stats::aggregate(
     clusterSize ~ communityScientificName, sp, sum
@@ -78,12 +80,18 @@ for (path in files) {
   } else {
     top_species <- NA_character_
   }
-  point_incidence <- if (nrow(species_point_pairs))
-    table(species_point_pairs$communityScientificName) else integer()
   mean_detection_frequency <- if (S_obs > 0L)
     mean(100 * incidence_y / si$T) else NA_real_
-  mean_ubiquity <- if (length(point_incidence))
-    mean(100 * as.numeric(point_incidence) / n_points_window) else NA_real_
+  # Ubiquity after the 2018 grid cut (wren, 2026-10-21): denominated on the
+  # points with a valid count from BIRD_UBIQUITY_YEAR_MIN to the window end;
+  # each species' detections at those points count from any window year.
+  ubiquity_points <- unique(as.character(
+    visits$pointkey[visits$year >= BIRD_UBIQUITY_YEAR_MIN]))
+  ubiquity_pairs <- species_point_pairs[
+    species_point_pairs$pointkey %in% ubiquity_points, , drop = FALSE]
+  mean_ubiquity <- if (nrow(ubiquity_pairs) && length(ubiquity_points))
+    mean(100 * as.numeric(table(ubiquity_pairs$communityScientificName)) /
+           length(ubiquity_points)) else NA_real_
 
   if (si$T != n_visits_window || n_points_window < 1L ||
       n_points_window > n_visits_window ||
@@ -115,6 +123,7 @@ for (path in files) {
     n_supported_zero_counts_window = n_supported_zero_counts_window,
     n_birds_window = n_birds_window,
     n_detections_without_count_window = n_without_count_window,
+    n_detections_count_read_as_one_window = n_read_as_one_window,
     S_obs = S_obs,
     U_incidence = U_incidence,
     Q1_incidence = Q1_incidence,
@@ -160,7 +169,8 @@ expected_columns <- c(
   "site", "analysis_year_min", "analysis_year_max", "bird_year_min", "bird_year_max",
   "T_counts", "n_visits_window", "n_points_window", "n_positive_counts_window",
   "n_supported_zero_counts_window", "n_birds_window",
-  "n_detections_without_count_window", "S_obs", "U_incidence",
+  "n_detections_without_count_window", "n_detections_count_read_as_one_window",
+  "S_obs", "U_incidence",
   "Q1_incidence", "Q2_incidence", "birds_per_count_window", "top_species_window",
   "mean_detection_frequency", "mean_ubiquity", "pct_singing", "S_rare", "t_used",
   "coverage", "hill_q1", "hill_q2"
@@ -180,6 +190,7 @@ if (!identical(names(cross_site), expected_columns) ||
     any(cross_site$U_incidence < cross_site$n_positive_counts_window) ||
     any(cross_site$Q1_incidence + cross_site$Q2_incidence > cross_site$S_obs) ||
     any(cross_site$n_detections_without_count_window < 0L) ||
+    any(cross_site$n_detections_count_read_as_one_window < 0L) ||
     any(xor(cross_site$n_detections_without_count_window > 0L,
             is.na(cross_site$n_birds_window))) ||
     any(is.na(cross_site$n_birds_window) != is.na(cross_site$birds_per_count_window)) ||

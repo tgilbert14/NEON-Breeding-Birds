@@ -1,10 +1,13 @@
 # Synthetic 47-site raw fixture for the release chain (producer, sanitizer, raw
 # oracle, derived builders, stamp, bundle oracle). Every site gets a small valid
-# baseline; PUUM, SRER and GUAN carry the edge cases: missing, invalid and text
-# clusterSize tokens, flyovers and coarse IDs without a count, minute 88, blank
-# and out-of-window minutes, unknown methods, unsafe names, orphans, impractical
-# visits, and a pre-window-only missing count. Run by scripts/test_pipeline_fixture.sh;
-# it never touches committed data.
+# baseline; PUUM, SRER and GUAN carry the edge cases: blank counts read as one
+# bird in a listed site-year (PUUM 2018), blank counts left unresolved in
+# unlisted site-years, invalid and text clusterSize tokens, flyovers and coarse
+# IDs without a count, minute 88, blank and out-of-window minutes, unknown
+# methods, unsafe names, orphans, impractical visits, and a pre-window-only
+# missing count. Run by scripts/test_pipeline_fixture.sh; it never touches
+# committed data. FIXTURE_SIGNATURE_LOST=1 writes PUUM 2018 with recorded 1s on
+# every recorded size, so the producer must refuse the read-as-one listing.
 # Usage: Rscript --vanilla scripts/make_pipeline_fixture.R <outdir> <integer|character|double>
 suppressPackageStartupMessages({ library(jsonlite); library(digest) })
 source("R/site_metadata.R")
@@ -12,6 +15,7 @@ source("R/bird_evidence_contract.R")
 args <- commandArgs(trailingOnly = TRUE)
 OUT <- args[[1]]
 MODE <- if (length(args) >= 2) args[[2]] else "double"
+SIGNATURE_LOST <- identical(Sys.getenv("FIXTURE_SIGNATURE_LOST"), "1")
 dir.create(file.path(OUT, "raw"), recursive = TRUE, showWarnings = FALSE)
 sites <- sort(as.character(neon_sites$site))
 
@@ -50,13 +54,28 @@ for (site in sites) {
     cd[[length(cd) + 1]] <- det_row(v, "Turdus migratorius", cluster = 1 + bout)
   }
   if (site == "PUUM") {
-    # V1 stays valid: eligible + cluster-blocked row on the same count.
+    # PUUM 2018 is listed for read-as-one: blank counts on bird records (7 of 13
+    # bird records) and no recorded 1 among its six recorded sizes. A species,
+    # a flyover, a coarse ID and a minute-88 record are read as one bird; the
+    # blank line with no taxon is not a detection.
+    if (SIGNATURE_LOST) for (k in c(1, 2, 5, 6, 9, 10)) cd[[k]]$clusterSize <- 1
+    cd[[length(cd) + 1]] <- det_row(pp[[1]], "Himatione sanguinea", cluster = NA)
+    cd[[length(cd) + 1]] <- det_row(pp[[1]], "Chlorodrepanis virens", cluster = NA, method = "flyover")
+    cd[[length(cd) + 1]] <- det_row(pp[[2]], "Himatione sanguinea", cluster = NA)
+    cd[[length(cd) + 1]] <- det_row(pp[[5]], "Chasiempis sandwichensis", cluster = NA)
+    cd[[length(cd) + 1]] <- det_row(pp[[5]], "Zosterops sp.", rank = "genus", cluster = NA)
+    cd[[length(cd) + 1]] <- det_row(pp[[6]], "Himatione sanguinea", cluster = NA, minute = "88")
+    cd[[length(cd) + 1]] <- det_row(pp[[9]], "", cluster = NA)
+    cd[[length(cd) + 1]] <- det_row(pp[[10]], "Himatione sanguinea", cluster = NA)
+    # PUUM 2019 is not listed: its blank counts stay unresolved, so birds per
+    # count is NA wherever they fall. V1: an incidence row with a count beside
+    # incidence rows without one.
     v1 <- visit_row(site, "PUUM_010", "21", 2019L, 1); pp[[length(pp) + 1]] <- v1
     cd[[length(cd) + 1]] <- det_row(v1, "Chasiempis sandwichensis", cluster = 2)
     cd[[length(cd) + 1]] <- det_row(v1, "Himatione sanguinea", cluster = NA)
     cd[[length(cd) + 1]] <- det_row(v1, "Turdus migratorius", cluster = NA)
     cd[[length(cd) + 1]] <- det_row(v1, "Chasiempis sandwichensis", cluster = -1)
-    # V2 withdrawn: blocked row plus every kind of other row.
+    # V2: an unresolved blank plus every kind of other row.
     v2 <- visit_row(site, "PUUM_010", "21", 2019L, 2); pp[[length(pp) + 1]] <- v2
     cd[[length(cd) + 1]] <- det_row(v2, "Himatione sanguinea", cluster = NA)
     cd[[length(cd) + 1]] <- det_row(v2, "Chlorodrepanis virens", cluster = 3, method = "flyover")
@@ -69,25 +88,25 @@ for (site in sites) {
     cd[[length(cd) + 1]] <- det_row(v2, "zosterops japonicus", cluster = 1)
     cd[[length(cd) + 1]] <- det_row(v2, "", cluster = 1)
     cd[[length(cd) + 1]] <- det_row(v2, "Zosterops japonicus", rank = "subspecies", cluster = NA)
-    # V3 coarse-only blocked rows: not withdrawn (supported zero).
+    # V3 coarse-only blank: not a species detection (supported zero).
     v3 <- visit_row(site, "PUUM_011", "21", 2019L, 1); pp[[length(pp) + 1]] <- v3
     cd[[length(cd) + 1]] <- det_row(v3, "Zosterops sp.", rank = "genus", cluster = NA)
-    # V4 flyover-only blocked rows: not withdrawn.
+    # V4 flyover-only blank: flyovers stay out of incidence.
     v4 <- visit_row(site, "PUUM_011", "21", 2019L, 2); pp[[length(pp) + 1]] <- v4
     cd[[length(cd) + 1]] <- det_row(v4, "Chlorodrepanis virens", cluster = NA, method = "flyover")
-    # V5 minute-88 blocked only: not withdrawn.
+    # V5 minute-88 blank only: held, not a count.
     v5 <- visit_row(site, "PUUM_012", "21", 2019L, 1); pp[[length(pp) + 1]] <- v5
     cd[[length(cd) + 1]] <- det_row(v5, "Himatione sanguinea", cluster = NA, minute = "88")
     # V6 impractical with a clean row.
     v6 <- visit_row(site, "PUUM_012", "21", 2019L, 2, state = "High wind"); pp[[length(pp) + 1]] <- v6
     cd[[length(cd) + 1]] <- det_row(v6, "Himatione sanguinea", cluster = 1)
     cd[[length(cd) + 1]] <- det_row(v6, "Himatione sanguinea", cluster = NA)
-    # V7 unknown-method blocked only: not withdrawn.
+    # V7 unknown-method blank only: held.
     v7 <- visit_row(site, "PUUM_013", "21", 2019L, 1); pp[[length(pp) + 1]] <- v7
     cd[[length(cd) + 1]] <- det_row(v7, "Himatione sanguinea", cluster = NA, method = "unknown")
     # V8 empty valid count.
     v8 <- visit_row(site, "PUUM_013", "21", 2019L, 2); pp[[length(pp) + 1]] <- v8
-    # V9 zero and fractional cluster: withdrawn; point PUUM_014_21 has no valid count left.
+    # V9 zero and fractional cluster: invalid, never read as one.
     v9 <- visit_row(site, "PUUM_014", "21", 2019L, 1, observer = "obs-z"); pp[[length(pp) + 1]] <- v9
     cd[[length(cd) + 1]] <- det_row(v9, "Himatione sanguinea", cluster = 0)
     cd[[length(cd) + 1]] <- det_row(v9, "Chasiempis sandwichensis", cluster = 1.5, method = "calling, visual")
@@ -96,7 +115,6 @@ for (site in sites) {
     # Orphan detection.
     orphan <- visit_row(site, "PUUM_099", "21", 2019L, 1)
     cd[[length(cd) + 1]] <- det_row(orphan, "Himatione sanguinea", cluster = NA)
-    # Point-year with valid bout 1 and withdrawn bout 2 already covered by V1/V2.
   }
   if (site == "SRER") {
     # Pre-window-only missing count: lifetime index NA, 2017-2024 window finite.
